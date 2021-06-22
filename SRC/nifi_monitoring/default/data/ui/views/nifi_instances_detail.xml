@@ -1,0 +1,696 @@
+<form refresh="600" script="nifi_instance_panels.js" stylesheet="nifi_instance_panels.css" hideEdit="true">
+  <label>Flow's &amp; Metrics Monitoring Panel</label>
+  <search id="baseSearch">
+    <query>
+     sourcetype="nifi:api:flow_status" host=$host$ | dedup sourcetype |fields controllerStatus.activeThreadCount,controllerStatus.queued,controllerStatus.runningCount,controllerStatus.stoppedCount,controllerStatus.invalidCount,controllerStatus.disabledCount,controllerStatus.syncFailureCount,controllerStatus.upToDateCount,controllerStatus.locallyModifiedCount| stats values(controllerStatus.activeThreadCount) as activeThreadCount values(controllerStatus.queued) as queued values(controllerStatus.runningCount) as runningCount values(controllerStatus.stoppedCount) as stoppedCount values(controllerStatus.invalidCount) as invalidCount values(controllerStatus.disabledCount) as disabledCount values(controllerStatus.syncFailureCount) as syncFailureCount values(controllerStatus.upToDateCount) as upToDateCount values(controllerStatus.locallyModifiedCount) as locallyModifiedCount
+    </query>
+    <earliest>-60m</earliest>
+    <latest>now</latest>
+  </search>
+  <search id="baseSearch2">
+    <query>
+| tstats max(Reporting_Task.ActiveThreads) as ActiveThreads_max max(Reporting_Task.BytesQueued) as BytesQueued_max max(Reporting_Task.BytesReadLast5Minutes) as BytesReadLast5Minutes_max max(Reporting_Task.BytesReceivedLast5Minutes) as BytesReceivedLast5Minutes_max max(Reporting_Task.BytesSentLast5Minutes) as BytesSentLast5Minutes_max max(Reporting_Task.BytesWrittenLast5Minutes) as BytesWrittenLast5Minutes_max max(Reporting_Task.FlowFilesQueued) as FlowFilesQueued_max max(Reporting_Task.FlowFilesReceivedLast5Minutes) as FlowFilesReceivedLast5Minutes_max max(Reporting_Task.FlowFilesSentLast5Minutes) as FlowFilesSentLast5Minutes_max max(Reporting_Task.TotalTaskDurationNanoSeconds) as TotalTaskDurationNanoSeconds_max max(Reporting_Task.TotalTaskDurationSeconds) as TotalTaskDurationSecond_max avg(Reporting_Task.ActiveThreads) as ActiveThreads_avg avg(Reporting_Task.BytesQueued) as BytesQueued_avg avg(Reporting_Task.BytesReadLast5Minutes) as BytesReadLast5Minutes_avg avg(Reporting_Task.BytesReceivedLast5Minutes) as BytesReceivedLast5Minutes_avg avg(Reporting_Task.BytesSentLast5Minutes) as BytesSentLast5Minutes_avg avg(Reporting_Task.BytesWrittenLast5Minutes) as BytesWrittenLast5Minutes_avg avg(Reporting_Task.FlowFilesQueued) as FlowFilesQueued_avg avg(Reporting_Task.FlowFilesReceivedLast5Minutes) as FlowFilesReceivedLast5Minutes_avg avg(Reporting_Task.FlowFilesSentLast5Minutes) as FlowFilesSentLast5Minutes_avg avg(Reporting_Task.TotalTaskDurationNanoSeconds) as TotalTaskDurationNanoSeconds_avg avg(Reporting_Task.TotalTaskDurationSeconds) as TotalTaskDurationSecond_avg max(Reporting_Task.jvmthread_count) as jvmthread_count_max max(Reporting_Task.jvmdaemon_thread_count) as jvmdaemon_thread_count_max max(Reporting_Task.jvmheap_usage) as jvmheap_usage_max max(Reporting_Task.jvmheap_used) as jvmheap_used_max max(Reporting_Task.jvmnon_heap_usage) as jvmnon_heap_usage_max avg(Reporting_Task.jvmthread_count) as jvmthread_count_avg avg(Reporting_Task.jvmdaemon_thread_count) as jvmdaemon_thread_count_avg avg(Reporting_Task.jvmheap_usage) as jvmheap_usage_avg avg(Reporting_Task.jvmheap_used) as jvmheap_used_avg avg(Reporting_Task.jvmnon_heap_usage) as jvmnon_heap_usage_avg from datamodel=NIFI.Reporting_Task where host=$host$ by _time span=1m 
+| timechart span=$spantk$ max(ActiveThreads_max) as ActiveThreads_max max(BytesQueued_max) as Max_Queued max(ReadLast5Minutes_max) as Max_Read max(BytesReceivedLast5Minutes_max) as Max_Received max(BytesSentLast5Minutes_max) as Max_Sent max(BytesWrittenLast5Minutes_max) as Max_Written max(FlowFilesQueued_max) as Max_FlowFilesQueued max(FlowFilesReceivedLast5Minutes_max) as Max_FlowFilesReceived max(FlowFilesSentLast5Minutes_max) as Max_FlowFilesSent max(TotalTaskDurationNanoSeconds_max) as Max_TotalTaskDurationNanoSeconds max(TotalTaskDurationSeconds_max) as Max_TotalTaskDurationSeconds avg(ActiveThreads_avg) as ActiveThreads_avg avg(BytesQueued_avg) as Avg_Queued avg(BytesReadLast5Minutes_avg) as Avg_Read avg(BytesReceivedLast5Minutes_avg) as Avg_Received avg(BytesSentLast5Minutes_avg) as Avg_Sent avg(BytesWrittenLast5Minutes_avg) as Avg_Written avg(FlowFilesQueued_avg) as Avg_FlowFilesQueued avg(FlowFilesReceivedLast5Minutes_avg) as Avg_FlowFilesReceived avg(FlowFilesSentLast5Minutes_avg) as Avg_FlowFilesSent avg(TotalTaskDurationNanoSeconds_avg) as Avg_TotalTaskDurationNanoSeconds avg(TotalTaskDurationSeconds_avg) as Avg_TotalTaskDurationSeconds max(jvmthread_count_max) as Max_jvmthread_count max(jvmdaemon_thread_count_max) as Max_jvmdaemon_thread_count max(jvmheap_usage_max) as Max_jvmheap_usage max(jvmheap_used_max) as Max_jvmheap_used max(jvmnon_heap_usage_max) as Max_jvmnon_heap_usage avg(jvmthread_count_avg) as Avg_jvmthread_count avg(jvmdaemon_thread_count_avg) as Avg_jvmdaemon_thread_count avg(jvmheap_usage_avg) as Avg_jvmheap_usage avg(jvmheap_used_avg) as Avg_jvmheap_used avg(jvmnon_heap_usage_avg) as Avg_jvmnon_heap_usage  </query>
+    <earliest>$timetk.earliest$</earliest>
+    <latest>$timetk.latest$</latest>
+  </search>
+  <search id="baseSearch3">
+    <query>
+| tstats last(System_Diagnostics.systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.freeSpaceBytes) as contentfreeSpaceBytes last(System_Diagnostics.systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.freeSpaceBytes) as flowfreeSpaceBytes last(System_Diagnostics.systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.freeSpaceBytes) as provenancefreeSpaceBytes last(System_Diagnostics.ContentRepositoryusedPercent) as ContentRepositoryusedPercent last(System_Diagnostics.FlowRepositoryusedPercent) as FlowRepositoryusedPercent last(System_Diagnostics.ProvenanceRepositoryusedPercent) as ProvenanceRepositoryusedPercent   from datamodel=NIFI.System_Diagnostics where host=$host$ by _time span=$spantk$
+    </query>
+    <earliest>$timetk.earliest$</earliest>
+    <latest>$timetk.latest$</latest>
+  </search>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="dropdown" token="host" id="host" searchWhenChanged="false">
+      <label>Nifi Instance</label>
+      <fieldForLabel>host</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <search>
+        <query>sourcetype="nifi:api:flow_status" | dedup host | table host</query>
+        <earliest>-15m</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <html>
+        <h1>
+          <span>Near-RealTime Status - Nifi Instance </span>
+        </h1>
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Status</title>
+        <search base="baseSearch">
+          <query>| stats count 
+| eval status=if(count=0, "Down", "Up") 
+| table status 
+| eval statusidx=case(status="Up",2,status="Down",1) 
+| rangemap field=statusidx severe=0-1 low=2-4 default=low 
+| fields - statusidx</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">61</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">0</option>
+        <option name="link.visible">0</option>
+      </single>
+      <viz type="status_indicator_app.status_indicator">
+        <title>Active Threads</title>
+        <search base="baseSearch">
+          <query>|table activeThreadCount</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">62</option>
+        <option name="status_indicator_app.status_indicator.colorBy">static_color</option>
+        <option name="status_indicator_app.status_indicator.fillTarget">text</option>
+        <option name="status_indicator_app.status_indicator.fixIcon">warning</option>
+        <option name="status_indicator_app.status_indicator.icon">fix_icon</option>
+        <option name="status_indicator_app.status_indicator.precision">0</option>
+        <option name="status_indicator_app.status_indicator.showOption">3</option>
+        <option name="status_indicator_app.status_indicator.staticColor">#000</option>
+        <option name="status_indicator_app.status_indicator.useColors">true</option>
+        <option name="link.visible">0</option>
+        <option name="status_indicator_app.status_indicator.useThousandSeparator">true</option>
+      </viz>
+      <viz type="status_indicator_app.status_indicator">
+        <title>Total Queued Data</title>
+        <search base="baseSearch">
+          <query>|table queued</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">58</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="status_indicator_app.status_indicator.colorBy">static_color</option>
+        <option name="status_indicator_app.status_indicator.fillTarget">text</option>
+        <option name="status_indicator_app.status_indicator.fixIcon">warning</option>
+        <option name="status_indicator_app.status_indicator.icon">fix_icon</option>
+        <option name="status_indicator_app.status_indicator.precision">0</option>
+        <option name="status_indicator_app.status_indicator.showOption">3</option>
+        <option name="status_indicator_app.status_indicator.staticColor">#555</option>
+        <option name="status_indicator_app.status_indicator.useColors">true</option>
+        <option name="status_indicator_app.status_indicator.useThousandSeparator">true</option>
+        <option name="link.visible">0</option>
+      </viz>
+      <single>
+        <title>Bulletin Count Errors - Last 5 Minutes</title>
+        <search>
+          <query>| tstats count from datamodel=NIFI.Reporting_Bulletin where host=$host$</query>
+          <earliest>-5m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">all</option>
+        <option name="height">76</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+        <option name="link.visible">0</option>
+        <drilldown>
+          <link target="_blank">/app/nifi_monitoring/bulletin_monitor_panel?form.host=$host$</link>
+        </drilldown>
+      </single>
+    </panel>
+    <panel>
+      <viz type="status_indicator_app.status_indicator">
+        <title>Running Components</title>
+        <search base="baseSearch">
+          <query>|table runningCount</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">60</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="status_indicator_app.status_indicator.colorBy">static_color</option>
+        <option name="status_indicator_app.status_indicator.fillTarget">background</option>
+        <option name="status_indicator_app.status_indicator.fixIcon">check</option>
+        <option name="status_indicator_app.status_indicator.icon">fix_icon</option>
+        <option name="status_indicator_app.status_indicator.precision">0</option>
+        <option name="status_indicator_app.status_indicator.showOption">1</option>
+        <option name="status_indicator_app.status_indicator.staticColor">#53a051</option>
+        <option name="status_indicator_app.status_indicator.useColors">true</option>
+        <option name="status_indicator_app.status_indicator.useThousandSeparator">true</option>
+        <option name="link.visible">0</option>
+      </viz>
+      <viz type="status_indicator_app.status_indicator">
+        <title>Stopped Components</title>
+        <search base="baseSearch">
+          <query>|table stoppedCount</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">59</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="status_indicator_app.status_indicator.colorBy">static_color</option>
+        <option name="status_indicator_app.status_indicator.fillTarget">background</option>
+        <option name="status_indicator_app.status_indicator.fixIcon">times-circle</option>
+        <option name="status_indicator_app.status_indicator.icon">fix_icon</option>
+        <option name="status_indicator_app.status_indicator.precision">0</option>
+        <option name="status_indicator_app.status_indicator.showOption">1</option>
+        <option name="status_indicator_app.status_indicator.staticColor">#dc4e41</option>
+        <option name="status_indicator_app.status_indicator.useColors">true</option>
+        <option name="status_indicator_app.status_indicator.useThousandSeparator">true</option>
+        <option name="link.visible">0</option>
+      </viz>
+      <viz type="status_indicator_app.status_indicator">
+        <title>Invalid Components</title>
+        <search base="baseSearch">
+          <query>|table invalidCount</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">60</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="status_indicator_app.status_indicator.colorBy">static_color</option>
+        <option name="status_indicator_app.status_indicator.fillTarget">background</option>
+        <option name="status_indicator_app.status_indicator.fixIcon">warning</option>
+        <option name="status_indicator_app.status_indicator.icon">fix_icon</option>
+        <option name="status_indicator_app.status_indicator.precision">0</option>
+        <option name="status_indicator_app.status_indicator.showOption">1</option>
+        <option name="status_indicator_app.status_indicator.staticColor">#f8be34</option>
+        <option name="status_indicator_app.status_indicator.useColors">true</option>
+        <option name="status_indicator_app.status_indicator.useThousandSeparator">true</option>
+        <option name="link.visible">0</option>
+      </viz>
+      <viz type="status_indicator_app.status_indicator">
+        <title>Disabled Components</title>
+        <search base="baseSearch">
+          <query>|table disabledCount</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">62</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="status_indicator_app.status_indicator.colorBy">static_color</option>
+        <option name="status_indicator_app.status_indicator.fillTarget">background</option>
+        <option name="status_indicator_app.status_indicator.fixIcon">power-off</option>
+        <option name="status_indicator_app.status_indicator.icon">fix_icon</option>
+        <option name="status_indicator_app.status_indicator.precision">0</option>
+        <option name="status_indicator_app.status_indicator.showOption">1</option>
+        <option name="status_indicator_app.status_indicator.staticColor">#555</option>
+        <option name="status_indicator_app.status_indicator.useColors">true</option>
+        <option name="status_indicator_app.status_indicator.useThousandSeparator">true</option>
+        <option name="link.visible">0</option>
+      </viz>
+    </panel>
+    <panel>
+      <single>
+        <title>Sync Faliure Versioned Process Group</title>
+        <search base="baseSearch">
+          <query>|table syncFailureCount</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">80</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+        <option name="link.visible">0</option>
+      </single>
+      <viz type="status_indicator_app.status_indicator">
+        <title>Up to Date Versioned Process Group</title>
+        <search base="baseSearch">
+          <query>|table upToDateCount</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">79</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="status_indicator_app.status_indicator.colorBy">static_color</option>
+        <option name="status_indicator_app.status_indicator.fillTarget">text</option>
+        <option name="status_indicator_app.status_indicator.fixIcon">warning</option>
+        <option name="status_indicator_app.status_indicator.icon">fix_icon</option>
+        <option name="status_indicator_app.status_indicator.precision">0</option>
+        <option name="status_indicator_app.status_indicator.showOption">3</option>
+        <option name="status_indicator_app.status_indicator.staticColor">#555</option>
+        <option name="status_indicator_app.status_indicator.useColors">true</option>
+        <option name="status_indicator_app.status_indicator.useThousandSeparator">true</option>
+        <option name="link.visible">0</option>
+      </viz>
+      <single>
+        <title>Locally Modify Versioned Process Group</title>
+        <search base="baseSearch">
+          <query>|table  locallyModifiedCount</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">96</option>
+        <option name="rangeColors">["0x555","0x555"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="useColors">1</option>
+        <option name="link.visible">0</option>
+      </single>
+    </panel>
+    <panel>
+      <table id="version_status">
+        <title>Version Status</title>
+        <search>
+          <query>sourcetype="nifi:api:system_diagnostics" host="$host$"
+| dedup sourcetype 
+| rename systemDiagnostics.aggregateSnapshot.versionInfo.buildTag as buildTag,systemDiagnostics.aggregateSnapshot.versionInfo.buildTimestamp as buildTimestamp
+    , systemDiagnostics.aggregateSnapshot.versionInfo.javaVendor as javaVendor 
+    , systemDiagnostics.aggregateSnapshot.versionInfo.javaVersion as javaVersion 
+    , systemDiagnostics.aggregateSnapshot.versionInfo.niFiVersion as niFiVersion 
+    ,systemDiagnostics.aggregateSnapshot.versionInfo.osArchitecture as osArchitecture 
+    , systemDiagnostics.aggregateSnapshot.versionInfo.osName as osName 
+    ,systemDiagnostics.aggregateSnapshot.versionInfo.osVersion as osVersion 
+| table host cluster buildTag buildTimestamp javaVendor javaVersion niFiVersion osArchitecture osName osVersion 
+| transpose 
+| rename column as Key, "row 1" as Values</query>
+          <earliest>-4h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <option name="link.visible">0</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="time" token="timetk" searchWhenChanged="true">
+        <label>Time</label>
+        <default>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <input type="dropdown" token="spantk" searchWhenChanged="true">
+        <label>Span</label>
+        <choice value="auto">Automatic</choice>
+        <choice value="5m">5 Minutes</choice>
+        <choice value="1h">1 Hour</choice>
+        <choice value="1d">1 Day</choice>
+        <default>5m</default>
+        <initialValue>5m</initialValue>
+      </input>
+      <input type="dropdown" token="unit" searchWhenChanged="true">
+        <label>Unit</label>
+        <choice value="/1">Bytes</choice>
+        <choice value="/1024">KiloBytes</choice>
+        <choice value="/1024/1024">MegaBytes</choice>
+        <choice value="/1024/1024/1024">GigaBytes</choice>
+        <change>
+          <set token="LabelName">$label$</set>
+        </change>
+        <default>/1</default>
+        <initialValue>/1</initialValue>
+      </input>
+      <input type="dropdown" token="scale" searchWhenChanged="true">
+        <label>Scale</label>
+        <choice value="linear">Linear</choice>
+        <choice value="log">Logarithmic</choice>
+        <default>log</default>
+        <initialValue>log</initialValue>
+      </input>
+      <html>
+        <h1>
+          <span>Behaviour Over Time - Nifi Instance </span>
+        </h1>
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Active Threads</title>
+        <search base="baseSearch2">
+          <query>| table _time ActiveThreads_max ActiveThreads_avg</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.overlayFields">ActiveThreads_max</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="link.visible">0</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>$LabelName$ Queued</title>
+        <search base="baseSearch2">
+          <query>|table _time Max_Queued Avg_Queued
+| foreach Avg* [eval &lt;&lt;FIELD&gt;&gt;=&lt;&lt;FIELD&gt;&gt;$unit$]
+| foreach Max* [eval &lt;&lt;FIELD&gt;&gt;=&lt;&lt;FIELD&gt;&gt;$unit$]</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.overlayFields">Max_Queued</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="link.visible">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>$LabelName$ Read</title>
+        <search base="baseSearch2">
+          <query>|table _time Max_Read Avg_Read
+| foreach Avg* [eval &lt;&lt;FIELD&gt;&gt;=&lt;&lt;FIELD&gt;&gt;$unit$]
+| foreach Max* [eval &lt;&lt;FIELD&gt;&gt;=&lt;&lt;FIELD&gt;&gt;$unit$]</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisY.scale">$scale$</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.overlayFields">Max_Read</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="link.visible">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>$LabelName$  Received</title>
+        <search base="baseSearch2">
+          <query>|table _time Max_Received Avg_Received
+| foreach Avg* [eval &lt;&lt;FIELD&gt;&gt;=&lt;&lt;FIELD&gt;&gt;$unit$]
+| foreach Max* [eval &lt;&lt;FIELD&gt;&gt;=&lt;&lt;FIELD&gt;&gt;$unit$]</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisY.scale">$scale$</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.overlayFields">Max_Received</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="link.visible">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>$LabelName$ Sent</title>
+        <search base="baseSearch2">
+          <query>|table _time Max_Sent Avg_Sent
+| foreach Avg* [eval &lt;&lt;FIELD&gt;&gt;=&lt;&lt;FIELD&gt;&gt;$unit$]
+| foreach Max* [eval &lt;&lt;FIELD&gt;&gt;=&lt;&lt;FIELD&gt;&gt;$unit$]</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisY.scale">$scale$</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.overlayFields">Max_Sent</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="link.visible">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>$LabelName$ Written</title>
+        <search base="baseSearch2">
+          <query>| table _time Max_Written Avg_Written
+| foreach Avg* [eval &lt;&lt;FIELD&gt;&gt;=&lt;&lt;FIELD&gt;&gt;$unit$]
+| foreach Max* [eval &lt;&lt;FIELD&gt;&gt;=&lt;&lt;FIELD&gt;&gt;$unit$]</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisY.scale">$scale$</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.overlayFields">Max_Written</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="link.visible">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Flow Files Queued</title>
+        <search base="baseSearch2">
+          <query>|table _time Max_FlowFilesQueued Avg_FlowFilesQueued</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.overlayFields">Max_FlowFilesQueued</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="link.visible">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Flow Files Received</title>
+        <search base="baseSearch2">
+          <query>|table _time Max_FlowFilesReceived Avg_FlowFilesReceived</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.overlayFields">Max_FlowFilesReceived</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="link.visible">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Flow Files Sent</title>
+        <search base="baseSearch2">
+          <query>|table _time Max_FlowFilesSent Avg_FlowFilesSent</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.overlayFields">Max_FlowFilesSent</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="link.visible">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Total Task Duration (Seconds)</title>
+        <search base="baseSearch2">
+          <query>|table _time Max_TotalTaskDurationSeconds Avg_TotalTaskDurationSeconds</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.overlayFields">Max_TotalTaskDurationSeconds</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="link.visible">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>JVM Thread Count</title>
+        <search base="baseSearch2">
+          <query>|table _time Max_jvmthread_count Avg_jvmthread_count</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.overlayFields">Max_jvmthread_count</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="link.visible">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>JVM Daemon Thread Count</title>
+        <search base="baseSearch2">
+          <query>|table _time Max_jvmdaemon_thread_count Avg_jvmdaemon_thread_count</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.overlayFields">Max_jvmdaemon_thread_count</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="link.visible">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>JVM Heap Usage %</title>
+        <search base="baseSearch2">
+          <query>| table _time Max_jvmheap_usage Avg_jvmheap_usage 
+| eval Max_jvmheap_usage=Max_jvmheap_usage*100 
+| eval Avg_jvmheap_usage=Avg_jvmheap_usage*100</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.overlayFields">Max_jvmheap_usage</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="link.visible">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>JVM Heap $LabelName$</title>
+        <search base="baseSearch2">
+          <query>|table _time Max_jvmheap_used Avg_jvmheap_used
+| foreach Max* [eval &lt;&lt;FIELD&gt;&gt;=&lt;&lt;FIELD&gt;&gt;$unit$]
+| foreach Avg* [eval &lt;&lt;FIELD&gt;&gt;=&lt;&lt;FIELD&gt;&gt;$unit$]</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisY.scale">$scale$</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.overlayFields">Max_jvmheap_used</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="link.visible">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>JVM Heap Usage $LabelName$</title>
+        <search base="baseSearch2">
+          <query>| table _time Max_jvmnon_heap_usage Avg_jvmnon_heap_usage 
+| eval Max_jvmnon_heap_usage=Max_jvmnon_heap_usage*-1 
+| eval Avg_jvmnon_heap_usage=Avg_jvmnon_heap_usage*-1
+| foreach *jvm* [eval &lt;&lt;FIELD&gt;&gt;=&lt;&lt;FIELD&gt;&gt;$unit$]</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisY.scale">$scale$</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.overlayFields">Max_jvmnon_heap_usage</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="link.visible">0</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Content Repository Status</title>
+        <search base="baseSearch3">
+          <query>| table _time contentfreeSpaceBytes ContentRepositoryusedPercent 
+| eval contentfreeSpaceBytes=round(contentfreeSpaceBytes/1024/1024/1024,2)</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.text">ContentFreeSpace GB</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisY2.abbreviation">none</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.axisY2.maximumNumber">100</option>
+        <option name="charting.axisY2.minimumNumber">0</option>
+        <option name="charting.axisY2.scale">linear</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.overlayFields">ContentRepositoryusedPercent</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.stackMode">default</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="link.visible">0</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Flow Repository Status</title>
+        <search base="baseSearch3">
+          <query>| table _time flowfreeSpaceBytes FlowRepositoryusedPercent 
+| eval flowfreeSpaceBytes=round(flowfreeSpaceBytes/1024/1024/1024,2)</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY2.text">FlowFreeSpace GB</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+        <option name="charting.axisY.minimumNumber">0</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.overlayFields">flowfreeSpaceBytes</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="link.visible">0</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Provenance Repository Status</title>
+        <search base="baseSearch3">
+          <query>| table _time provenancefreeSpaceBytes ProvenanceRepositoryusedPercent 
+| eval provenancefreeSpaceBytes=round(provenancefreeSpaceBytes/1024/1024/1024,2)</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY2.text">ProvenanceFreeSpace GB</option>
+        <option name="charting.axisY.maximumNumber">100</option>
+        <option name="charting.axisY.minimumNumber">0</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.chart">area</option>
+        <option name="charting.chart.overlayFields">provenancefreeSpaceBytes</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.mode">standard</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="link.visible">0</option>
+      </chart>
+    </panel>
+  </row>
+  <row id="footer">
+    <panel>
+      <html>
+        <style>
+            [id^="footer"] .dashboard-panel {
+              background:#f2f4f5 !important;
+            }
+
+          </style>
+        <div style="text-align: center; font-weight: bold; font-size: 14px;">
+           Developed by
+           <a href="https://www.kudaw.com" target="_blank" style="text-decoration: none;">
+             <img src="/static/app/nifi_monitoring/kudaw.png" style="height:34px; border:0; margin-left:10px"/>
+           </a>
+          </div>
+      </html>
+    </panel>
+  </row>
+</form>

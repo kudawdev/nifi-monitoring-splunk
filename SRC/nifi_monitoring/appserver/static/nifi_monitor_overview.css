@@ -1,0 +1,73 @@
+/* Hide panel footer */
+.panel-footer {
+    display:none !important;
+}
+          
+.shared-footer {
+    display:none !important;
+}
+          
+.view-mode .element-footer .menus .refresh-time-indicator {
+    display: none !important;
+}
+
+
+#table_nifi_status thead tr th:nth-child(n+4) {
+    font-size: 0 !important;
+}
+
+#table_nifi_status tr td {
+    background: white !important;
+}
+
+#table_nifi_status .table th, .table td{
+    text-align: left !important;
+}
+
+.icon-inline i {
+    font-size: 18px;
+    margin-left: 5px;
+}
+
+.icon-inline i.icon-box-filled,
+.icon-inline i.icon-report{
+    color: #e57373;
+}
+
+.icon-inline i.icon-alert {
+    color: #ffd54f;
+}
+
+.icon-inline i.icon-triangle-right {
+    color: #4db6ac;
+}
+
+.green{
+    color: #4db6ac;
+}
+
+.red {
+    color: #e57373;
+}
+
+
+/* tabla disk status (barras porcentuales) */
+td.data-bar-cell {
+    padding: 4px 8px;
+}
+
+td.data-bar-cell .data-bar-wrapper{
+    background-color: #c3c3c3;
+    border-radius: 6px;
+}
+
+td.data-bar-cell .data-bar-wrapper .data-bar {
+    height: 18px;
+    min-width: 1px;
+    background-color: #5479AF;
+    border-radius: 6px;;
+}
+
+#table_disk_space_status tr td {
+    background: white !important;
+}

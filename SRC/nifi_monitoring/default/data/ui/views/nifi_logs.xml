@@ -1,0 +1,147 @@
+<form hideEdit="true">
+  <label>Logs Monitoring Panel</label>
+  <search id="baseSearch2">
+    <query>
+| tstats count from datamodel=NIFI.Logs by _time, host, sourcetype, Logs.level span=$span$
+| rename Logs.* as *
+    </query>
+    <earliest>$time.earliest$</earliest>
+    <latest>$time.latest$</latest>
+  </search>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="time" token="time" searchWhenChanged="false">
+      <label>Time</label>
+      <default>
+        <earliest>-60m@m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="span">
+      <label>Span</label>
+      <choice value="5m">5 Minutes</choice>
+      <choice value="30m">30 Minutes</choice>
+      <choice value="1h">1 Hour</choice>
+      <choice value="1d">1 Day</choice>
+      <default>5m</default>
+      <initialValue>5m</initialValue>
+    </input>
+    <input type="dropdown" token="host" searchWhenChanged="false">
+      <label>Nifi Instance</label>
+      <fieldForLabel>host</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <search base="baseSearch2">
+        <query>
+| dedup host 
+| table host</query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="sourcetype">
+      <label>Sourcetype</label>
+      <choice value="*">All</choice>
+      <fieldForLabel>sourcetype</fieldForLabel>
+      <fieldForValue>sourcetype</fieldForValue>
+      <search base="baseSearch2">
+        <query>
+| dedup sourcetype 
+| table sourcetype</query>
+      </search>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="multiselect" token="severity" searchWhenChanged="false">
+      <label>Severity</label>
+      <choice value="*">All</choice>
+      <choice value="ERROR">Error</choice>
+      <choice value="WARN">Warn</choice>
+      <choice value="INFO">Info</choice>
+      <choice value="DEBUG">Debug</choice>
+      <default>*</default>
+      <prefix>(</prefix>
+      <suffix>)</suffix>
+      <initialValue>*</initialValue>
+      <delimiter> OR </delimiter>
+      <valuePrefix>level=</valuePrefix>
+    </input>
+    <input type="text" token="customsearch" searchWhenChanged="false">
+      <label>Custom Search</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <single>
+        <title>Logs Events Count</title>
+        <search base="baseSearch2">
+          <query>| search host=$host$ sourcetype=$sourcetype$ $severity$ $customsearch$
+| stats sum(count) as count</query>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="height">83</option>
+        <option name="rangeColors">["0x555","0x555"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="unit">Events</option>
+        <option name="useColors">0</option>
+      </single>
+      <chart>
+        <title>Logs Events Behaviour</title>
+        <search base="baseSearch2">
+          <query>| search host=$host$ sourcetype=$sourcetype$ $severity$ $customsearch$
+|timechart sum(count) as count span=$span$ by level</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="height">275</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="charting.fieldColors">{"ERROR":e57373, "INFO":4fc3f7, "WARN":ffd54f}</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <event>
+        <title>Logs Events Details</title>
+        <search>
+          <query>sourcetype=nifi:log:* host=$host$ sourcetype=$sourcetype$ $severity$ $customsearch$</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">20</option>
+        <option name="list.drilldown">none</option>
+        <option name="list.wrap">1</option>
+        <option name="raw.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">0</option>
+        <option name="table.drilldown">none</option>
+        <option name="table.wrap">1</option>
+        <option name="type">raw</option>
+      </event>
+    </panel>
+  </row>
+  
+      <row id="footer">
+      <html>
+        <style>
+            [id^="footer"] .dashboard-panel {
+              background:#f2f4f5 !important;
+            }
+
+          </style>
+        <div style="text-align: center; font-weight: bold; font-size: 14px;">
+           Developed by
+           <a href="https://www.kudaw.com" target="_blank" style="text-decoration: none;">
+             <img src="/static/app/nifi_monitoring/kudaw.png" style="height:34px; border:0; margin-left:10px"/>
+           </a>
+          </div>
+      </html>
+  </row>
+</form>

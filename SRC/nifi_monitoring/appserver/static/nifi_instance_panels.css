@@ -1,0 +1,24 @@
+.required button{
+    border: 2px solid #f6685e !important;
+}
+
+#version_status thead{
+    display: none;;
+}
+
+#version_status tr td {
+    background: white !important;
+}
+
+/* Hide panel footer */
+.panel-footer {
+    display:none !important;
+}
+          
+.shared-footer {
+    display:none !important;
+}
+          
+.view-mode .element-footer .menus .refresh-time-indicator {
+    display: none !important;
+}

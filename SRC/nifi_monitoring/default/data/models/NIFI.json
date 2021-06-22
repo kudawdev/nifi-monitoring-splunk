@@ -1,0 +1,1258 @@
+{
+    "modelName": "NIFI",
+    "displayName": "NIFI",
+    "description": "",
+    "objectSummary": {
+        "Event-Based": 5,
+        "Transaction-Based": 0,
+        "Search-Based": 0
+    },
+    "objects": [
+        {
+            "objectName": "Flow_Status",
+            "displayName": "Flow Status",
+            "parentName": "BaseEvent",
+            "comment": "",
+            "fields": [
+                {
+                    "fieldName": "controllerStatus.activeRemotePortCount",
+                    "owner": "Flow_Status",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "controllerStatus.activeRemotePortCount",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "controllerStatus.activeThreadCount",
+                    "owner": "Flow_Status",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "controllerStatus.activeThreadCount",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "controllerStatus.bytesQueued",
+                    "owner": "Flow_Status",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "controllerStatus.bytesQueued",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "controllerStatus.disabledCount",
+                    "owner": "Flow_Status",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "controllerStatus.disabledCount",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "controllerStatus.flowFilesQueued",
+                    "owner": "Flow_Status",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "controllerStatus.flowFilesQueued",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "controllerStatus.inactiveRemotePortCount",
+                    "owner": "Flow_Status",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "controllerStatus.inactiveRemotePortCount",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "controllerStatus.invalidCount",
+                    "owner": "Flow_Status",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "controllerStatus.invalidCount",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "controllerStatus.locallyModifiedAndStaleCount",
+                    "owner": "Flow_Status",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "controllerStatus.locallyModifiedAndStaleCount",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "controllerStatus.locallyModifiedCount",
+                    "owner": "Flow_Status",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "controllerStatus.locallyModifiedCount",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "controllerStatus.runningCount",
+                    "owner": "Flow_Status",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "controllerStatus.runningCount",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "controllerStatus.staleCount",
+                    "owner": "Flow_Status",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "controllerStatus.staleCount",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "controllerStatus.stoppedCount",
+                    "owner": "Flow_Status",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "controllerStatus.stoppedCount",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "controllerStatus.syncFailureCount",
+                    "owner": "Flow_Status",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "controllerStatus.syncFailureCount",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "controllerStatus.terminatedThreadCount",
+                    "owner": "Flow_Status",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "controllerStatus.terminatedThreadCount",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "controllerStatus.upToDateCount",
+                    "owner": "Flow_Status",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "controllerStatus.upToDateCount",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "cluster",
+                    "owner": "Flow_Status",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cluster",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "_time",
+                    "owner": "BaseEvent",
+                    "type": "timestamp",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "_time",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "host",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "host",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "source",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "source",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "sourcetype",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "sourcetype",
+                    "comment": ""
+                }
+            ],
+            "calculations": [],
+            "constraints": [
+                {
+                    "search": "index=* sourcetype=\"nifi:api:flow_status\"",
+                    "owner": "Flow_Status"
+                }
+            ],
+            "lineage": "Flow_Status"
+        },
+        {
+            "objectName": "Reporting_Task",
+            "displayName": "Reporting Task",
+            "parentName": "BaseEvent",
+            "comment": "",
+            "fields": [
+                {
+                    "fieldName": "ActiveThreads",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "ActiveThreads",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "BytesQueued",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "BytesQueued",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "BytesReadLast5Minutes",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "BytesReadLast5Minutes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "BytesReceivedLast5Minutes",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "BytesReceivedLast5Minutes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "BytesSentLast5Minutes",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "BytesSentLast5Minutes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "BytesWrittenLast5Minutes",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "BytesWrittenLast5Minutes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "FlowFilesQueued",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "FlowFilesQueued",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "FlowFilesReceivedLast5Minutes",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "FlowFilesReceivedLast5Minutes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "FlowFilesSentLast5Minutes",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "FlowFilesSentLast5Minutes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "TotalTaskDurationNanoSeconds",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "TotalTaskDurationNanoSeconds",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "TotalTaskDurationSeconds",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "TotalTaskDurationSeconds",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "appid",
+                    "owner": "Reporting_Task",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "appid",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "availableCores",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "availableCores",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "instanceid",
+                    "owner": "Reporting_Task",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "instanceid",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "jvmdaemon_thread_count",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "jvmdaemon_thread_count",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "jvmfile_descriptor_usage",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "jvmfile_descriptor_usage",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "jvmheap_usage",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "jvmheap_usage",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "jvmheap_used",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "jvmheap_used",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "jvmnon_heap_usage",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "jvmnon_heap_usage",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "jvmthread_count",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "jvmthread_count",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "jvmthread_statesblocked",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "jvmthread_statesblocked",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "jvmthread_statesrunnable",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "jvmthread_statesrunnable",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "jvmthread_statesterminated",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "jvmthread_statesterminated",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "jvmthread_statestimed_waiting",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "jvmthread_statestimed_waiting",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "jvmuptime",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "jvmuptime",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "loadAverage1min",
+                    "owner": "Reporting_Task",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "loadAverage1min",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "cluster",
+                    "owner": "Reporting_Task",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cluster",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "_time",
+                    "owner": "BaseEvent",
+                    "type": "timestamp",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "_time",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "host",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "host",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "source",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "source",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "sourcetype",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "sourcetype",
+                    "comment": ""
+                }
+            ],
+            "calculations": [],
+            "constraints": [
+                {
+                    "search": "index=* sourcetype=\"nifi:reporting:task\"",
+                    "owner": "Reporting_Task"
+                }
+            ],
+            "lineage": "Reporting_Task"
+        },
+        {
+            "objectName": "Reporting_Bulletin",
+            "displayName": "Reporting Bulletin",
+            "parentName": "BaseEvent",
+            "comment": "",
+            "fields": [
+                {
+                    "fieldName": "bulletinCategory",
+                    "owner": "Reporting_Bulletin",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "bulletinCategory",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "bulletinGroupId",
+                    "owner": "Reporting_Bulletin",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "bulletinGroupId",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "bulletinGroupName",
+                    "owner": "Reporting_Bulletin",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "bulletinGroupName",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "bulletinGroupPath",
+                    "owner": "Reporting_Bulletin",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "bulletinGroupPath",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "bulletinLevel",
+                    "owner": "Reporting_Bulletin",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "bulletinLevel",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "bulletinSourceName",
+                    "owner": "Reporting_Bulletin",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "bulletinSourceName",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "bulletinSourceType",
+                    "owner": "Reporting_Bulletin",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "bulletinSourceType",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "cluster",
+                    "owner": "Reporting_Bulletin",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cluster",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "_time",
+                    "owner": "BaseEvent",
+                    "type": "timestamp",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "_time",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "host",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "host",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "source",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "source",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "sourcetype",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "sourcetype",
+                    "comment": ""
+                }
+            ],
+            "calculations": [],
+            "constraints": [
+                {
+                    "search": "index=* sourcetype=\"nifi:reporting:bulletin\"",
+                    "owner": "Reporting_Bulletin"
+                }
+            ],
+            "lineage": "Reporting_Bulletin"
+        },
+        {
+            "objectName": "System_Diagnostics",
+            "displayName": "System Diagnostics",
+            "parentName": "BaseEvent",
+            "comment": "",
+            "fields": [
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.freeSpaceBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.freeSpaceBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.totalSpaceBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.totalSpaceBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.usedSpaceBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.usedSpaceBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.freeSpaceBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.freeSpaceBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.totalSpaceBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.totalSpaceBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.usedSpaceBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.usedSpaceBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.freeHeapBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.freeHeapBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.freeNonHeapBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.freeNonHeapBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.maxHeapBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.maxHeapBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.maxNonHeapBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.maxNonHeapBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.freeSpaceBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.freeSpaceBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.totalSpaceBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.totalSpaceBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.usedSpaceBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.usedSpaceBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.totalHeapBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.totalHeapBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.totalNonHeapBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.totalNonHeapBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.usedHeapBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.usedHeapBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "systemDiagnostics.aggregateSnapshot.usedNonHeapBytes",
+                    "owner": "System_Diagnostics",
+                    "type": "number",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "systemDiagnostics.aggregateSnapshot.usedNonHeapBytes",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "cluster",
+                    "owner": "System_Diagnostics",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cluster",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "_time",
+                    "owner": "BaseEvent",
+                    "type": "timestamp",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "_time",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "host",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "host",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "source",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "source",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "sourcetype",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "sourcetype",
+                    "comment": ""
+                }
+            ],
+            "calculations": [
+                {
+                    "outputFields": [
+                        {
+                            "fieldName": "ContentRepositoryusedPercent",
+                            "owner": "System_Diagnostics",
+                            "type": "number",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": false,
+                            "editable": true,
+                            "displayName": "ContentRepositoryusedPercent",
+                            "comment": ""
+                        }
+                    ],
+                    "calculationID": "3ak86a3jemg",
+                    "owner": "System_Diagnostics",
+                    "editable": true,
+                    "comment": "",
+                    "calculationType": "Eval",
+                    "expression": "if(isnotnull('systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.usedSpaceBytes'),round(('systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.usedSpaceBytes'*100)/'systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.totalSpaceBytes',2),\"no\")"
+                },
+                {
+                    "outputFields": [
+                        {
+                            "fieldName": "FlowRepositoryusedPercent",
+                            "owner": "System_Diagnostics",
+                            "type": "number",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": false,
+                            "editable": true,
+                            "displayName": "FlowRepositoryusedPercent",
+                            "comment": ""
+                        }
+                    ],
+                    "calculationID": "gcjynvjl1m8",
+                    "owner": "System_Diagnostics",
+                    "editable": true,
+                    "comment": "",
+                    "calculationType": "Eval",
+                    "expression": "if(isnotnull('systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.usedSpaceBytes'),round(('systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.usedSpaceBytes'*100)/'systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.totalSpaceBytes',2),\"no\")"
+                },
+                {
+                    "outputFields": [
+                        {
+                            "fieldName": "ProvenanceRepositoryusedPercent",
+                            "owner": "System_Diagnostics",
+                            "type": "number",
+                            "fieldSearch": "",
+                            "required": false,
+                            "multivalue": false,
+                            "hidden": false,
+                            "editable": true,
+                            "displayName": "ProvenanceRepositoryusedPercent",
+                            "comment": ""
+                        }
+                    ],
+                    "calculationID": "86mgdn9drnf",
+                    "owner": "System_Diagnostics",
+                    "editable": true,
+                    "comment": "",
+                    "calculationType": "Eval",
+                    "expression": "if(isnotnull('systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.usedSpaceBytes'),round(('systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.usedSpaceBytes'*100)/'systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.totalSpaceBytes',2),\"no\")"
+                }
+            ],
+            "constraints": [
+                {
+                    "search": "index=* sourcetype=\"nifi:api:system_diagnostics\"",
+                    "owner": "System_Diagnostics"
+                }
+            ],
+            "lineage": "System_Diagnostics"
+        },
+        {
+            "objectName": "Logs",
+            "displayName": "Logs",
+            "parentName": "BaseEvent",
+            "comment": "",
+            "fields": [
+                {
+                    "fieldName": "cluster",
+                    "owner": "Logs",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cluster",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "level",
+                    "owner": "Logs",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "level",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "_time",
+                    "owner": "BaseEvent",
+                    "type": "timestamp",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "_time",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "host",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "host",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "source",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "source",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "sourcetype",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "sourcetype",
+                    "comment": ""
+                }
+            ],
+            "calculations": [],
+            "constraints": [
+                {
+                    "search": "index=* sourcetype=\"nifi:log:*\"",
+                    "owner": "Logs"
+                }
+            ],
+            "lineage": "Logs"
+        }
+    ],
+    "objectNameList": [
+        "Flow_Status",
+        "Reporting_Task",
+        "Reporting_Bulletin",
+        "System_Diagnostics",
+        "Logs"
+    ]
+}

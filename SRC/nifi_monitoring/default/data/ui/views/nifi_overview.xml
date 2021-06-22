@@ -1,0 +1,151 @@
+<form refresh="60" hideEdit="true" script="nifi_monitor_overview.js" stylesheet="nifi_monitor_overview.css">
+  <label>Nifi Monitor Overview</label>
+  <fieldset submitButton="false"></fieldset>
+  <row>
+    <panel>
+      <table id="table_nifi_status">
+        <title>Overall Status Nifi</title>
+        <search>
+          <query>| inputlookup instance 
+| join type=left host 
+    [| tstats values(Flow_Status.cluster) as cluster last(Flow_Status.controllerStatus.activeThreadCount) as "Active Threads" last(Flow_Status.controllerStatus.bytesQueued) as "Bytes Queued" last(Flow_Status.controllerStatus.runningCount) as "Running Components" last(Flow_Status.controllerStatus.stoppedCount) as "Stopped Components" last(Flow_Status.controllerStatus.disabledCount) as "Disabled Components" last(Flow_Status.controllerStatus.flowFilesQueued) as "FlowFiles Queued" last(Flow_Status.controllerStatus.invalidCount) as "Invalid Components" last(Flow_Status.controllerStatus.locallyModifiedAndStaleCount) as "Locally Modified And Stale Versioned Process Group" last(Flow_Status.controllerStatus.locallyModifiedCount) as "Locally Modified Versioned Process Group" last(Flow_Status.controllerStatus.syncFailureCount) as "Sync Failure Versioned Process Group" last(Flow_Status.controllerStatus.upToDateCount) as "Up To Date Versioned Process Group" last(Flow_Status.controllerStatus.staleCount) as "Stale Versioned Process Group" last(Flow_Status.controllerStatus.activeRemotePortCount) as "Transmitting Remote Process Group" last(Flow_Status.controllerStatus.inactiveRemotePortCount) as "Not Transmitting Remote Process Group" from datamodel=NIFI.Flow_Status groupby host] 
+| eval "Total Queued Data" ='FlowFiles Queued'+"/"+'Bytes Queued' 
+| join type=left host 
+    [ search sourcetype="nifi:log:*" 
+    | stats count as logcount by host] 
+| eval status=if(logcount&gt;0,"Up","Down") 
+| join type=left host 
+    [| tstats count as "Bulletin Errors" from datamodel=NIFI.Reporting_Bulletin by host ] 
+| sort + status,cluster,host   
+|table host cluster status "Active Threads" "Total Queued Data" "Transmitting Remote Process Group" "Not Transmitting Remote Process Group" "Running Components" "Stopped Components" "Invalid Components" "Disabled Components" "Up To Date Versioned Process Group" "Locally Modified Versioned Process Group" "Stale Versioned Process Group" "Locally Modified And Stale Versioned Process Group" "Sync Failure Versioned Process Group" "Bulletin Errors"</query>
+          <earliest>-5m</earliest>
+          <latest>now</latest>
+          <refresh>5m</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="drilldown">row</option>
+        <option name="refresh.display">none</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">false</option>
+        <option name="link.visible">0</option>
+        <drilldown>
+          <link target="_blank">/app/nifi_monitoring/nifi_instances_detail?form.host=$click.value$</link>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table id="table_disk_space_status">
+        <title>Status Disk Space by Repository</title>
+        <search>
+          <query>| inputlookup instance 
+| join type=left host 
+    [| tstats last(systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage{}.freeSpace) as contentFreeSpace last(systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage{}.usedSpace) as contentUsedSpace last(systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage{}.utilization) as contentUtilization last(systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.freeSpace) as flowFreeSpace last(systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.usedSpace) as flowUsedSpace last(systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.utilization) as flowUtilization last(systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage{}.freeSpace) as provenanceFreeSpace last(systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage{}.usedSpace) as provenanceUsedSpace last(systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage{}.utilization) as provenanceUtilization last(System_Diagnostics.cluster) as cluster from datamodel=NIFI.System_Diagnostics groupby host ] 
+| join type=left host 
+    [ search sourcetype="nifi:log:*" 
+    | stats count as logcount by host] 
+| eval status=if(logcount&gt;0,"Up","Down") 
+|sort + status,cluster,host
+| eval "Content (Used/Free)" = contentUsedSpace+" / "+contentFreeSpace 
+| eval "Flow (Used/Free)" = flowUsedSpace+" / "+flowFreeSpace 
+| eval "Provenance (Used/Free)" = provenanceUsedSpace+" / "+provenanceFreeSpace 
+| rename contentUtilization as "Content %", flowUtilization as "Flow %", provenanceUtilization as "Provenance %" 
+| table host cluster "Content (Used/Free)" "Content %" "Flow (Used/Free)" "Flow %" "Provenance (Used/Free)" "Provenance %"</query>
+          <earliest>-5m</earliest>
+          <latest>now</latest>
+          <refresh>5m</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">none</option>
+        <option name="rowNumbers">false</option>
+        <option name="link.visible">0</option>
+        <format type="number" field="contentUtilization"></format>
+        <drilldown>
+          <link target="_blank">/app/nifi_monitoring/nifi_instances_detail?form.host=$click.value$</link>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="time" token="timetk">
+        <label>Time</label>
+        <default>
+          <earliest>-60m@m</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <chart>
+        <title>Bulletin Events Over Time</title>
+        <search>
+          <query>| tstats count from datamodel=NIFI.Reporting_Bulletin groupby _time host span=1m 
+| timechart sum(count) by host span=5m 
+| fillnull value=0</query>
+          <earliest>$timetk.earliest$</earliest>
+          <latest>$timetk.latest$</latest>
+          <sampleRatio>1</sampleRatio>
+          <refresh>5m</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.text">Count</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.abbreviation">none</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.abbreviation">none</option>
+        <option name="charting.axisY.minimumNumber">0</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.abbreviation">none</option>
+        <option name="charting.axisY2.enabled">0</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">zero</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.mode">standard</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="charting.lineWidth">2</option>
+        <option name="refresh.display">none</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.scales.shared">1</option>
+        <option name="trellis.size">medium</option>
+        <option name="link.visible">0</option>
+        <drilldown>
+          <link target="_blank">/app/nifi_monitoring/bulletin_monitor_panel?form.host=$click.name2$</link>
+        </drilldown>
+      </chart>
+    </panel>
+  </row>
+  
+    <row id="footer">
+      <html>
+        <style>
+            [id^="footer"] .dashboard-panel {
+              background:#f2f4f5 !important;
+            }
+
+          </style>
+        <div style="text-align: center; font-weight: bold; font-size: 14px;">
+           Developed by
+           <a href="https://www.kudaw.com" target="_blank" style="text-decoration: none;">
+             <img src="/static/app/nifi_monitoring/kudaw.png" style="height:34px; border:0; margin-left:10px"/>
+           </a>
+          </div>
+      </html>
+  </row>
+  
+</form>
