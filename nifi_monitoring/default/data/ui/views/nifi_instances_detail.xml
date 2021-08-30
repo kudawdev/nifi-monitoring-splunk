@@ -1,4 +1,4 @@
-<form refresh="600" script="nifi_instance_panels.js" stylesheet="nifi_instance_panels.css" hideEdit="true">
+<form version="1.1" refresh="600" script="nifi_instance_panels.js" stylesheet="nifi_instance_panels.css" hideEdit="true">
   <label>Flow's &amp; Metrics Monitoring Panel</label>
   <search id="baseSearch">
     <query>
