@@ -6,7 +6,7 @@ on:
       - testing
 
 env:
-  MAX_WARNING: 2
+  MAX_WARNING: 3
   APP_NAME: "NIFI Monitoring for Splunk"
 
 jobs:
