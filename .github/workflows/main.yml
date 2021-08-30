@@ -1,0 +1,95 @@
+name: Appinspect, Test, Merge and Release
+
+on:
+  push:
+    branches:
+      - testing
+
+env:
+  MAX_WARNING: 2
+  APP_NAME: "NIFI Monitoring for Splunk"
+
+jobs:
+  check-apps-version:
+    runs-on: ubuntu-latest
+    container: kudaw/appinspect:latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Check app versions are equal
+        run: |
+          lista=`echo $(for d in $(ls -d allkun*);do cat $d/default/app.conf|grep ^version|awk '{print $3}';done) | tr ' ' '\n' | sort | uniq | tr '\n' ' ' | sed -e 's/[[:space:]]*$//'`
+          echo $lista
+          count=$(echo $lista | tr ' ' '\n' | wc -l)
+          echo $count
+          if [ $count -eq 1 ];then echo 'App versions are equals';else echo 'App versions are different';exit -1;fi
+
+  appinspect:
+    needs: check-apps-version
+    strategy:
+      matrix:
+        applications: ["nifi_monitoring", "nifi_TA_monitoring"]
+    runs-on: ubuntu-latest
+    container: kudaw/appinspect:latest
+    outputs:
+      APP_VERSION: ${{ steps.get_app_id.outputs.APP_VERSION }}
+      matrix: ${{ matrix.applications }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Get APP version
+        id: get_app_id
+        run: echo "::set-output name=APP_VERSION::$(cat ${{ matrix.applications }}/default/app.conf | grep ^version | awk '{print $3}')"
+      - run: echo ${{ steps.get_app_id.outputs.APP_VERSION }}
+      #- run: exit 1
+      - name: Slim Package
+        id: slim_package
+        run: slim package ${{ matrix.applications }}
+      - name: Slim validate
+        id: slim_validate
+        run: slim validate ${{ matrix.applications }}-${{ steps.get_app_id.outputs.APP_VERSION }}.tar.gz
+      - name: Run AppInspect
+        id: run_appinspect
+        run: splunk-appinspect inspect ${{ matrix.applications }}-${{ steps.get_app_id.outputs.APP_VERSION }}.tar.gz --output-file appinspect_result.json --mode precert
+      - name: Check status appinspect
+        run: if [ $(jq '.summary | select(.error>0 or .failure>0 or .warning>${{ env.MAX_WARNING }})' appinspect_result.json | wc -l) -gt 0 ]; then echo "Problems detected";jq '.summary' appinspect_result.json;exit -1; else jq '.summary' appinspect_result.json;fi
+      - name: Upload Package
+        uses: actions/upload-artifact@v2
+        #if: ${{ success() }}
+        with:
+          name: ${{ matrix.applications}}
+          path: ${{ matrix.applications }}-${{ steps.get_app_id.outputs.APP_VERSION }}.tar.gz
+          if-no-files-found: error
+
+  unittest:
+    needs: appinspect
+    runs-on: ubuntu-latest
+    container: kudaw/appinspect:latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: echo "TODO"
+
+  publish:
+    needs: [unittest, appinspect]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/download-artifact@v2
+        id: download
+        with:
+          path: artifacts
+      # - name: list file detail
+      #   run: ls -l ${{ matrix.applications }}-${{needs.appinspect.outputs.APP_VERSION}}.tar.gz
+      # - name: show path
+      #   run: echo $(pwd)
+      - uses: everlytic/branch-merge@1.1.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          source_ref: ${{ github.ref }}
+          target_branch: 'main'
+          commit_message_template: '[Automated] Merged {source_ref} into target {target_branch}'
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: ${{needs.appinspect.outputs.APP_VERSION}}
+          prerelease: true
+          title: "New Release for ${{ env.APP_NAME }}"
+          files: ${{steps.download.outputs.download-path}}
