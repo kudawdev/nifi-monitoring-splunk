@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - developer
+      
 
 env:
   MAX_WARNING: 2
