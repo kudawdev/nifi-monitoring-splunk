@@ -3,7 +3,7 @@ name: Appinspect and Test
 on: workflow_dispatch
       
 env:
-  MAX_WARNING: 3
+  MAX_WARNING: 4
   APP_NAME: "NIFI Monitoring for Splunk"
 
 jobs:
