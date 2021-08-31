@@ -1,7 +1,7 @@
 # NIFI Monitoring for Splunk
 
 ## Objetivo
-Nifi Monitoring es una propuesta que centraliza la información sobre el funcionamiento de los dintintos componentes para varias instancias simultaniamente, además dispone de una serie de paneles que permiten visualizar de manera rápida y clara el funcionamiento de estas instancias.
+Nifi Monitoring es una propuesta que centraliza la información sobre el funcionamiento de los dintintos componentes para varias instancias simultaneamente, además dispone de una serie de paneles que permiten visualizar de manera rápida y clara el funcionamiento de estas instancias.
 
 ## Directorios
 
