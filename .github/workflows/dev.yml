@@ -1,6 +1,9 @@
 name: Appinspect and Test
 
-on: workflow_dispatch
+on:
+  push:
+    branches:
+      - developer
       
 env:
   MAX_WARNING: 4
