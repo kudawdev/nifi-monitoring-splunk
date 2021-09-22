@@ -70,4 +70,4 @@ jobs:
         with:
           path: artifacts
       - name: Display structure of downloaded files
-        run: ls -R
+        files: ${{steps.download.outputs.download-path}}
