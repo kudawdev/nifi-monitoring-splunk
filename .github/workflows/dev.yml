@@ -65,3 +65,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: echo "TODO"
+      - uses: actions/checkout@v2
+      - uses: actions/download-artifact@v2
+        id: download
+        with:
+          path: artifacts
