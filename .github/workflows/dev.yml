@@ -57,6 +57,10 @@ jobs:
         name: ${{ matrix.applications }}
         path: ${{ matrix.applications }}-${{ steps.get_app_id.outputs.APP_VERSION }}.tar.gz
         if-no-files-found: error
+    - uses: actions/download-artifact@v2
+      id: download
+      with:
+        path: artifacts
 
   unittest:
     needs: appinspect
@@ -65,8 +69,3 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: echo "TODO"
-      - uses: actions/download-artifact@v2
-        id: download
-        with:
-          name: ${{ matrix.applications}}
-          path: ${{ matrix.applications }}-${{ steps.get_app_id.outputs.APP_VERSION }}.tar.gz
