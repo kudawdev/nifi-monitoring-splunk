@@ -9,7 +9,7 @@
   </search>
   <search id="baseSearch2">
     <query>
-| tstats max(Reporting_Task.ActiveThreads) as ActiveThreads_max max(Reporting_Task.BytesQueued) as BytesQueued_max max(Reporting_Task.BytesReadLast5Minutes) as BytesReadLast5Minutes_max max(Reporting_Task.BytesReceivedLast5Minutes) as BytesReceivedLast5Minutes_max max(Reporting_Task.BytesSentLast5Minutes) as BytesSentLast5Minutes_max max(Reporting_Task.BytesWrittenLast5Minutes) as BytesWrittenLast5Minutes_max max(Reporting_Task.FlowFilesQueued) as FlowFilesQueued_max max(Reporting_Task.FlowFilesReceivedLast5Minutes) as FlowFilesReceivedLast5Minutes_max max(Reporting_Task.FlowFilesSentLast5Minutes) as FlowFilesSentLast5Minutes_max max(Reporting_Task.TotalTaskDurationNanoSeconds) as TotalTaskDurationNanoSeconds_max max(Reporting_Task.TotalTaskDurationSeconds) as TotalTaskDurationSecond_max avg(Reporting_Task.ActiveThreads) as ActiveThreads_avg avg(Reporting_Task.BytesQueued) as BytesQueued_avg avg(Reporting_Task.BytesReadLast5Minutes) as BytesReadLast5Minutes_avg avg(Reporting_Task.BytesReceivedLast5Minutes) as BytesReceivedLast5Minutes_avg avg(Reporting_Task.BytesSentLast5Minutes) as BytesSentLast5Minutes_avg avg(Reporting_Task.BytesWrittenLast5Minutes) as BytesWrittenLast5Minutes_avg avg(Reporting_Task.FlowFilesQueued) as FlowFilesQueued_avg avg(Reporting_Task.FlowFilesReceivedLast5Minutes) as FlowFilesReceivedLast5Minutes_avg avg(Reporting_Task.FlowFilesSentLast5Minutes) as FlowFilesSentLast5Minutes_avg avg(Reporting_Task.TotalTaskDurationNanoSeconds) as TotalTaskDurationNanoSeconds_avg avg(Reporting_Task.TotalTaskDurationSeconds) as TotalTaskDurationSecond_avg max(Reporting_Task.jvmthread_count) as jvmthread_count_max max(Reporting_Task.jvmdaemon_thread_count) as jvmdaemon_thread_count_max max(Reporting_Task.jvmheap_usage) as jvmheap_usage_max max(Reporting_Task.jvmheap_used) as jvmheap_used_max max(Reporting_Task.jvmnon_heap_usage) as jvmnon_heap_usage_max avg(Reporting_Task.jvmthread_count) as jvmthread_count_avg avg(Reporting_Task.jvmdaemon_thread_count) as jvmdaemon_thread_count_avg avg(Reporting_Task.jvmheap_usage) as jvmheap_usage_avg avg(Reporting_Task.jvmheap_used) as jvmheap_used_avg avg(Reporting_Task.jvmnon_heap_usage) as jvmnon_heap_usage_avg from datamodel=NIFI.Reporting_Task where host=$host$ by _time span=1m 
+| tstats max(Reporting_Task.ActiveThreads) as ActiveThreads_max max(Reporting_Task.BytesQueued) as BytesQueued_max max(Reporting_Task.BytesReadLast5Minutes) as BytesReadLast5Minutes_max max(Reporting_Task.BytesReceivedLast5Minutes) as BytesReceivedLast5Minutes_max max(Reporting_Task.BytesSentLast5Minutes) as BytesSentLast5Minutes_max max(Reporting_Task.BytesWrittenLast5Minutes) as BytesWrittenLast5Minutes_max max(Reporting_Task.FlowFilesQueued) as FlowFilesQueued_max max(Reporting_Task.FlowFilesReceivedLast5Minutes) as FlowFilesReceivedLast5Minutes_max max(Reporting_Task.FlowFilesSentLast5Minutes) as FlowFilesSentLast5Minutes_max max(Reporting_Task.TotalTaskDurationNanoSeconds) as TotalTaskDurationNanoSeconds_max max(Reporting_Task.TotalTaskDurationSeconds) as TotalTaskDurationSecond_max avg(Reporting_Task.ActiveThreads) as ActiveThreads_avg avg(Reporting_Task.BytesQueued) as BytesQueued_avg avg(Reporting_Task.BytesReadLast5Minutes) as BytesReadLast5Minutes_avg avg(Reporting_Task.BytesReceivedLast5Minutes) as BytesReceivedLast5Minutes_avg avg(Reporting_Task.BytesSentLast5Minutes) as BytesSentLast5Minutes_avg avg(Reporting_Task.BytesWrittenLast5Minutes) as BytesWrittenLast5Minutes_avg avg(Reporting_Task.FlowFilesQueued) as FlowFilesQueued_avg avg(Reporting_Task.FlowFilesReceivedLast5Minutes) as FlowFilesReceivedLast5Minutes_avg avg(Reporting_Task.FlowFilesSentLast5Minutes) as FlowFilesSentLast5Minutes_avg avg(Reporting_Task.TotalTaskDurationNanoSeconds) as TotalTaskDurationNanoSeconds_avg avg(Reporting_Task.TotalTaskDurationSeconds) as TotalTaskDurationSecond_avg max(Reporting_Task.jvmthread_count) as jvmthread_count_max max(Reporting_Task.jvmdaemon_thread_count) as jvmdaemon_thread_count_max max(Reporting_Task.jvmheap_usage) as jvmheap_usage_max max(Reporting_Task.jvmheap_used) as jvmheap_used_max max(Reporting_Task.jvmnon_heap_usage) as jvmnon_heap_usage_max avg(Reporting_Task.jvmthread_count) as jvmthread_count_avg avg(Reporting_Task.jvmdaemon_thread_count) as jvmdaemon_thread_count_avg avg(Reporting_Task.jvmheap_usage) as jvmheap_usage_avg avg(Reporting_Task.jvmheap_used) as jvmheap_used_avg avg(Reporting_Task.jvmnon_heap_usage) as jvmnon_heap_usage_avg from datamodel=NIFI.Reporting_Task where host=$host$ by _time span=1m
 | timechart span=$spantk$ max(ActiveThreads_max) as ActiveThreads_max max(BytesQueued_max) as Max_Queued max(ReadLast5Minutes_max) as Max_Read max(BytesReceivedLast5Minutes_max) as Max_Received max(BytesSentLast5Minutes_max) as Max_Sent max(BytesWrittenLast5Minutes_max) as Max_Written max(FlowFilesQueued_max) as Max_FlowFilesQueued max(FlowFilesReceivedLast5Minutes_max) as Max_FlowFilesReceived max(FlowFilesSentLast5Minutes_max) as Max_FlowFilesSent max(TotalTaskDurationNanoSeconds_max) as Max_TotalTaskDurationNanoSeconds max(TotalTaskDurationSeconds_max) as Max_TotalTaskDurationSeconds avg(ActiveThreads_avg) as ActiveThreads_avg avg(BytesQueued_avg) as Avg_Queued avg(BytesReadLast5Minutes_avg) as Avg_Read avg(BytesReceivedLast5Minutes_avg) as Avg_Received avg(BytesSentLast5Minutes_avg) as Avg_Sent avg(BytesWrittenLast5Minutes_avg) as Avg_Written avg(FlowFilesQueued_avg) as Avg_FlowFilesQueued avg(FlowFilesReceivedLast5Minutes_avg) as Avg_FlowFilesReceived avg(FlowFilesSentLast5Minutes_avg) as Avg_FlowFilesSent avg(TotalTaskDurationNanoSeconds_avg) as Avg_TotalTaskDurationNanoSeconds avg(TotalTaskDurationSeconds_avg) as Avg_TotalTaskDurationSeconds max(jvmthread_count_max) as Max_jvmthread_count max(jvmdaemon_thread_count_max) as Max_jvmdaemon_thread_count max(jvmheap_usage_max) as Max_jvmheap_usage max(jvmheap_used_max) as Max_jvmheap_used max(jvmnon_heap_usage_max) as Max_jvmnon_heap_usage avg(jvmthread_count_avg) as Avg_jvmthread_count avg(jvmdaemon_thread_count_avg) as Avg_jvmdaemon_thread_count avg(jvmheap_usage_avg) as Avg_jvmheap_usage avg(jvmheap_used_avg) as Avg_jvmheap_used avg(jvmnon_heap_usage_avg) as Avg_jvmnon_heap_usage  </query>
     <earliest>$timetk.earliest$</earliest>
     <latest>$timetk.latest$</latest>
@@ -27,7 +27,8 @@
       <fieldForLabel>host</fieldForLabel>
       <fieldForValue>host</fieldForValue>
       <search>
-        <query>sourcetype="nifi:api:flow_status" | dedup host | table host</query>
+        <query>| inputlookup instance
+| table host</query>
         <earliest>-15m</earliest>
         <latest>now</latest>
       </search>
@@ -47,11 +48,11 @@
       <single>
         <title>Status</title>
         <search base="baseSearch">
-          <query>| stats count 
-| eval status=if(count=0, "Down", "Up") 
-| table status 
-| eval statusidx=case(status="Up",2,status="Down",1) 
-| rangemap field=statusidx severe=0-1 low=2-4 default=low 
+          <query>| stats count
+| eval status=if(count=0, "Down", "Up")
+| table status
+| eval statusidx=case(status="Up",2,status="Down",1)
+| rangemap field=statusidx severe=0-1 low=2-4 default=low
 | fields - statusidx</query>
         </search>
         <option name="drilldown">none</option>
@@ -247,16 +248,16 @@
         <title>Version Status</title>
         <search>
           <query>sourcetype="nifi:api:system_diagnostics" host="$host$"
-| dedup sourcetype 
+| dedup sourcetype
 | rename systemDiagnostics.aggregateSnapshot.versionInfo.buildTag as buildTag,systemDiagnostics.aggregateSnapshot.versionInfo.buildTimestamp as buildTimestamp
-    , systemDiagnostics.aggregateSnapshot.versionInfo.javaVendor as javaVendor 
-    , systemDiagnostics.aggregateSnapshot.versionInfo.javaVersion as javaVersion 
-    , systemDiagnostics.aggregateSnapshot.versionInfo.niFiVersion as niFiVersion 
-    ,systemDiagnostics.aggregateSnapshot.versionInfo.osArchitecture as osArchitecture 
-    , systemDiagnostics.aggregateSnapshot.versionInfo.osName as osName 
-    ,systemDiagnostics.aggregateSnapshot.versionInfo.osVersion as osVersion 
-| table host cluster buildTag buildTimestamp javaVendor javaVersion niFiVersion osArchitecture osName osVersion 
-| transpose 
+    , systemDiagnostics.aggregateSnapshot.versionInfo.javaVendor as javaVendor
+    , systemDiagnostics.aggregateSnapshot.versionInfo.javaVersion as javaVersion
+    , systemDiagnostics.aggregateSnapshot.versionInfo.niFiVersion as niFiVersion
+    ,systemDiagnostics.aggregateSnapshot.versionInfo.osArchitecture as osArchitecture
+    , systemDiagnostics.aggregateSnapshot.versionInfo.osName as osName
+    ,systemDiagnostics.aggregateSnapshot.versionInfo.osVersion as osVersion
+| table host cluster buildTag buildTimestamp javaVendor javaVersion niFiVersion osArchitecture osName osVersion
+| transpose
 | rename column as Key, "row 1" as Values</query>
           <earliest>-4h@h</earliest>
           <latest>now</latest>
@@ -545,8 +546,8 @@
       <chart>
         <title>JVM Heap Usage %</title>
         <search base="baseSearch2">
-          <query>| table _time Max_jvmheap_usage Avg_jvmheap_usage 
-| eval Max_jvmheap_usage=Max_jvmheap_usage*100 
+          <query>| table _time Max_jvmheap_usage Avg_jvmheap_usage
+| eval Max_jvmheap_usage=Max_jvmheap_usage*100
 | eval Avg_jvmheap_usage=Avg_jvmheap_usage*100</query>
         </search>
         <option name="charting.axisTitleX.visibility">collapsed</option>
@@ -585,8 +586,8 @@
       <chart>
         <title>JVM Heap Usage $LabelName$</title>
         <search base="baseSearch2">
-          <query>| table _time Max_jvmnon_heap_usage Avg_jvmnon_heap_usage 
-| eval Max_jvmnon_heap_usage=Max_jvmnon_heap_usage*-1 
+          <query>| table _time Max_jvmnon_heap_usage Avg_jvmnon_heap_usage
+| eval Max_jvmnon_heap_usage=Max_jvmnon_heap_usage*-1
 | eval Avg_jvmnon_heap_usage=Avg_jvmnon_heap_usage*-1
 | foreach *jvm* [eval &lt;&lt;FIELD&gt;&gt;=&lt;&lt;FIELD&gt;&gt;$unit$]</query>
         </search>
@@ -609,7 +610,7 @@
       <chart>
         <title>Content Repository Status</title>
         <search base="baseSearch3">
-          <query>| table _time contentfreeSpaceBytes ContentRepositoryusedPercent 
+          <query>| table _time contentfreeSpaceBytes ContentRepositoryusedPercent
 | eval contentfreeSpaceBytes=round(contentfreeSpaceBytes/1024/1024/1024,2)</query>
         </search>
         <option name="charting.axisTitleX.visibility">collapsed</option>
@@ -635,7 +636,7 @@
       <chart>
         <title>Flow Repository Status</title>
         <search base="baseSearch3">
-          <query>| table _time flowfreeSpaceBytes FlowRepositoryusedPercent 
+          <query>| table _time flowfreeSpaceBytes FlowRepositoryusedPercent
 | eval flowfreeSpaceBytes=round(flowfreeSpaceBytes/1024/1024/1024,2)</query>
         </search>
         <option name="charting.axisTitleX.visibility">collapsed</option>
@@ -656,7 +657,7 @@
       <chart>
         <title>Provenance Repository Status</title>
         <search base="baseSearch3">
-          <query>| table _time provenancefreeSpaceBytes ProvenanceRepositoryusedPercent 
+          <query>| table _time provenancefreeSpaceBytes ProvenanceRepositoryusedPercent
 | eval provenancefreeSpaceBytes=round(provenancefreeSpaceBytes/1024/1024/1024,2)</query>
         </search>
         <option name="charting.axisTitleX.visibility">collapsed</option>
