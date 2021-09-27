@@ -1,8 +1,10 @@
 # Configuración de NIFI
 
-En esta etapa se detallarán todos los pacos necesarios que se deben realizar por el lado de nuestras instancias nifi que se quieren monitorear. Existen dos vías de configuración que permiten el envío de eventos a Splunk.
+En esta etapa se detallarán todos los pasos necesarios que se deben realizar por el lado de nuestras instancias nifi que se quieren monitorear.
 
-- Envío directo: Esta configuración establecerá NIFI como la vía principal para el envío de datos a Splunk. Esta configuración debe ser utilizada cuando NIFI no tenga activada autenticación.
+Hay dos vías de configuración que permiten el envío de eventos a Splunk y su elección dependerá de los mecanismos de autenticación que NIFI tenga habilitado.
+
+- Envío directo: Esta configuración establecerá NIFI como la vía principal para el envío de datos a Splunk y debe ser utilizada cuando NIFI no tenga activado métodos de autenticación.
 
 - Data Input NIFI: Splunk se encargará de realizar peticiones a las instancias de NIFI para rescatar la información del Monitoring API por medio de la habilitación y uso del Data Input NIFI. Esta configuración debe ser utilizada cuando NIFI cuente con autenticación basica.
 
@@ -114,7 +116,7 @@ Luego de haber completado todo el proceso de configuración, inicie la ejecució
 
 ![image](/assets/images/nifi/enable_sending_2.png)
 
-Sí toda la configuración se ejecutó de manera correcta, se iniciará el envío de la información a Splunk. Para finalizar esta configuración, vaya al punto 5. Configuración del Lookup NIFI Instances
+Sí toda la configuración se ejecutó de manera correcta, se iniciará el envío de la información a Splunk. Para que los datos enviados a splunk estén accesibles desde la aplicación deberá haber configurado el [Lookup de Instancias](/es/installation/#configuracion-de-lookup-nifi-instances)
 
 ## Configuración de Data Input NIFI
 
@@ -161,5 +163,5 @@ Se desplegará el siguiente formulario. Marque la casilla More settings para hab
     - none: Sin autenticación
     - basic: Acceso con credenciales usuario y contraseña
 - Interval: Tiempo en segundos en el que se realizarán las peticiones para extraer la información.
-- Host: Nombre del host de nifi. Vaya al punto 5. Configuración del Lookup NIFI Instances para más información.
+- Host: Nombre del host de nifi, el cual debe corresponder a lo definido en el Lookup de Configuraciones. [Ver Lookup de Instancias](/es/installation/#configuracion-de-lookup-nifi-instances)
 - Index: Index de destinto para esta fuente de datos. Se recomienda un index dedicado, por ejemplo: nifi. Si no existe, deberá crearlo previamente.

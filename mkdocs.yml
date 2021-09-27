@@ -14,6 +14,12 @@ nav:
     - Instalación y configuración de NIFI Monitoring en Splunk: es/installation.md
     - Configuración de NIFI: es/configuration.md
     - Referencia de datos: es/referencias.md
+  - EN:
+    - Introduction: en/index.md
+    - Overview: en/overview.md
+    - Install and configure NIFI Monitoring on Splunk: en/installation.md
+    - NIFI Configuration: en/configuration.md
+    - Data Reference: en/referencias.md
 
 # Configuration
 theme: 

@@ -6,13 +6,16 @@ Es esta sección se detallarán los pasos necesarios requeridos para instalar y 
 
 NIFI Monitoring está diseñado para ser instalado en ambientes de tipo Standalone o Cluster.
 
-La aplicación contiene todas las características visuales que permiten el monitoreo de las instancias de NIFI configuradas. Para instalar debe contar con el archivo NIFI_Monitoring_(version).tar.gz e instale desde el administrador de aplicaciones de Splunk.
+La aplicación contiene todas las características visuales que permiten el monitoreo de las instancias de NIFI configuradas.
+
+Para instalar debe contar con el archivo NIFI_Monitoring_(version).tar.gz e instale desde el administrador de aplicaciones de Splunk.
 
 ![image](/assets/images/splunk/upload_app.png)
 
 ## Instalación de NIFI Monitoring TA
 
 El Technology Addon (TA) de NIFI Monitoring contiene todas las características no visuales que permiten la indexación de las distintas fuentes de datos recibidas desde el o los servidores NIFI.
+
 Para instalar debe contar con el archivo NIFI_TA_Monitoring_(version).tar.gz e instale desde el administrador de aplicaciones de Splunk.
 
 ![image](/assets/images/splunk/upload_app.png)
