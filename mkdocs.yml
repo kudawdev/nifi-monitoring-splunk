@@ -1,0 +1,69 @@
+# Project information
+site_name: Nifi Monitoring
+site_author: Kudaw S.A.
+site_description: Nifi Monitoring Documentation
+
+# Copyright
+copyright: Copyright &copy; 2021 Kudaw S.A. All Rights Reserved
+
+# Nav
+nav:
+  - ES:
+    - Introducción: es/index.md
+    - Vista General: es/overview.md
+    - Instalación y configuración de NIFI Monitoring en Splunk: es/installation.md
+    - Configuración de NIFI: es/configuration.md
+    - Referencia de datos: es/referencias.md
+  - EN:
+    - Introduction: en/index.md
+    - Overview: en/overview.md
+    - Install and configure NIFI Monitoring on Splunk: en/installation.md
+    - NIFI Configuration: en/configuration.md
+    - Data Reference: en/referencias.md
+
+# Configuration
+theme: 
+  name: material # readthedocs material
+  #custom_dir: docs/theme/material
+  language: es # en es
+  logo: assets/images/nifi.png
+  favicon: assets/images/favicon.ico
+  palette:
+    primary: black
+    accent: black
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - instant
+
+
+# Extras
+extra:
+  social:
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/company/kudaw-latam
+    - icon: fontawesome/brands/docker
+      link: https://hub.docker.com/r/kudaw
+    - icon: fontawesome/brands/github
+      link: https://github.com/kudawdev
+  current_version: 1.0
+
+extra_javascript:
+- assets/js/theme.js
+extra_css:
+- assets/css/theme.css
+
+
+# Extensions
+markdown_extensions:
+  - admonition
+  - codehilite:
+      guess_lang: false
+  - toc:
+      permalink: true
+
+
+# Plugins
+plugins:
+    - search
