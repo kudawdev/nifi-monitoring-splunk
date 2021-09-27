@@ -4,7 +4,7 @@ Nifi Monitoring es una propuesta de solución que viene a resolver una gran difi
 
 ![image1](/assets/images/splunk/nifi_home.png)
 
-## Este producto:  
+Este producto
 
 Soporta múltiples instancias NIFI ya sea Standalone o Cluster Nodes  
 Obtiene los datos desde logs, reports y nifi-api
