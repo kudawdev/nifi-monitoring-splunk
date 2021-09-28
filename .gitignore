@@ -2,3 +2,4 @@
 Thumbs.db
 *.py[co]
 .idea
+.dccache

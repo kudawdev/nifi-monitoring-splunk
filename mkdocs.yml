@@ -6,7 +6,11 @@ site_description: Nifi Monitoring Documentation
 # Copyright
 copyright: Copyright &copy; 2021 Kudaw S.A. All Rights Reserved
 
-# Nav
+# Repository information
+repo_url: https://github.com/kudawdev/PRD-nifi-monitoring-splunk
+repo_name: NIFI Monitoring
+
+# Navigation
 nav:
   - ES:
     - Introducción: es/index.md
@@ -25,7 +29,7 @@ nav:
 theme: 
   name: material # readthedocs material
   #custom_dir: docs/theme/material
-  language: es # en es
+  language: en # en es
   logo: assets/images/nifi.png
   favicon: assets/images/favicon.ico
   palette:
@@ -41,6 +45,8 @@ theme:
 # Extras
 extra:
   social:
+    - icon: fontawesome/solid/home
+      link: https://www.kudaw.com/
     - icon: fontawesome/brands/linkedin
       link: https://www.linkedin.com/company/kudaw-latam
     - icon: fontawesome/brands/docker
@@ -48,12 +54,20 @@ extra:
     - icon: fontawesome/brands/github
       link: https://github.com/kudawdev
   current_version: 1.0
+  alternate:
+    # Switch to English
+    - name: English
+      link: /en/
+      lang: en
+    # Switch to Spanish
+    - name: Español
+      link: /es/
+      lang: es
 
 extra_javascript:
 - assets/js/theme.js
 extra_css:
 - assets/css/theme.css
-
 
 # Extensions
 markdown_extensions:
@@ -62,8 +76,7 @@ markdown_extensions:
       guess_lang: false
   - toc:
       permalink: true
-
-
+      
 # Plugins
 plugins:
-    - search
+  - search
