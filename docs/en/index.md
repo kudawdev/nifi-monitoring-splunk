@@ -1,6 +1,9 @@
 # Introduction
 
-Nifi Monitoring is a solution proposal that solves a great difficulty that we find today when developing projects in NIFI. The objective of this application is to centralize the information on the operation of the different components for several instances simultaneously and to visualize all the information quickly and clearly through a series of panels and thereby know how the different instances are working.
+Nifi Monitoring is a solution that proposes to solve a great difficulty encountered
+during the development of NIFI Projects and that corresponds to the complex process of monitoring the operation of different NIFI instances simultaneously.
+
+This applications solves this problem centralizing all the information regarding the operation of the different components for various instances and has a set of panels that allow you to clearly and quickly view the operation of these instances.
 
 ![image1](/assets/images/splunk/nifi_home.png)
 

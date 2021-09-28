@@ -23,7 +23,7 @@ The main page of NIFI Monitoring App where you can see a small diagram that show
 
 ## NIFI Monitor Overview
 
-In the overview panel can se a summary of the different monitored NIFI servers, very similar to the top bar that we find in the initial application. The indicators are the following:
+In the overview panel can see a summary of the different monitored NIFI servers, very similar to the top bar that we find in the initial application. The indicators are the following:
 
 - Server status by node
 - Repository status by node
@@ -32,7 +32,6 @@ In the overview panel can se a summary of the different monitored NIFI servers, 
 ![image](/assets/images/splunk/nifi_overview.png)
 
 ## Nifi Instance Panels
-
 
 In the next group of panels we will obtain details of different data sources, but analyzing the nodes individually.
 
@@ -46,13 +45,13 @@ To make the data visualization more user-friendly, the panels have a series of s
 
 ![image](/assets/images/splunk/behaviour_overtime_1.png)
 
-Additionally, information on the operational JVM is available in each node, and thus in this way have a complete view of the operation of the platform.
+Additionally, information on the operational JVM is available in each node, and in this way have a complete view of the operation of the platform.
 
 ![image](/assets/images/splunk/behaviour_overtime_2.png)
 
 ### Bulletin Monitoring Panel
 
-In the next panel, we can mainly observe the behavior of the errors of the bulletin system in nifi, since it is very important in the event of an error to be able to carry out the correct traceability, in order to correct the situation as soon as possible.
+In the next panel, we can mainly observe the behavior of the errors of the bulletin system in NiFi, since it is very important in the event of an error to be able to carry out the correct traceability, in order to correct the situation as soon as possible.
 
 ![image](/assets/images/splunk/bulletin_panel.png)
 
