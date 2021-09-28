@@ -141,6 +141,9 @@ Una vez deshabilitado, regresa a la vista anterior. Haz clic derecho sobre una z
 ![image](/assets/images/nifi/leave_group.png)
 
 ### Configuración del Data Input Nifi - Splunk
+
+*Esta configuración debe ser aplicada cuando las instancias de NIFI cuenten con almenos autenticación básica*
+
 En el splunk donde está instalada la aplicación Nifi Monitoring, accede al Home de la APP.
 
 ![image](/assets/images/splunk/nifi_home.png)

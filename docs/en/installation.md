@@ -28,7 +28,7 @@ After installation, all the objects that allow data indexing will be available.
 
 It is fundamental to incorporate the configuration of an HTTP Event Collector (HEC). This allows event to be sent from NIFI instances to a Splunk implementation over the HTTP or HTTPS protocols.
 
-To configure, from the Splunk menu, select Settings > Data Inputs. In the Local Inputs listing, identify the HTTP Event Collector and add a new one.
+To configure, from the Splunk menu select Settings > Data Inputs. In the Local Inputs list, identify the HTTP Event Collector and add a new one.
 
 In the configuration process you must:
 

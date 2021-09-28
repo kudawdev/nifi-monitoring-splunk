@@ -21,7 +21,7 @@ In the pop-up window, search on your computer and select the template to use.
 
 ## Select Template
 
-To use the template that was previously loaded, drag the template option from the menu to the worksheet. A pop-up window will open and select the template to use.
+To use the template that was previously loaded, drag the template option from the menu to the work space. A pop-up window will open and select the template to use.
 
 ![image](/assets/images/nifi/select_template.png)
 
@@ -29,7 +29,7 @@ To use the template that was previously loaded, drag the template option from th
 
 The displayed template must have the following structure:
 
-- The first view contains Nifi_Monitoring_Splunk
+- The first view contains the process group Nifi_Monitoring_Splunk 
 
 ![image](/assets/images/nifi/nifi_monitoring_process_group.png)
 
@@ -42,16 +42,16 @@ Inside it contains the following structure:
 ![image](/assets/images/nifi/nifi_monitoring_process_group_2.png)
 
 
-## Global Variables Configuration
+## Global variables configuration
 
-It is essential to configure global variables as they are  imprescindible for their operation. To configure the mentioned parameters, right click on the Nifi_Monitoring_Splunk box > Variables.
+It is essential to configure global variables as they are imprescindible for their operation. To configure the mentioned parameters, right click on the Nifi_Monitoring_Splunk box > Variables.
 
 ![image](/assets/images/nifi/set_variable.png)
 
 A pop-up window will be displayed where you will have to configure the following parameters:
 
-- nifi_path: Corresponds to the nifi server installation path (in case of a cluster, it must be installed in the same path on each node).. Example: /home/nifi/nifi-1.10.0/
-- splunk_hec: It is the address of the splunk server where the data input HTTP Event Collector was configured. Ejemplo: 127.0.0.1:8088
+- nifi_path: Corresponds to the nifi server installation path (in case of a cluster, it must be installed in the same path on each node). Example: /home/nifi/nifi-1.10.0/
+- splunk_hec: It is the address of the splunk server where the data input HTTP Event Collector was configured. Example: 127.0.0.1:8088
 - splunk_hec_token: Token obtained when configuring [HTTP Event Collector](/en/installation/#configure-http-event-collector-hec).
 
 ![image](/assets/images/nifi/set_variable_2.png)
@@ -67,9 +67,9 @@ A pop-up window like the following will be displayed:
 
 ![image](/assets/images/nifi/nifi_settings.png)
 
-In the Reporting Task Controller Services tab, add the JsonRecordSetWriter controller service, which will allow parsing the results obtained from the Reporting Task service for later indexing in splunk. To add, click the (+) button
+In the Reporting Task Controller Services tab, add the **JsonRecordSetWriter** controller service, which will allow parsing the results obtained from the Reporting Task service for later indexing in splunk. To add, click the (+) button
 
-The window to add the driver will be displayed. Filter the list of options with the item to be added, select it and add it to the configuration.
+The window to add the controller will be displayed. Filter the list of options with the item to be added, select it and add it to the configuration.
 
 ![image](/assets/images/nifi/add_controller_service.png)
 
@@ -141,6 +141,8 @@ Once disabled, return to the previous view. Right click on an empty zone and the
 
 ### Data Input Nifi Configuration - Splunk
 
+*This configuration should be applied when NIFI instances has at least basic authentication method*
+
 In the splunk where the Nifi Monitoring application is installed, access the Home of the APP.
 
 ![image](/assets/images/splunk/nifi_home.png)
@@ -157,7 +159,7 @@ The following form will be displayed. Check the More settings box to enable othe
 
 ![image](/assets/images/splunk/data_input_3.png)
 
-- NiFi Instance Name: Set the NIFI instance name
+- NiFi Instance Name: Set the NiFi instance name
 - NiFi API URL: NiFi API Adress (Ej.: http://(host:port)/nifi-api/)
 - Auth Type: Authentication type:
     - none: Without authentication
