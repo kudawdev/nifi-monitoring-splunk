@@ -56,7 +56,7 @@ extra:
       lang: en
     # Switch to Spanish
     - name: Español
-      link: /es/
+      link: /nifi-monitoring-splunk/es/
       lang: es
 
 extra_javascript:

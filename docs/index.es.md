@@ -4,7 +4,7 @@ Nifi Monitoring es una solución que propone resolver una gran dificultad encont
 
 Esta aplicación resuelve este problema centralizando toda la información relativa al funcionamiento de los diferentes componentes para diversas instancias y cuenta con un conjunto de paneles que permiten visualizar de forma clara y rápida el funcionamiento de estas instancias.
 
-![image1](/assets/images/splunk/nifi_home.png)
+![image1](/nifi-monitoring-splunk/assets/images/splunk/nifi_home.png)
 
 Este producto
 
