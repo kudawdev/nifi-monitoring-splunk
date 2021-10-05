@@ -7,7 +7,7 @@ during the development of NIFI Projects and that corresponds to the complex proc
 
 This applications solves this problem centralizing all the information regarding the operation of the different components for various instances and has a set of panels that allow you to clearly and quickly view the operation of these instances.
 
-## Requirements
+## Requirements
 
 - Splunk version: 7.3 or higher
 - NIFI TA Monitoring
