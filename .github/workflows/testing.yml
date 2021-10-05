@@ -1,9 +1,9 @@
-name: Appinspect, Test, Merge and Release
+name: Appinspect, Test
 
 on:
   push:
     branches:
-      - main
+      - testing
 
 env:
   MAX_WARNING: 4
@@ -66,24 +66,3 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: echo "TODO"
-
-  publish:
-    needs: [unittest, appinspect]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/download-artifact@v2
-        id: download
-        with:
-          path: artifacts
-      # - name: list file detail
-      #   run: ls -l ${{ matrix.applications }}-${{needs.appinspect.outputs.APP_VERSION}}.tar.gz
-      # - name: show path
-      #   run: echo $(pwd)
-      - uses: "marvinpinto/action-automatic-releases@latest"
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: ${{needs.appinspect.outputs.APP_VERSION}}
-          prerelease: true
-          title: "New Release for ${{ env.APP_NAME }}"
-          files: ${{steps.download.outputs.download-path}}
