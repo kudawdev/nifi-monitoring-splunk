@@ -45,7 +45,7 @@ En su interior contiene la siguiente estructura:
 
 ## Configuración de variables globales
 
-Es fundamental configurar las variables globales ya que son indispensable para su funcionamiento. Para configurar los parámetros mencionados, haga clic derecho sobre la caja Nifi_Monitoring_Splunk > Variables.
+Es fundamental configurar las variables globales ya que son indispensable para su funcionamiento. Para configurar los parámetros haga clic derecho sobre la caja Nifi_Monitoring_Splunk > Variables.
 
 ![image](/assets/images/nifi/set_variable.png)
 
@@ -161,7 +161,7 @@ Se desplegará el siguiente formulario. Marque la casilla More settings para hab
 ![image](/assets/images/splunk/data_input_3.png)
 
 - NiFi Instance Name: Asigne un nombre a la instancia de NIFI
-- NiFi API URL: Dirección de la API de NiFi (Ej.: http://(direccion:puerto)/nifi-api/)
+- NiFi API URL: Dirección de la API de NiFi. Ejemplo: http://<direccion:puerto\>/nifi-api/
 - Auth Type: Tipo de autenticación:
     - none: Sin autenticación
     - basic: Acceso con credenciales usuario y contraseña

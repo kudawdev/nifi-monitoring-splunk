@@ -8,7 +8,7 @@ NIFI Monitoring is designed to be installed in Standalone or Cluster type enviro
 
 The application contains all the visual features that allow the monitoring of the configured NIFI instances.
 
-To install you must have the NIFI_Monitoring_(version).tar.gz file and install from the Splunk application manager.
+To install you must have the NIFI_Monitoring_<version\>.tar.gz file and install from the Splunk application manager.
 
 ![image](/assets/images/splunk/upload_app.png)
 
@@ -16,7 +16,7 @@ To install you must have the NIFI_Monitoring_(version).tar.gz file and install f
 
 The Technology Addon (TA) of NIFI Monitoring contains all the non-visual characteristics that allow the indexing of the different data sources received from the NIFI server 
 
-To install you must have the NIFI_TA_Monitoring_(version).tar.gz file and install from the Splunk application manager.
+To install you must have the NIFI_TA_Monitoring_<version\>.tar.gz file and install from the Splunk application manager.
 
 ![image](/assets/images/splunk/upload_app.png)
 
@@ -33,8 +33,8 @@ To configure, from the Splunk menu select Settings > Data Inputs. In the Local I
 In the configuration process you must:
 
 - Assign a name for the data input,
-- Set the sourcetype to automatic,
-- Select the App Context NIFI Monitoring and finally
+- Set the sourcetype to **automatic**,
+- Select the *App Context* **NIFI Monitoring** and finally
 - Select the Index where the data will be stored.
 
 It is recommended to use a dedicated Index, for example nifi. If it does not exist, you must create it previous to this configuration.
@@ -58,6 +58,7 @@ This step is very important for the correct operation of the application since i
 
 To get the host name, you can run the following search with a time range of last 60 minutes. For this search to return results, the Nifi processes must be running correctly. [How to run a NIFI process?](/en/configuration/#enabling-the-sending-of-data)
 
+**Splunk Query**  
 ```sourcetype=nifi* | dedup host | table host ```
 
 The result of this search will return the list of hosts that must be configured in the lookup.

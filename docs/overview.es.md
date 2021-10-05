@@ -25,7 +25,7 @@ La página principal de la aplicación de Nifi Monitoring donde se observa un pe
 ## NIFI Monitor Overview
 
 
-En el panel de overview se puede observar un resumen de los distintos servidores NIFI monitoreados, muy similar a la barra superior que encontramos en el aplicativo inicial, los indicadores son los siguientes:
+En el panel de overview se puede observar un resumen de los distintos servidores NIFI monitoreados, muy similar a la barra superior que encontramos en el aplicativo inicial. Los indicadores son los siguientes:
 
 - Estado del servidor por nodo
 - Estado de repositorios por nodo
@@ -51,11 +51,11 @@ Adicionalmente se dispone información de la JVM operativa en cada nodo, y así 
 ![image](/assets/images/splunk/behaviour_overtime_2.png)
 
 ### Bulletin Monitoring Panel
-En el siguiente panel, podemos observar principalmente el comportamiento de los errores del sistema de bulletin en nifi, ya que es muy importante en el caso de ocurrir algún error poder realizar la correcta trazabilidad, con el fin de corregir la situación lo antes posible.
+En el siguiente panel podemos observar principalmente el comportamiento de los errores del sistema de bulletin en nifi, ya que es muy importante en el caso de ocurrir algún error poder realizar la correcta trazabilidad, con el fin de corregir la situación lo antes posible.
 
 ![image](/assets/images/splunk/bulletin_panel.png)
 
 ### Logs Monitoring Panel
-En el siguiente panel, podemos observar principalmente el comportamiento de los errores del sistema de bulletin en nifi, ya que es muy importante en el caso de ocurrir algún error poder realizar la correcta trazabilidad, con el fin de corregir la situación lo antes posible.
+Con este panel podemos observar el comportamiento de los errores del sistema de bulletin en nifi, ya que es muy importante en el caso de ocurrir algún error poder realizar la correcta trazabilidad, con el fin de corregir la situación lo antes posible.
 
 ![image](/assets/images/splunk/logs_panel.png)

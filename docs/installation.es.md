@@ -1,6 +1,6 @@
 # Instalación y Configuración de NIFI Monitoring APP
 
-Es esta sección se detallarán los pasos necesarios requeridos para instalar y configurar la aplicación NIFI Monitoring
+Es esta sección se detallarán los pasos necesarios requeridos para instalar y configurar la aplicación NIFI Monitoring en Splunk
 
 ## Instalación de NIFI Monitoring APP
 
@@ -8,7 +8,7 @@ NIFI Monitoring está diseñado para ser instalado en ambientes de tipo Standalo
 
 La aplicación contiene todas las características visuales que permiten el monitoreo de las instancias de NIFI configuradas.
 
-Para instalar debe contar con el archivo NIFI_Monitoring_(version).tar.gz e instale desde el administrador de aplicaciones de Splunk.
+Para instalar debe contar con el archivo NIFI_Monitoring_<version\>.tar.gz e instale desde el administrador de aplicaciones de Splunk.
 
 ![image](/assets/images/splunk/upload_app.png)
 
@@ -16,7 +16,7 @@ Para instalar debe contar con el archivo NIFI_Monitoring_(version).tar.gz e inst
 
 El Technology Addon (TA) de NIFI Monitoring contiene todas las características no visuales que permiten la indexación de las distintas fuentes de datos recibidas desde el o los servidores NIFI.
 
-Para instalar debe contar con el archivo NIFI_TA_Monitoring_(version).tar.gz e instale desde el administrador de aplicaciones de Splunk.
+Para instalar debe contar con el archivo NIFI_TA_Monitoring_<version\>.tar.gz e instale desde el administrador de aplicaciones de Splunk.
 
 ![image](/assets/images/splunk/upload_app.png)
 
@@ -28,13 +28,13 @@ Luego de la instalación se dispondrá de todos los objetos que permiten la inde
 
 Es fundamental incorporar la configuración de un recopilador de eventos HTTP (HEC). Esto permite enviar eventos desde las instancias de nifi a una implementación de Splunk a través de los protocolos HTTP y HTTPS.
 
-Para configurar, en el menú de Splunk, selecciona Settings > Data Inputs. En el listado de Local Inputs, identifica HTTP Event Collector y agrega uno nuevo.
+Para configurar, en el menú de Splunk selecciona Settings > Data Inputs. En el listado de Local Inputs identifica HTTP Event Collector y agrega uno nuevo.
 
 En el proceso de configuración deberás:
 
 - Asignar un nombre para el data input,
-- Establecer el sourcetype en automático,
-- Seleccionar el App Context NIFI Monitoring y finalmente
+- Establecer el sourcetype en **automático**,
+- Seleccionar el *App Context* **NIFI Monitoring** y finalmente
 - Seleccionar el Index donde se almacenarán los datos.
 
 Se recomienda utilizar un Index dedicado, por ejemplo, nifi. Si no existe, deberás crearlo previo a esta configuración.
@@ -58,6 +58,7 @@ Este paso es muy importante para la correcta operación de la aplicación ya que
 
 Para obtener el nombre del host, puede ejecutar la siguiente búsqueda con un rango de tiempo de últimos 60 minutos. Para que esta búsqueda retorne resultados, los procesos de Nifi deben estar ejecutándose correctamente. [¿Cómo ejecutar un proceso NIFI?](/es/configuration/#habilitacion-del-envio-de-datos)
 
+**Splunk Query**  
 ```sourcetype=nifi* | dedup host | table host ```
 
 El resultado de esta búsqueda retornará el listado de host que deben ser configurados en el lookup.
