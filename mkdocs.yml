@@ -1,14 +1,15 @@
 # Project information
-site_name: Nifi Monitoring
+site_name: Nifi Monitoring Splunk
 site_author: Kudaw S.A.
-site_description: Nifi Monitoring Documentation
+site_description: Nifi Monitoring Splunk Documentation
+site_url: https://kudawdev.github.io/nifi-monitoring-splunk/
 
 # Copyright
 copyright: Copyright &copy; 2021 Kudaw S.A. All Rights Reserved
 
 # Repository information
 repo_url: https://github.com/kudawdev/PRD-nifi-monitoring-splunk
-repo_name: NIFI Monitoring
+repo_name: NIFI Monitoring Splunk
 
 # Navigation
 nav:
