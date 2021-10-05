@@ -4,7 +4,7 @@ At this stage, all the necessary steps that must be carried out by the side of o
 
 There are two ways of configuration that allow the sending of events to Splunk and their choice depends on the authentication mechanisms that NIFI has enabled.
 
-- Direct sending: This configuration will establish NIFI as the main way to send data to Splunk and should be used when NIFI does not have authentication methods activated.
+- Direct sending: This configuration will establish NIFI as the main way to send data to Splunk and should be used when NIFI does not have authentication methods enabled.
 
 - Data Input NIFI: Splunk will be in charge of making requests to the NIFI instances to retrieve the information from the Monitoring API by enabling and using the Data Input NIFI. This configuration should be used when NIFI has basic authentication.
 
@@ -44,14 +44,14 @@ Inside it contains the following structure:
 
 ## Global variables configuration
 
-It is essential to configure global variables as they are imprescindible for their operation. To configure the mentioned parameters, right click on the Nifi_Monitoring_Splunk box > Variables.
+It is essential to configure global variables as they are imprescindible for their operation. To configure the parameters, right click on the Nifi_Monitoring_Splunk box > Variables.
 
 ![image](/assets/images/nifi/set_variable.png)
 
 A pop-up window will be displayed where you will have to configure the following parameters:
 
 - nifi_path: Corresponds to the nifi server installation path (in case of a cluster, it must be installed in the same path on each node). Example: /home/nifi/nifi-1.10.0/
-- splunk_hec: It is the address of the splunk server where the data input HTTP Event Collector was configured. Example: 127.0.0.1:8088
+- splunk_hec: It is the address of the splunk server where the data input HTTP Event Collector was configured. Example: <splunk_host\>:8088
 - splunk_hec_token: Token obtained when configuring [HTTP Event Collector](/en/installation/#configure-http-event-collector-hec).
 
 ![image](/assets/images/nifi/set_variable_2.png)
@@ -160,7 +160,7 @@ The following form will be displayed. Check the More settings box to enable othe
 ![image](/assets/images/splunk/data_input_3.png)
 
 - NiFi Instance Name: Set the NiFi instance name
-- NiFi API URL: NiFi API Adress (Ej.: http://(host:port)/nifi-api/)
+- NiFi API URL: NiFi API Adress. Example: http://<host:port\>/nifi-api/
 - Auth Type: Authentication type:
     - none: Without authentication
     - basic: Access with username and password credentials

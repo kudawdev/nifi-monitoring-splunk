@@ -12,24 +12,19 @@ repo_name: NIFI Monitoring
 
 # Navigation
 nav:
-  - ES:
-    - Introducción: es/index.md
-    - Vista General: es/overview.md
-    - Instalación y configuración de NIFI Monitoring en Splunk: es/installation.md
-    - Configuración de NIFI: es/configuration.md
-    - Referencia de datos: es/referencias.md
-  - EN:
-    - Introduction: en/index.md
-    - Overview: en/overview.md
-    - Install and configure NIFI Monitoring on Splunk: en/installation.md
-    - NIFI Configuration: en/configuration.md
-    - Data Reference: en/referencias.md
+  - Introduction: index.md
+  - Overview: overview.md
+  - Install and configure NIFI Monitoring on Splunk: installation.md
+  - NIFI Configuration: configuration.md
+  - Data Reference: references.md
+  - Contribute: contributing.md
 
 # Configuration
 theme: 
   name: material # readthedocs material
   #custom_dir: docs/theme/material
-  language: en # en es
+  language: en
+  locale: en
   logo: assets/images/nifi.png
   favicon: assets/images/favicon.ico
   palette:
@@ -40,7 +35,6 @@ theme:
     code: Roboto Mono
   features:
     - instant
-
 
 # Extras
 extra:
@@ -57,7 +51,7 @@ extra:
   alternate:
     # Switch to English
     - name: English
-      link: /en/
+      link: ""
       lang: en
     # Switch to Spanish
     - name: Español
@@ -80,3 +74,15 @@ markdown_extensions:
 # Plugins
 plugins:
   - search
+  - i18n:
+      default_language: en
+      languages:
+        es: Spanish
+      nav_translations:
+        es:
+          Introduction: Introducción
+          Overview: Vista General
+          Install and configure NIFI Monitoring on Splunk: Instalación y configuración de NIFI Monitoring en Splunk
+          NIFI Configuration: Configuración de NIFI
+          Data Reference: Referencia de Datos
+          Contribute: Contribuya
