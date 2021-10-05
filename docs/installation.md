@@ -10,7 +10,7 @@ The application contains all the visual features that allow the monitoring of th
 
 To install you must have the NIFI_Monitoring_<version\>.tar.gz file and install from the Splunk application manager.
 
-![image](/assets/images/splunk/upload_app.png)
+![image](/nifi-monitoring-splunk/assets/images/splunk/upload_app.png)
 
 ## Install NIFI Monitoring TA
 
@@ -18,11 +18,11 @@ The Technology Addon (TA) of NIFI Monitoring contains all the non-visual charact
 
 To install you must have the NIFI_TA_Monitoring_<version\>.tar.gz file and install from the Splunk application manager.
 
-![image](/assets/images/splunk/upload_app.png)
+![image](/nifi-monitoring-splunk/assets/images/splunk/upload_app.png)
 
 After installation, all the objects that allow data indexing will be available.
 
-![image](/assets/images/splunk/ta_objects.png)
+![image](/nifi-monitoring-splunk/assets/images/splunk/ta_objects.png)
 
 ## Configure HTTP Event Collector (HEC)
 
@@ -43,18 +43,18 @@ At the end of the configuration of this Event Collector, a Token Value will be c
 
 Configuration process:
 
-![image](/assets/images/splunk/add_hec_1.png)
+![image](/nifi-monitoring-splunk/assets/images/splunk/add_hec_1.png)
 
-![image](/assets/images/splunk/add_hec_2.png)
+![image](/nifi-monitoring-splunk/assets/images/splunk/add_hec_2.png)
 
-![image](/assets/images/splunk/add_hec_3.png)
+![image](/nifi-monitoring-splunk/assets/images/splunk/add_hec_3.png)
 
 ## Lookup NIFI Instances Configuration
 
 The configuration of the maintainer lookup of monitored instances is essential. The cluster tag is to associate a group of nodes and host is the name of the instance.
 This step is very important for the correct operation of the application since if a new nifi node is not updated in the instance table the respective information will not be displayed.
 
-![image](/assets/images/splunk/lookup_1.png)
+![image](/nifi-monitoring-splunk/assets/images/splunk/lookup_1.png)
 
 To get the host name, you can run the following search with a time range of last 60 minutes. For this search to return results, the Nifi processes must be running correctly. [How to run a NIFI process?](/en/configuration/#enabling-the-sending-of-data)
 
@@ -63,8 +63,8 @@ To get the host name, you can run the following search with a time range of last
 
 The result of this search will return the list of hosts that must be configured in the lookup.
 
-![image](/assets/images/splunk/sourcetype_search.png)
+![image](/nifi-monitoring-splunk/assets/images/splunk/sourcetype_search.png)
 
 If the lookup is correctly configured, the information will be accessible from the Overview panel.
 
-![image](/assets/images/splunk/nifi_overview_lookup.png)
+![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_overview_lookup.png)
