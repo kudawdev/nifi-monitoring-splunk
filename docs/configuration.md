@@ -52,7 +52,7 @@ A pop-up window will be displayed where you will have to configure the following
 
 - nifi_path: Corresponds to the nifi server installation path (in case of a cluster, it must be installed in the same path on each node). Example: /home/nifi/nifi-1.10.0/
 - splunk_hec: It is the address of the splunk server where the data input HTTP Event Collector was configured. Example: <splunk_host\>:8088
-- splunk_hec_token: Token obtained when configuring [HTTP Event Collector](/en/installation/#configure-http-event-collector-hec).
+- splunk_hec_token: Token obtained when configuring [HTTP Event Collector](/nifi-monitoring-splunk/#configure-http-event-collector-hec).
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/set_variable_2.png)
 
@@ -115,7 +115,7 @@ After completing the entire configuration process, start the process group execu
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/enable_sending_2.png)
 
-If all the configuration was successful, the information will be sent to Splunk. For the data sent to splunk to be accessible from the application, you must have configured the [NIFI Instances Lookup](/en/installation/#lookup-nifi-instances-configuration)
+If all the configuration was successful, the information will be sent to Splunk. For the data sent to splunk to be accessible from the application, you must have configured the [NIFI Instances Lookup](/nifi-monitoring-splunk/installation/#lookup-nifi-instances-configuration)
 
 ## Data Input NIFI configuration
 
@@ -165,5 +165,5 @@ The following form will be displayed. Check the More settings box to enable othe
     - none: Without authentication
     - basic: Access with username and password credentials
 - Interval: Time in seconds in which the requests to extract the information will be made.
-- Host: Name of the nifi host, which must correspond to what is defined in the Settings Lookup. [See Instances Lookup](/en/installation/#lookup-nifi-instances-configuration)
+- Host: Name of the nifi host, which must correspond to what is defined in the Settings Lookup. [See Instances Lookup](/nifi-monitoring-splunk/installation/#lookup-nifi-instances-configuration)
 - Index: Destination index for this data source. A dedicated index is recommended, for example: nifi. If it does not exist, you must create it beforehand.
