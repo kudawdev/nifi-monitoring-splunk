@@ -16,6 +16,6 @@ This application requieres the implementation of the following dependencies;
 - [Lookup File Editor](https://splunkbase.splunk.com/app/1724/)
 - [Status Indicator - Custom Visualization](https://splunkbase.splunk.com/app/3119/)
 
-Its operation is completely free and you can contribute through the [Github repository](https://github.com/kudawdev/PRD-nifi-monitoring-splunk)
+Its operation is completely free and you can contribute through the [Github repository](https://github.com/kudawdev/nifi-monitoring-splunk)
 
-Write us at contacto@kudw.com for an evaluation or through our site [kudaw.com](https://www.kudaw.com/en/contact)
+Write us at contacto@kudaw.com for an evaluation or through our site [kudaw.com](https://www.kudaw.com/en/contactus)

@@ -56,7 +56,7 @@ Este paso es muy importante para la correcta operación de la aplicación ya que
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/lookup_1.png)
 
-Para obtener el nombre del host, puede ejecutar la siguiente búsqueda con un rango de tiempo de últimos 60 minutos. Para que esta búsqueda retorne resultados, los procesos de Nifi deben estar ejecutándose correctamente. [¿Cómo ejecutar un proceso NIFI?](/es/configuration/#habilitacion-del-envio-de-datos)
+Para obtener el nombre del host, puede ejecutar la siguiente búsqueda con un rango de tiempo de últimos 60 minutos. Para que esta búsqueda retorne resultados, los procesos de Nifi deben estar ejecutándose correctamente. [¿Cómo ejecutar un proceso NIFI?](/nifi-monitoring-splunk/es/configuration/#habilitacion-del-envio-de-datos)
 
 **Splunk Query**  
 ```sourcetype=nifi* | dedup host | table host ```

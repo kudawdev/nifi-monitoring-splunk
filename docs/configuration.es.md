@@ -53,7 +53,7 @@ Se desplegará una ventana emergente donde tendrá que configurar los siguientes
 
 - nifi_path: Corresponde a la ruta de instalación del servidor nifi (en caso de cluster debe estar instalado en la misma ruta en cada nodo). Ejemplo: /home/nifi/nifi-1.10.0/
 - splunk_hec: Es la dirección del servidor splunk donde se configuró el data input HTTP Event Collector. Ejemplo: 127.0.0.1:8088
-- splunk_hec_token: Token obtenido al configurar [HTTP Event Collector](/es/installation/#configuracion-de-http-event-collector-hec).
+- splunk_hec_token: Token obtenido al configurar [HTTP Event Collector](/nifi-monitoring-splunk/es/installation/#configuracion-de-http-event-collector-hec).
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/set_variable_2.png)
 
@@ -116,7 +116,7 @@ Luego de haber completado todo el proceso de configuración, inicie la ejecució
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/enable_sending_2.png)
 
-Sí toda la configuración se ejecutó de manera correcta, se iniciará el envío de la información a Splunk. Para que los datos enviados a splunk estén accesibles desde la aplicación deberá haber configurado el [Lookup de Instancias](/es/installation/#configuracion-de-lookup-nifi-instances)
+Sí toda la configuración se ejecutó de manera correcta, se iniciará el envío de la información a Splunk. Para que los datos enviados a splunk estén accesibles desde la aplicación deberá haber configurado el [Lookup de Instancias](/nifi-monitoring-splunk/es/installation/#configuracion-de-lookup-nifi-instances)
 
 ## Configuración de Data Input NIFI
 
@@ -166,5 +166,5 @@ Se desplegará el siguiente formulario. Marque la casilla More settings para hab
     - none: Sin autenticación
     - basic: Acceso con credenciales usuario y contraseña
 - Interval: Tiempo en segundos en el que se realizarán las peticiones para extraer la información.
-- Host: Nombre del host de nifi, el cual debe corresponder a lo definido en el Lookup de Configuraciones. [Ver Lookup de Instancias](/es/installation/#configuracion-de-lookup-nifi-instances)
+- Host: Nombre del host de nifi, el cual debe corresponder a lo definido en el Lookup de Configuraciones. [Ver Lookup de Instancias](/nifi-monitoring-splunk/es/installation/#configuracion-de-lookup-nifi-instances)
 - Index: Index de destinto para esta fuente de datos. Se recomienda un index dedicado, por ejemplo: nifi. Si no existe, deberá crearlo previamente.
