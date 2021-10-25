@@ -8,7 +8,9 @@ Hay dos vías de configuración que permiten el envío de eventos a Splunk y su 
 
 - Data Input NIFI: Splunk se encargará de realizar peticiones a las instancias de NIFI para rescatar la información del Monitoring API por medio de la habilitación y uso del Data Input NIFI. Esta configuración debe ser utilizada cuando NIFI cuente con autenticación basica.
 
+## Template
 
+Descarga y utiliza el template proporciado para la configuración de NiFi Monitoring a través de este link [NifiMonitoringTemplate](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/template/NifiMonitoringTemplate.xml). También podrás encontrar este archivo dentro de la carpeta **template** del proyecto.
 
 ## Carga de template
 
