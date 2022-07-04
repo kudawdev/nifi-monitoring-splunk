@@ -1,0 +1,151 @@
+<form hideEdit="true" version="1.1">
+  <label>Bulletin Monitoring Panel</label>
+  <search id="baseForFilters">
+    <query>
+      | tstats count from datamodel=NIFI.Reporting_Bulletin by _time, host, Reporting_Bulletin.bulletinCategory, Reporting_Bulletin.bulletinLevel, Reporting_Bulletin.bulletinSourceName span=$span$
+| rename Reporting_Bulletin.* as *
+    </query>
+    <earliest>$time.earliest$</earliest>
+    <latest>$time.latest$</latest>
+  </search>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="time" token="time" searchWhenChanged="false">
+      <label>Time</label>
+      <default>
+        <earliest>@d</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="span">
+      <label>Span</label>
+      <choice value="5m">5 Minutes</choice>
+      <choice value="30m">30 Minutes</choice>
+      <choice value="1h">1 Hour</choice>
+      <choice value="1d">1 Day</choice>
+      <default>1h</default>
+      <initialValue>1h</initialValue>
+    </input>
+    <input type="dropdown" token="host" searchWhenChanged="false">
+      <label>Nifi Instance</label>
+      <fieldForLabel>host</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <search base="baseForFilters">
+        <query>| dedup host| table host</query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="category" searchWhenChanged="false">
+      <label>Category</label>
+      <choice value="*">All</choice>
+      <fieldForLabel>bulletinCategory</fieldForLabel>
+      <fieldForValue>bulletinCategory</fieldForValue>
+      <search base="baseForFilters">
+        <query>|dedup bulletinCategory|table bulletinCategory</query>
+      </search>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <prefix>bulletinCategory="</prefix>
+      <suffix>"</suffix>
+    </input>
+    <input type="dropdown" token="level" searchWhenChanged="false">
+      <label>Level</label>
+      <choice value="*">All</choice>
+      <fieldForLabel>bulletinLevel</fieldForLabel>
+      <fieldForValue>bulletinLevel</fieldForValue>
+      <search base="baseForFilters">
+        <query>|dedup bulletinLevel|table bulletinLevel</query>
+      </search>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <prefix>bulletinLevel="</prefix>
+      <suffix>"</suffix>
+    </input>
+    <input type="dropdown" token="sourcename" searchWhenChanged="false">
+      <label>SourceName</label>
+      <choice value="*">All</choice>
+      <fieldForLabel>bulletinSourceName</fieldForLabel>
+      <fieldForValue>bulletinSourceName</fieldForValue>
+      <search base="baseForFilters">
+        <query>|dedup bulletinSourceName|table bulletinSourceName</query>
+      </search>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <prefix>bulletinSourceName="</prefix>
+      <suffix>"</suffix>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <single>
+        <title>Bulletin Events Count</title>
+        <search base="baseForFilters">
+          <query>| search $category$  $level$ $sourcename$ host=$host$
+| stats sum(count) as count</query>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="height">83</option>
+        <option name="rangeColors">["0x53a051","0xdc4e41"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="unit">Events</option>
+        <option name="useColors">1</option>
+      </single>
+      <chart>
+        <title>Bulletin Events Over Time</title>
+        <search base="baseForFilters">
+          <query>| search $category$  $level$ $sourcename$ host=$host$
+| timechart span=$span$ sum(count) as BulletinErrors by bulletinLevel</query>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisY.abbreviation">auto</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">bottom</option>
+        <option name="height">260</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="charting.fieldColors">{"ERROR":e57373, "INFO":4fc3f7, "WARNING":ffd54f}</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Bulletin Events Details</title>
+        <search>
+          <query>sourcetype="nifi:reporting:bulletin" 
+| search $category$  $level$ $sourcename$ host=$host$ 
+| table _time host bulletinLevel bulletinCategory bulletinSourceName bulletinMessage</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="wrap">false</option>
+      </table>
+    </panel>
+  </row>
+  
+      <row id="footer">
+      <html>
+        <style>
+            [id^="footer"] .dashboard-panel {
+              background:#f2f4f5 !important;
+            }
+
+          </style>
+        <div style="text-align: center; font-weight: bold; font-size: 14px;">
+           Developed by
+           <a href="https://www.kudaw.com" target="_blank" style="text-decoration: none;">
+             <img src="/static/app/nifi_monitoring/kudaw.png" style="height:34px; border:0; margin-left:10px"/>
+           </a>
+          </div>
+      </html>
+  </row>
+</form>
