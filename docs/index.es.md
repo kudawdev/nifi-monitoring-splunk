@@ -18,4 +18,4 @@ Esta aplicación requiere la implementación de las siguientes dependencias:
 
 Su funcionamiento es completamente gratuito y puedes contribuir a través del [repositorio de Github](https://github.com/kudawdev/nifi-monitoring-splunk)
 
-Escríbanos a contacto@kudaw.com para una evaluación o a través de nuestro sitio [kudaw.com](https://www.kudaw.com/en/contactus)
+Escríbanos a splunk.app@kudaw.com para una evaluación o a través de nuestro sitio [kudaw.com](https://www.kudaw.com/)
