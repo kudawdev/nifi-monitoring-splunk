@@ -2,8 +2,8 @@
   <label>Logs Monitoring Panel</label>
   <search id="baseSearch2">
     <query>
-| tstats count from datamodel=NIFI.Logs by _time, host, sourcetype, Logs.level span=$span$
-| rename Logs.* as *
+ index="nifi" sourcetype="nifi:log:*" | bin span=$span$ _time |stats count by _time, host, cluster, sourcetype, level
+ ''' OLDE ONE | tstats count from datamodel=NIFI.Logs by _time, host, sourcetype, Logs.level span=$span$ | rename Logs.* as * '''
     </query>
     <earliest>$time.earliest$</earliest>
     <latest>$time.latest$</latest>
@@ -25,18 +25,26 @@
       <default>5m</default>
       <initialValue>5m</initialValue>
     </input>
+    <input type="dropdown" token="cluster" searchWhenChanged="false">
+      <label>Nifi Cluster</label>
+      <fieldForLabel>cluster</fieldForLabel>
+      <fieldForValue>cluster</fieldForValue>
+      <search>
+        <query>| inputlookup instance
+  | table cluster | dedup  cluster</query>
+      </search>
+      </input>
     <input type="dropdown" token="host" searchWhenChanged="false">
       <label>Nifi Instance</label>
       <fieldForLabel>host</fieldForLabel>
       <fieldForValue>host</fieldForValue>
-      <search base="baseSearch2">
-        <query>
-| dedup host 
-| table host</query>
+      <search>
+        <query>| inputlookup instance 
+  where cluster=$cluster$
+  | dedup host
+  | table host</query>
       </search>
       <choice value="*">All</choice>
-      <default>*</default>
-      <initialValue>*</initialValue>
     </input>
     <input type="dropdown" token="sourcetype">
       <label>Sourcetype</label>
@@ -111,7 +119,7 @@
       <event>
         <title>Logs Events Details</title>
         <search>
-          <query>sourcetype=nifi:log:* host=$host$ sourcetype=$sourcetype$ $severity$ $customsearch$</query>
+          <query>sourcetype=nifi:log:* index="nifi" host=$host$ sourcetype=$sourcetype$ $severity$ $customsearch$</query>
           <earliest>$time.earliest$</earliest>
           <latest>$time.latest$</latest>
         </search>
