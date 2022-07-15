@@ -1,5 +1,5 @@
 <form hideEdit="true" version="1.1">
-  <label>Logs Monitoring Panel</label>
+  <label>Logs Monitoring Panel Clusters - Instances</label>
   <search id="baseSearch2">
     <query>
  index="nifi" sourcetype="nifi:log:*" | bin span=$span$ _time |stats count by _time, host, cluster, sourcetype, level
@@ -51,13 +51,12 @@
       <choice value="*">All</choice>
       <fieldForLabel>sourcetype</fieldForLabel>
       <fieldForValue>sourcetype</fieldForValue>
-      <search base="baseSearch2">
+      <search>
         <query>
 | dedup sourcetype 
 | table sourcetype</query>
       </search>
-      <default>*</default>
-      <initialValue>*</initialValue>
+      <choice value="*">All</choice>
     </input>
     <input type="multiselect" token="severity" searchWhenChanged="false">
       <label>Severity</label>

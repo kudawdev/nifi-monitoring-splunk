@@ -39,7 +39,7 @@
     <title>$host$</title>
       <html>
         <h1>
-          <span>Near-RealTime Status - Nifi Instance </span>
+          <span>Near-RealTime Status - Nifi Instance $host$</span>
         </h1>
       </html>
     </panel>
@@ -265,11 +265,12 @@
           <latest>now</latest>
         </search>
         <option name="drilldown">none</option>
+        <option name="link.visible">0</option>        
         <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>        
         <option name="rowNumbers">false</option>
         <option name="totalsRow">false</option>
         <option name="wrap">true</option>
-        <option name="link.visible">0</option>
       </table>
     </panel>
   </row>
