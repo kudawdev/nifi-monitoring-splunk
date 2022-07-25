@@ -2,7 +2,7 @@
   <label>Flow's &amp; Metrics Monitoring Panel</label>
   <search id="baseSearch">
     <query>
-     sourcetype="nifi:api:flow_status" host=$host$ | dedup sourcetype |fields controllerStatus.activeThreadCount,controllerStatus.queued,controllerStatus.runningCount,controllerStatus.stoppedCount,controllerStatus.invalidCount,controllerStatus.disabledCount,controllerStatus.syncFailureCount,controllerStatus.upToDateCount,controllerStatus.locallyModifiedCount| stats values(controllerStatus.activeThreadCount) as activeThreadCount values(controllerStatus.queued) as queued values(controllerStatus.runningCount) as runningCount values(controllerStatus.stoppedCount) as stoppedCount values(controllerStatus.invalidCount) as invalidCount values(controllerStatus.disabledCount) as disabledCount values(controllerStatus.syncFailureCount) as syncFailureCount values(controllerStatus.upToDateCount) as upToDateCount values(controllerStatus.locallyModifiedCount) as locallyModifiedCount
+     `index_nifi` sourcetype="nifi:api:flow_status" host=$host$ | dedup sourcetype |fields controllerStatus.activeThreadCount,controllerStatus.queued,controllerStatus.runningCount,controllerStatus.stoppedCount,controllerStatus.invalidCount,controllerStatus.disabledCount,controllerStatus.syncFailureCount,controllerStatus.upToDateCount,controllerStatus.locallyModifiedCount| stats values(controllerStatus.activeThreadCount) as activeThreadCount values(controllerStatus.queued) as queued values(controllerStatus.runningCount) as runningCount values(controllerStatus.stoppedCount) as stoppedCount values(controllerStatus.invalidCount) as invalidCount values(controllerStatus.disabledCount) as disabledCount values(controllerStatus.syncFailureCount) as syncFailureCount values(controllerStatus.upToDateCount) as upToDateCount values(controllerStatus.locallyModifiedCount) as locallyModifiedCount
     </query>
     <earliest>-60m</earliest>
     <latest>now</latest>
@@ -36,10 +36,10 @@
   </fieldset>
   <row>
     <panel>
-    <title>$host$</title>
+    <title></title>
       <html>
         <h1>
-          <span>Near-RealTime Status - Nifi Instance $host$</span>
+          <span>Near-RealTime Status - Nifi Instance: $host$</span>
         </h1>
       </html>
     </panel>
@@ -249,7 +249,7 @@
       <table id="version_status">
         <title>Version Status</title>
         <search>
-          <query>sourcetype="nifi:api:system_diagnostics" host="$host$"
+          <query>`index_nifi` sourcetype="nifi:api:system_diagnostics" host="$host$"
 | dedup sourcetype
 | rename systemDiagnostics.aggregateSnapshot.versionInfo.buildTag as buildTag,systemDiagnostics.aggregateSnapshot.versionInfo.buildTimestamp as buildTimestamp
     , systemDiagnostics.aggregateSnapshot.versionInfo.javaVendor as javaVendor
