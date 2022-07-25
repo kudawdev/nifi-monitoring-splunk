@@ -1,9 +1,9 @@
 <form hideEdit="true" version="1.1">
-  <label>Logs Monitoring Panel Clusters - Instances</label>
+  <label>Logs Monitoring Panel</label>
   <search id="baseSearch2">
     <query>
- index="nifi" sourcetype="nifi:log:*" | bin span=$span$ _time |stats count by _time, host, cluster, sourcetype, level
- ''' OLDE ONE | tstats count from datamodel=NIFI.Logs by _time, host, sourcetype, Logs.level span=$span$ | rename Logs.* as * '''
+| tstats count from datamodel=NIFI.Logs by _time, host, sourcetype, Logs.level, Logs.cluster span=$span$
+| rename Logs.* as *
     </query>
     <earliest>$time.earliest$</earliest>
     <latest>$time.latest$</latest>
@@ -29,34 +29,41 @@
       <label>Nifi Cluster</label>
       <fieldForLabel>cluster</fieldForLabel>
       <fieldForValue>cluster</fieldForValue>
-      <search>
-        <query>| inputlookup instance
-  | table cluster | dedup  cluster</query>
+      <search base="baseSearch2">
+        <query>
+| dedup cluster 
+| table cluster</query>
       </search>
-      </input>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
     <input type="dropdown" token="host" searchWhenChanged="false">
       <label>Nifi Instance</label>
       <fieldForLabel>host</fieldForLabel>
       <fieldForValue>host</fieldForValue>
-      <search>
-        <query>| inputlookup instance 
-  where cluster=$cluster$
-  | dedup host
-  | table host</query>
+      <search base="baseSearch2">
+        <query>
+| search cluster=$cluster$
+| dedup host 
+| table host</query>
       </search>
       <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
     </input>
     <input type="dropdown" token="sourcetype">
       <label>Sourcetype</label>
       <choice value="*">All</choice>
       <fieldForLabel>sourcetype</fieldForLabel>
       <fieldForValue>sourcetype</fieldForValue>
-      <search>
+      <search base="baseSearch2">
         <query>
 | dedup sourcetype 
 | table sourcetype</query>
       </search>
-      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
     </input>
     <input type="multiselect" token="severity" searchWhenChanged="false">
       <label>Severity</label>
@@ -83,7 +90,7 @@
       <single>
         <title>Logs Events Count</title>
         <search base="baseSearch2">
-          <query>| search host=$host$ sourcetype=$sourcetype$ $severity$ $customsearch$
+          <query>| search host=$host$ cluster=$cluster$ sourcetype=$sourcetype$ $severity$ $customsearch$
 | stats sum(count) as count</query>
         </search>
         <option name="colorMode">block</option>
@@ -98,7 +105,7 @@
       <chart>
         <title>Logs Events Behaviour</title>
         <search base="baseSearch2">
-          <query>| search host=$host$ sourcetype=$sourcetype$ $severity$ $customsearch$
+          <query>| search host=$host$ cluster=$cluster$ sourcetype=$sourcetype$ $severity$ $customsearch$
 |timechart sum(count) as count span=$span$ by level</query>
         </search>
         <option name="charting.axisTitleX.visibility">collapsed</option>
@@ -118,7 +125,7 @@
       <event>
         <title>Logs Events Details</title>
         <search>
-          <query>sourcetype=nifi:log:* index="nifi" host=$host$ sourcetype=$sourcetype$ $severity$ $customsearch$</query>
+          <query>`index_nifi` sourcetype=nifi:log:* host=$host$ cluster=$cluster$ sourcetype=$sourcetype$ $severity$ $customsearch$</query>
           <earliest>$time.earliest$</earliest>
           <latest>$time.latest$</latest>
         </search>
@@ -134,8 +141,8 @@
       </event>
     </panel>
   </row>
-  
-      <row id="footer">
+  <row id="footer">
+    <panel>
       <html>
         <style>
             [id^="footer"] .dashboard-panel {
@@ -150,5 +157,6 @@
            </a>
           </div>
       </html>
+    </panel>
   </row>
 </form>

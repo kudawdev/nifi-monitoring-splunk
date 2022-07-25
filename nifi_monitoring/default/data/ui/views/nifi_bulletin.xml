@@ -2,7 +2,8 @@
   <label>Bulletin Monitoring Panel</label>
   <search id="baseForFilters">
     <query>
-      index="nifi" sourcetype="nifi:reporting:bulletin" | bin span=$span$ _time | stats count by _time, host, cluster, sourcetype, bulletinCategory, bulletinLevel, bulletinSourceName 
+      | tstats count from datamodel=NIFI.Reporting_Bulletin by _time, host, Reporting_Bulletin.cluster, Reporting_Bulletin.bulletinCategory, Reporting_Bulletin.bulletinLevel, Reporting_Bulletin.bulletinSourceName span=$span$
+| rename Reporting_Bulletin.* as *
     </query>
     <earliest>$time.earliest$</earliest>
     <latest>$time.latest$</latest>
@@ -28,20 +29,19 @@
       <label>Nifi Cluster</label>
       <fieldForLabel>cluster</fieldForLabel>
       <fieldForValue>cluster</fieldForValue>
-      <search>
-        <query>| inputlookup instance
-  | table cluster | dedup  cluster</query>
+      <search base="baseForFilters">
+        <query>| dedup cluster | table cluster</query>
       </search>
-      </input>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
     <input type="dropdown" token="host" searchWhenChanged="false">
       <label>Nifi Instance</label>
       <fieldForLabel>host</fieldForLabel>
       <fieldForValue>host</fieldForValue>
-      <search>
-        <query>| inputlookup instance 
-  where cluster=$cluster$
-  | dedup host
-  | table host</query>
+      <search base="baseForFilters">
+        <query>| search cluster=$cluster$ | dedup host | table host</query>
       </search>
       <choice value="*">All</choice>
       <default>*</default>
@@ -52,8 +52,8 @@
       <choice value="*">All</choice>
       <fieldForLabel>bulletinCategory</fieldForLabel>
       <fieldForValue>bulletinCategory</fieldForValue>
-      <search>
-        <query>index="nifi" sourcetype="nifi:reporting:bulletin" |dedup bulletinCategory|table bulletinCategory</query>
+      <search base="baseForFilters">
+        <query>|dedup bulletinCategory|table bulletinCategory</query>
       </search>
       <default>*</default>
       <initialValue>*</initialValue>
@@ -65,8 +65,8 @@
       <choice value="*">All</choice>
       <fieldForLabel>bulletinLevel</fieldForLabel>
       <fieldForValue>bulletinLevel</fieldForValue>
-      <search >
-        <query>index="nifi" sourcetype="nifi:reporting:bulletin" |dedup bulletinLevel|table bulletinLevel</query>
+      <search base="baseForFilters">
+        <query>|dedup bulletinLevel|table bulletinLevel</query>
       </search>
       <default>*</default>
       <initialValue>*</initialValue>
@@ -78,8 +78,8 @@
       <choice value="*">All</choice>
       <fieldForLabel>bulletinSourceName</fieldForLabel>
       <fieldForValue>bulletinSourceName</fieldForValue>
-      <search>
-        <query>index="nifi" sourcetype="nifi:reporting:bulletin" |dedup bulletinSourceName|table bulletinSourceName</query>
+      <search base="baseForFilters">
+        <query>|dedup bulletinSourceName|table bulletinSourceName</query>
       </search>
       <default>*</default>
       <initialValue>*</initialValue>
@@ -92,7 +92,7 @@
       <single>
         <title>Bulletin Events Count</title>
         <search base="baseForFilters">
-          <query>| search $category$  $level$ $sourcename$ host=$host$
+          <query>| search $category$  $level$ $sourcename$ cluster=$cluster$ host=$host$
 | stats sum(count) as count</query>
         </search>
         <option name="colorMode">block</option>
@@ -107,7 +107,7 @@
       <chart>
         <title>Bulletin Events Over Time</title>
         <search base="baseForFilters">
-          <query>| search $category$  $level$ $sourcename$ host=$host$
+          <query>| search $category$  $level$ $sourcename$ cluster=$cluster$ host=$host$
 | timechart span=$span$ sum(count) as BulletinErrors by bulletinLevel</query>
         </search>
         <option name="charting.axisTitleX.visibility">collapsed</option>
@@ -128,9 +128,9 @@
       <table>
         <title>Bulletin Events Details</title>
         <search>
-          <query>index="nifi" sourcetype="nifi:reporting:bulletin"
-| search $category$  $level$ $sourcename$ host=$host$ 
-| table _time host bulletinLevel bulletinCategory bulletinSourceName bulletinMessage</query>
+          <query>`index_nifi` sourcetype="nifi:reporting:bulletin" 
+| search $category$  $level$ $sourcename$ cluster=$cluster$ host=$host$
+| table _time cluster host bulletinLevel bulletinCategory bulletinSourceName bulletinMessage</query>
           <earliest>$time.earliest$</earliest>
           <latest>$time.latest$</latest>
         </search>
@@ -142,8 +142,8 @@
       </table>
     </panel>
   </row>
-  
-      <row id="footer">
+  <row id="footer">
+    <panel>
       <html>
         <style>
             [id^="footer"] .dashboard-panel {
@@ -158,5 +158,6 @@
            </a>
           </div>
       </html>
+    </panel>
   </row>
 </form>
