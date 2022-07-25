@@ -36,9 +36,10 @@
   </fieldset>
   <row>
     <panel>
+    <title>$host$</title>
       <html>
         <h1>
-          <span>Near-RealTime Status - Nifi Instance </span>
+          <span>Near-RealTime Status - Nifi Instance $host$</span>
         </h1>
       </html>
     </panel>
@@ -69,6 +70,8 @@
         </search>
         <option name="drilldown">none</option>
         <option name="height">62</option>
+        <option name="link.visible">0</option> 
+        <option name="refresh.display">progressbar</option>
         <option name="status_indicator_app.status_indicator.colorBy">static_color</option>
         <option name="status_indicator_app.status_indicator.fillTarget">text</option>
         <option name="status_indicator_app.status_indicator.fixIcon">warning</option>
@@ -77,7 +80,6 @@
         <option name="status_indicator_app.status_indicator.showOption">3</option>
         <option name="status_indicator_app.status_indicator.staticColor">#000</option>
         <option name="status_indicator_app.status_indicator.useColors">true</option>
-        <option name="link.visible">0</option>
         <option name="status_indicator_app.status_indicator.useThousandSeparator">true</option>
       </viz>
       <viz type="status_indicator_app.status_indicator">
@@ -263,11 +265,12 @@
           <latest>now</latest>
         </search>
         <option name="drilldown">none</option>
+        <option name="link.visible">0</option>        
         <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>        
         <option name="rowNumbers">false</option>
         <option name="totalsRow">false</option>
         <option name="wrap">true</option>
-        <option name="link.visible">0</option>
       </table>
     </panel>
   </row>

@@ -1,19 +1,48 @@
 <form refresh="60" version="1.1" hideEdit="true" script="nifi_monitor_overview.js" stylesheet="nifi_monitor_overview.css">
-  <label>Nifi Monitor Overview</label>
-  <fieldset submitButton="false"></fieldset>
+  <label>Nifi Monitor Cluster Overview</label>
+<fieldset submitButton="true" autoRun="false">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   <row>
     <panel>
       <table id="table_nifi_status">
         <title>Overall Status Nifi</title>
         <search>
-          <query>| inputlookup instance 
+          <query>| inputlookup instance where $cluster$
 | join type=left host 
     [| tstats values(Flow_Status.cluster) as cluster last(Flow_Status.controllerStatus.activeThreadCount) as "Active Threads" last(Flow_Status.controllerStatus.bytesQueued) as "Bytes Queued" last(Flow_Status.controllerStatus.runningCount) as "Running Components" last(Flow_Status.controllerStatus.stoppedCount) as "Stopped Components" last(Flow_Status.controllerStatus.disabledCount) as "Disabled Components" last(Flow_Status.controllerStatus.flowFilesQueued) as "FlowFiles Queued" last(Flow_Status.controllerStatus.invalidCount) as "Invalid Components" last(Flow_Status.controllerStatus.locallyModifiedAndStaleCount) as "Locally Modified And Stale Versioned Process Group" last(Flow_Status.controllerStatus.locallyModifiedCount) as "Locally Modified Versioned Process Group" last(Flow_Status.controllerStatus.syncFailureCount) as "Sync Failure Versioned Process Group" last(Flow_Status.controllerStatus.upToDateCount) as "Up To Date Versioned Process Group" last(Flow_Status.controllerStatus.staleCount) as "Stale Versioned Process Group" last(Flow_Status.controllerStatus.activeRemotePortCount) as "Transmitting Remote Process Group" last(Flow_Status.controllerStatus.inactiveRemotePortCount) as "Not Transmitting Remote Process Group" from datamodel=NIFI.Flow_Status groupby host] 
-| eval "Total Queued Data" ='FlowFiles Queued'+"/"+'Bytes Queued' 
+| eval "KBytez Queued" = round ('Bytes Queued' /1024, 2)
+| eval "Total Queued Data" ='FlowFiles Queued'+"/"+'KBytes Queued' +" KB"
 | join type=left host 
-    [ search sourcetype="nifi:log:*" 
-    | stats count as logcount by host] 
+    [ search index="nifi" sourcetype="nifi:log:*" 
+    | stats count as logcount by host | fillnull value=0 logcount | fields logcount host] 
 | eval status=if(logcount&gt;0,"Up","Down") 
+| eval statusidx=case (status="Up", 2, status="Down", 1) 
 | join type=left host 
     [| tstats count as "Bulletin Errors" from datamodel=NIFI.Reporting_Bulletin by host ] 
 | sort + status,cluster,host   

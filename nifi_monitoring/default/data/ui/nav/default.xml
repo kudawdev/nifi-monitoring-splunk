@@ -3,8 +3,9 @@
   <view name="nifi_overview" />  
   <collection label="Nifi Instance Panels">
   	<view name="nifi_instances_detail" />
-    <view name="bulletin_monitor_panel" />
+    <view name="nifi_bulletin" />
     <view name="nifi_logs" />
+    <view name="nifi_counters" />
   </collection>
   <!--<view name="analytics_workspace" />-->
   <collection label="Configuration">
