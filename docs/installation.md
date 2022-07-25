@@ -8,6 +8,11 @@ NIFI Monitoring is designed to be installed in Standalone or Cluster type enviro
 
 The application contains all the visual features that allow the monitoring of the configured NIFI instances.
 
+This application requieres the implementation of the following dependencies;
+
+- [Lookup File Editor](https://splunkbase.splunk.com/app/1724/)
+- [Status Indicator - Custom Visualization](https://splunkbase.splunk.com/app/3119/)
+
 To install you must have the NIFI_Monitoring_<version\>.tar.gz file and install from the Splunk application manager.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/upload_app.png)
