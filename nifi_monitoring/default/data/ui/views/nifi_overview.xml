@@ -1,33 +1,6 @@
 <form refresh="60" version="1.1" hideEdit="true" script="nifi_monitor_overview.js" stylesheet="nifi_monitor_overview.css">
   <label>Nifi Monitor Cluster Overview</label>
-<fieldset submitButton="true" autoRun="false">
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+<fieldset submitButton="true" autoRun="false"></fieldset>
   <row>
     <panel>
       <table id="table_nifi_status">
