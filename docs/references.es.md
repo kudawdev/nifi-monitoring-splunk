@@ -3,6 +3,7 @@
 Los distintos sourcetypes utilizados por la aplicación entregan un tipo de información que corresponde:
 
 - nifi:log:app
+- nifi:log:bootstrap
 
 Contiene el registro de todas las actividades de la aplicación NIFI,  desde la carga de archivos hasta los tiempos de ejecución o los boletines encontrados por los componentes.
 

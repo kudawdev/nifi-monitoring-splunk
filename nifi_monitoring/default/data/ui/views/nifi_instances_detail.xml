@@ -4,7 +4,7 @@
     <query>
      `index_nifi` sourcetype="nifi:api:flow_status" host=$host$ | dedup sourcetype |fields controllerStatus.activeThreadCount,controllerStatus.queued,controllerStatus.runningCount,controllerStatus.stoppedCount,controllerStatus.invalidCount,controllerStatus.disabledCount,controllerStatus.syncFailureCount,controllerStatus.upToDateCount,controllerStatus.locallyModifiedCount| stats values(controllerStatus.activeThreadCount) as activeThreadCount values(controllerStatus.queued) as queued values(controllerStatus.runningCount) as runningCount values(controllerStatus.stoppedCount) as stoppedCount values(controllerStatus.invalidCount) as invalidCount values(controllerStatus.disabledCount) as disabledCount values(controllerStatus.syncFailureCount) as syncFailureCount values(controllerStatus.upToDateCount) as upToDateCount values(controllerStatus.locallyModifiedCount) as locallyModifiedCount
     </query>
-    <earliest>-60m</earliest>
+    <earliest>-5m</earliest>
     <latest>now</latest>
   </search>
   <search id="baseSearch2">
@@ -39,7 +39,7 @@
     <title></title>
       <html>
         <h1>
-          <span>Near-RealTime Status - Nifi Instance: $host$</span>
+          <span>Near Real-time Status - Nifi Instance: $host$</span>
         </h1>
       </html>
     </panel>
