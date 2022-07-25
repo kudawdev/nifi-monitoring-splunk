@@ -258,7 +258,7 @@
             "calculations": [],
             "constraints": [
                 {
-                    "search": "index=* sourcetype=\"nifi:api:flow_status\"",
+                    "search": "`index_nifi` sourcetype=\"nifi:api:flow_status\"",
                     "owner": "Flow_Status"
                 }
             ],
@@ -646,7 +646,7 @@
             "calculations": [],
             "constraints": [
                 {
-                    "search": "index=* sourcetype=\"nifi:reporting:task\"",
+                    "search": "`index_nifi` sourcetype=\"nifi:reporting:task\"",
                     "owner": "Reporting_Task"
                 }
             ],
@@ -806,7 +806,7 @@
             "calculations": [],
             "constraints": [
                 {
-                    "search": "index=* sourcetype=\"nifi:reporting:bulletin\"",
+                    "search": "`index_nifi` sourcetype=\"nifi:reporting:bulletin\"",
                     "owner": "Reporting_Bulletin"
                 }
             ],
@@ -1153,7 +1153,7 @@
             ],
             "constraints": [
                 {
-                    "search": "index=* sourcetype=\"nifi:api:system_diagnostics\"",
+                    "search": "`index_nifi` sourcetype=\"nifi:api:system_diagnostics\"",
                     "owner": "System_Diagnostics"
                 }
             ],
@@ -1241,7 +1241,7 @@
             "calculations": [],
             "constraints": [
                 {
-                    "search": "index=* sourcetype=\"nifi:log:*\"",
+                    "search": "`index_nifi` sourcetype=\"nifi:log:*\"",
                     "owner": "Logs"
                 }
             ],
