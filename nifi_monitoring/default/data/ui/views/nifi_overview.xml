@@ -125,7 +125,7 @@
         <option name="trellis.size">medium</option>
         <option name="link.visible">0</option>
         <drilldown>
-          <link target="_blank">/app/nifi_monitoring/bulletin_monitor_panel?form.host=$click.name2$</link>
+          <link target="_blank">/app/nifi_monitoring/nifi_bulletin?form.host=$click.name2$</link>
         </drilldown>
       </chart>
     </panel>

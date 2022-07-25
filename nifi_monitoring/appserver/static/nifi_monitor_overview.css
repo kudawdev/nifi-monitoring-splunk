@@ -12,15 +12,15 @@
 }
 
 
-table_nifi_status thead tr th:nth-child(n+4) {
+#table_nifi_status thead tr th:nth-child(n+4) {
     font-size: 0 !important;
 }
 
-table_nifi_status tr td {
+#table_nifi_status tr td {
     background: white !important;
 }
 
-table_nifi_status .table th, .table td{
+#table_nifi_status .table th, .table td{
     text-align: left !important;
 }
 

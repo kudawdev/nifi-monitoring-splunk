@@ -9,7 +9,7 @@ This applications solves this problem centralizing all the information regarding
 
 ## Requirements
 
-- Splunk version: 7.3 or higher
+- Splunk version: 8.0 or higher
 - NIFI TA Monitoring
 
 And the following complements:
