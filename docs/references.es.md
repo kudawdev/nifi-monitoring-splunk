@@ -28,6 +28,6 @@ Dispone de la información información de los recursos de sistema en uso y disp
 Corresponde a reportes internos de metricas de estado y funcionamiento del aplicativo a un nivel más detallado respecto al flow status.
 
 
-- nifi:reporting:bulleting
+- nifi:reporting:bulletin
 
 Entrega informacion sobre los boletines internos del aplicativo donde se especifican errores ocurridos duante su funcionamiento.
