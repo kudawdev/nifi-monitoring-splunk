@@ -88,12 +88,15 @@ class NiFiScript(Script):
 
 
     def get_token(self, ew, base_url, user, password):
-        headers = {'Content-Type': 'application/x-www-form-urlencoded', "charset": "UTF-8"}
-        data = {'username': user, 'password': password}
+        req_args = {}
+        req_args["headers"] = {'Content-Type': 'application/x-www-form-urlencoded', "charset": "UTF-8"}
+        req_args["data"] = {'username': user, 'password': password}
+        req_args["verify"] = False
+
         url = self.urljoin(base_url, "/access/token")
         EventWriter.log(ew, EventWriter.INFO, 'get_token - url: {}'.format(url))
         try:
-            response = requests.post(url, headers=headers, data=data, timeout=30, verify=False)
+            response = requests.post(url, **req_args)
             if response.status_code >= 400:
                 EventWriter.log(ew, EventWriter.ERROR, 'get_token - Error HTTP token request - status_code: {}, reason: {}, url: {}'.format(response.status_code, response.reason, url))
             else:
@@ -104,15 +107,19 @@ class NiFiScript(Script):
 
 
     def get_request(self, ew, base_url, path, auth_type, username, input_name, session_key):
-        
         password = self.get_password(session_key, username)
 
         EventWriter.log(ew, EventWriter.INFO, 'Resquest base_url:{} path:{}, auth_type:{}, input_name:{}'.format(base_url, path, auth_type, input_name))
         if auth_type == "none":
-            headers = {'Content-Type': 'application/json', 'Accept':'application/json'}
             url = self.urljoin(base_url, path)
+            
+            req_args = {}
+            req_args["headers"] = {'Content-Type': 'application/json', 'Accept':'application/json'}
+            req_args["timeout"] = 30
+            req_args["verify"] = False
+
             try:
-                response = requests.get(url, headers=headers, timeout=30, verify=False)
+                response = requests.get(url, **req_args)
                 if response.status_code >= 400:
                     EventWriter.log(ew, EventWriter.ERROR, 'Error HTTP request - status_code: {}, reason: {}, url: {}'.format(response.status_code, response.reason, url))
                 else:
@@ -122,17 +129,23 @@ class NiFiScript(Script):
                 EventWriter.log(ew, EventWriter.ERROR, 'Error request - {}'.format(error))
         else:
             token = os.environ.get(input_name, "unknown")
-            EventWriter.log(ew, EventWriter.INFO, 'obteniendo token base_url:{} path:{}, auth_type:{}, username:{}, password:{}, input_name:{}, token:{}'.format(base_url, path, auth_type, username, password, input_name, token))
-            headers = {'Content-Type': 'application/json', 'Accept':'application/json', 'Authorization': 'Bearer {}'.format(token)}
+            EventWriter.log(ew, EventWriter.INFO, 'Get token base_url:{} path:{}, auth_type:{}, username:{}, password:{}, input_name:{}, token:{}'.format(base_url, path, auth_type, username, password, input_name, token))
+            
             url = self.urljoin(base_url, path)
+
+            req_args = {}
+            req_args["headers"] = {'Content-Type': 'application/json', 'Accept':'application/json', 'Authorization': 'Bearer {}'.format(token)}
+            req_args["timeout"] = 30
+            req_args["verify"] = False
+
             try:
-                response = requests.get(url, headers=headers, timeout=30, verify=False)
+                response = requests.get(url, **req_args)
                 if response.status_code == 401:
                     EventWriter.log(ew, EventWriter.ERROR, 'Error HTTP request - status_code: {}, reason: {}, url: {}'.format(response.status_code, response.reason, url))
                     token = self.get_token(ew, base_url, username, password)
                     dotenv.set_key(dotenv_file, input_name, token)
                     headers = {'Content-Type': 'application/json', 'Accept':'application/json', 'Authorization': 'Bearer {}'.format(token)}
-                    response = requests.get(url, headers=headers, timeout=30, verify=False)
+                    response = requests.get(url, **req_args)
                     if response.status_code >= 400:
                         EventWriter.log(ew, EventWriter.ERROR, 'Error HTTP request - status_code: {}, reason: {}, url: {}'.format(response.status_code, response.reason, url))
                     else:
