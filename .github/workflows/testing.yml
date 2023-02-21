@@ -1,4 +1,4 @@
-name: Appinspect, Test
+name: Appinspect and Unit Test (Testing)
 
 on:
   push:

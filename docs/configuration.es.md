@@ -100,9 +100,22 @@ Configura los reporting task con la siguiente información:
 
 - SiteToSiteBulletinReportingTask: Sistema de reporte interno que genera eventos a medida que se van generando errores del tipo bulletin y capturados en un flujo especifico. La configuración debe ser la siguiente:
 
+    * Destination URL: http://${hostname(true)}:8080/nifi
+    * Input Port Name: bulletin_report
+    * Instance URL: http://${hostname(true)}:8080/nifi
+    * Transport Protocol: HTTP
+    * Record Writer: JsonRecordSetWriter
+
 ![image](/nifi-monitoring-splunk/assets/images/nifi/bulletin_reporting_task.png)
 
 - SiteToSiteMetricsReportingTask: Sistema de reporte interno que genera eventos a medida que se van generando métricas del mismo ambiente y capturados en un flujo especifico. La configuración debe ser la siguiente:
+
+    * Destination URL: http://${hostname(true)}:8080/nifi
+    * Input Port Name: reporting_task
+    * Instance URL: http://${hostname(true)}:8080/nifi
+    * Transport Protocol: HTTP
+    * Record Writer: JsonRecordSetWriter
+    * Output Format: Record Formats
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/metrics_reporting_task.png)
 

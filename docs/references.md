@@ -27,6 +27,6 @@ It has the information about the system resources in use and available that the 
 
 Corresponds to internal reports of status metrics and operation of the application at a more detailed level with respect to flow status.
 
-- nifi:reporting:bulleting
+- nifi:reporting:bulletin
 
 Provides information on the internal bulletins of the application where errors occurred during its operation are specified.
