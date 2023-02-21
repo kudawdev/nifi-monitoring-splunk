@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     container: kudaw/appinspect:latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Check app versions are equal
         run: |
           lista=`echo $(for d in $(ls -d allkun*);do cat $d/default/app.conf|grep ^version|awk '{print $3}';done) | tr ' ' '\n' | sort | uniq | tr '\n' ' ' | sed -e 's/[[:space:]]*$//'`
@@ -34,7 +34,7 @@ jobs:
       APP_VERSION: ${{ steps.get_app_id.outputs.APP_VERSION }}
       matrix: ${{ matrix.applications }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Get APP version
         id: get_app_id
         run: echo "::set-output name=APP_VERSION::$(cat ${{ matrix.applications }}/default/app.conf | grep ^version | awk '{print $3}')"
@@ -64,5 +64,5 @@ jobs:
     runs-on: ubuntu-latest
     container: kudaw/appinspect:latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: echo "TODO"
