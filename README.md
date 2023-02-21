@@ -9,7 +9,7 @@ This applications solves this problem centralizing all the information regarding
 
 ## Requirements
 
-- Splunk version: 8.0 or higher
+- Splunk version: 8.2 or higher
 - NIFI TA Monitoring
 
 And the following complements:
@@ -43,10 +43,27 @@ Contains all files to build the documentations.
 ## Workflows
 
 ### dev.yml
-Start: Automatic (Push branch developer) Detail: Executes related validation tasks via AppInspect and unit tests of the Splunk application.
+Start: Manual. Detail: Executes related validation tasks via AppInspect and unit tests of the Splunk application.
+
+### testing.yml
+Start: Automatic (Push branch testing) Detail: Executes tasks related to validation via AppInspect, unit tests.
 
 ### main.yml
-Start: Automatic (Push branch testing) Detail: Executes tasks related to validation via AppInspect, unit tests and generates pre-release packaging for distribution.
+Start: Automatic (Push branch main) Detail: Executes tasks related to validation via AppInspect, unit tests and generates pre-release packaging for distribution.
+
+### docs.yml
+Start: Manual. Detail: Compile docs in mkdocs and publish it.
+
+
+## Splunkbase Apps
+
+- [Nifi Monitoring for Splunk](https://splunkbase.splunk.com/app/6125)
+
+- [Nifi Monitoring TA](https://splunkbase.splunk.com/app/6124)
+
+
+## Full documentation
+- [NIFI Monitoring for Splunk](https://kudawdev.github.io/nifi-monitoring-splunk/)
 
 ## Collaborate
 NIFI Monitoring App is hosted in a Github repository where collaboration is always welcome.
