@@ -13,9 +13,11 @@ docker network create --driver overlay nifi_network
 
 * Run docker compose test environment
 ```
-docker-compose -f nifi119-splunk90-standalone.yml up
+docker compose -f nifi119-splunk90-standalone.yml up
 ```
 
-* Configure Nifi folloowing the doc instruction
+* In Splunk disable SSL in HEC global configuration (Workaround).
 
-* In Splunk disable SSL in HEC global configuration (Workaround)
+* Configure Nifi following the doc instructions.
+
+

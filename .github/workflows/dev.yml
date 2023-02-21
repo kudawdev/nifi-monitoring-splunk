@@ -1,4 +1,4 @@
-name: Appinspect and Test
+name: Appinspect and Unit Test (Dev)
 
 on: workflow_dispatch
       
