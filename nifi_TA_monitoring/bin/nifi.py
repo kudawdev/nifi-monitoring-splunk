@@ -215,6 +215,7 @@ class NiFiScript(Script):
             {"sourcetype":"nifi:api:flow_status", "path":"/flow/status"},
             {"sourcetype":"nifi:api:system_diagnostics", "path":"/system-diagnostics"},
             {"sourcetype":"nifi:api:site_to_site", "path":"/site-to-site"},
+            {"sourcetype":"nifi:api:process_groups_status", "path":"/flow/process-groups/root/status?recursive=true"},
         ]
 
         input_name, input_item = inputs.inputs.popitem()

@@ -52,7 +52,7 @@ jobs:
       - name: Check status appinspect
         run: if [ $(jq '.summary | select(.error>0 or .failure>0 or .warning>${{ env.MAX_WARNING }})' appinspect_result.json | wc -l) -gt 0 ]; then echo "Problems detected";jq '.summary' appinspect_result.json;exit -1; else jq '.summary' appinspect_result.json;fi
       - name: Upload Package
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         #if: ${{ success() }}
         with:
           name: ${{ matrix.applications}}
