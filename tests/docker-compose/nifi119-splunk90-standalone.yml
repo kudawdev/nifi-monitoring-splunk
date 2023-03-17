@@ -62,5 +62,6 @@ volumes:
 
 networks:
   nifi_network:
-    external: true
+    driver: overlay
+    external: false
     name: nifi_network
