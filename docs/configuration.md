@@ -8,6 +8,37 @@ There are two ways of configuration that allow the sending of events to Splunk a
 
 - Data Input NIFI: Splunk will be in charge of making requests to the NIFI instances to retrieve the information from the Monitoring API by enabling and using the Data Input NIFI. This configuration should be used when NIFI has basic authentication.
 
+## Load NiFi flow
+The nifi flow in charge of processing and sending the data to splunk can be configured in two ways: as a flow definition or as a template.
+
+## NiFi Flow Definition
+
+The Flow Definition file is the process group structure for NiFi monitoring in Splunk and JSON format which can be directly imported.
+Download and use this definition for the configuration of NiFi Monitoring through this link [NifiMonitoring](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/template/NifiMonitoring.json)
+
+## Import flow definition
+
+You can load the flow definition by dragging a process group box onto the NiFi canvas
+
+![image](/nifi-monitoring-splunk/assets/images/nifi/1_add_process_group.png)
+
+In the popup window, select the import icon, browse your computer, and select the flow definition to import.
+
+![image](/nifi-monitoring-splunk/assets/images/nifi/2_import_flow_definition.png)
+
+Once imported, click "add" to finish importing the flow definition.
+
+![image](/nifi-monitoring-splunk/assets/images/nifi/3_load_flow_definition.png)
+
+Finally, you will see the processor group and inside it contains the following structure:
+
+-   Monitoring API
+-   Monitoring Logs
+-   Monitoring ReportingTask
+-   SendHEC
+
+![image](/nifi-monitoring-splunk/assets/images/nifi/4_flow_definition_loaded.png)
+
 ## Template
 
 Download and use the template provided for configure NiFi Monitoring through the following link [NifiMonitoringTemplate](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/template/NifiMonitoringTemplate.xml). You can also found this file inside the **template** folder of the project.

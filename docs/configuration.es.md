@@ -8,6 +8,9 @@ Hay dos vías de configuración que permiten el envío de eventos a Splunk y su 
 
 - Data Input NIFI: Splunk se encargará de realizar peticiones a las instancias de NIFI para rescatar la información del Monitoring API por medio de la habilitación y uso del Data Input NIFI. Esta configuración debe ser utilizada cuando NIFI cuente con autenticación basica.
 
+## Carga del flujo NiFi
+El flujo nifi encargado de procesar y enviar los datos al splunk puede ser configurado de dos maneras: como un flow definition o como template.
+
 ## NiFi Flow Definition
 
 El archivo Flow Definition es la estructura del grupo de proceso para el monitoreo de NiFi en Splunk y formato JSON el cual puede ser directamente importado.
@@ -15,11 +18,25 @@ Descarga y utiliza esta definición para la configuración del NiFi Monitoring a
 
 ## Carga del flow definition
 
-Podrás cargar este flow definition arrastrando una caja de process group al lienzo de NiFi
+Podrás cargar el flow definition arrastrando una caja de process group al lienzo de NiFi
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/1_add_process_group.png)
+
+En la ventana emergente, selecciona el ícono de importación, busca en tu equipo y selecciona el flow definition a importar.
+
 ![image](/nifi-monitoring-splunk/assets/images/nifi/2_import_flow_definition.png)
+
+Una vez importado, haz clic en "add" para finalizar la importación del flow definition.
+
 ![image](/nifi-monitoring-splunk/assets/images/nifi/3_load_flow_definition.png)
+
+Finalmente, verás el grupo de procesadores y en su interior contiene la siguiente estructura:
+
+-   Monitoring API
+-   Monitoring Logs
+-   Monitoring ReportingTask
+-   SendHEC
+
 ![image](/nifi-monitoring-splunk/assets/images/nifi/4_flow_definition_loaded.png)
 
 ## Template
@@ -28,7 +45,7 @@ Descarga y utiliza el template proporciado para la configuración de NiFi Monito
 
 ## Carga de template
 
-Podrá cargar el template desde la caja lateral Operate o haciendo clic derecho sobre una zona vacía y seleccionar la opción Upload template.
+Podrás cargar el template desde la caja lateral Operate o haciendo clic derecho sobre una zona vacía y seleccionar la opción Upload template.
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/add_template.png)
 
