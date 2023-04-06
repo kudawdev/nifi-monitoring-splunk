@@ -22,7 +22,8 @@ class NiFiScript(Script):
             {"name":"endpoint_flow_status", "sourcetype":"nifi:api:flow_status", "path":"/flow/status"},
             {"name":"endpoint_system_diagnostics", "sourcetype":"nifi:api:system_diagnostics", "path":"/system-diagnostics"},
             {"name":"endpoint_site_to_site", "sourcetype":"nifi:api:site_to_site", "path":"/site-to-site"},
-            {"name":"endpoint_processor_history", "sourcetype":"nifi:api:processgroups_status_history", "path":"/flow/process-groups/{id}/status/history"},
+            {"name":"endpoint_processors_history", "sourcetype":"nifi:api:processors_history", "path":"/flow/processors/{id}/status/history"},
+            {"name":"endpoint_process_groups_history", "sourcetype":"nifi:api:process_groups_history", "path":"/flow/process-groups/{id}/status/history"}
         ]
     pid = 'Nifi Log pid="{}"'.format(uuid.uuid4())
 
@@ -82,15 +83,25 @@ class NiFiScript(Script):
         )
         scheme.add_argument(endpoint_site_to_site_argument)
 
-        endpoint_processor_history_argument = Argument(
-            name="endpoint_processor_history",
+        endpoint_processors_history_argument = Argument(
+            name="endpoint_processors_history",
             description="List of Processors ID",
             title="List of Processors ID",
             data_type=Argument.data_type_string,
             required_on_edit=False,
             required_on_create=False
         )
-        scheme.add_argument(endpoint_processor_history_argument)
+        scheme.add_argument(endpoint_processors_history_argument)
+
+        endpoint_process_groups_history_argument = Argument(
+            name="endpoint_process_groups_history",
+            description="List of Process Groups ID",
+            title="List of Process Groups ID",
+            data_type=Argument.data_type_string,
+            required_on_edit=False,
+            required_on_create=False
+        )
+        scheme.add_argument(endpoint_process_groups_history_argument)
         
         auth_type_argument = Argument(
             name="auth_type",
@@ -144,7 +155,8 @@ class NiFiScript(Script):
         auth_type  = input_item.get("auth_type")
         username   = input_item.get("username", None)
         password   = input_item.get("password", None)
-        processors = input_item.get("endpoint_processor_history", None)
+        processors = input_item.get("endpoint_processors_history", None)
+        process_groups = input_item.get("endpoint_process_groups_history", None)
 
         kind, iname = input_name.split("://")
 
@@ -167,12 +179,12 @@ class NiFiScript(Script):
             sourcetype = ep.get("sourcetype")
             EventWriter.log(ew, EventWriter.INFO, '{} Request endpoint: {}'.format(self.pid, ep))
             
-            if (ep.get('name') == 'endpoint_processor_history') and (processors):
+            if (ep.get('name') == 'endpoint_processors_history') and (processors):
                 plist = list(map(lambda v: v.replace('\n',''), filter(lambda u: u != '', processors.replace('\n', ',').split(','))))
                 EventWriter.log(ew, EventWriter.INFO, '{} list of plist: {}'.format(self.pid, plist))
                 for p in plist:
                     new_path = path.format(id=p.strip())
-                    EventWriter.log(ew, EventWriter.INFO, '{} endpoint_processor_history: {}'.format(self.pid, p))
+                    EventWriter.log(ew, EventWriter.INFO, '{} endpoint_processors_history: {}'.format(self.pid, p))
                     try:
                         response = self.__get_request(ew, base_url, new_path, auth_type, username, iname, session_key)
                         EventWriter.log(ew, EventWriter.DEBUG, '{} Response: {}'.format(self.pid, response))
@@ -198,8 +210,39 @@ class NiFiScript(Script):
                     ew.write_event(event)
                 except Exception as e:
                     EventWriter.log(ew, EventWriter.ERROR, '{} There was an error when request: {}'.format(self.pid, e))
-        
-            
+
+
+            if (ep.get('name') == 'endpoint_process_groups_history') and (process_groups):
+                plist = list(map(lambda v: v.replace('\n',''), filter(lambda u: u != '', process_groups.replace('\n', ',').split(','))))
+                EventWriter.log(ew, EventWriter.INFO, '{} list of plist: {}'.format(self.pid, plist))
+                for p in plist:
+                    new_path = path.format(id=p.strip())
+                    EventWriter.log(ew, EventWriter.INFO, '{} endpoint_process_groups_history: {}'.format(self.pid, p))
+                    try:
+                        response = self.__get_request(ew, base_url, new_path, auth_type, username, iname, session_key)
+                        EventWriter.log(ew, EventWriter.DEBUG, '{} Response: {}'.format(self.pid, response))
+                        event = Event(
+                            sourcetype=sourcetype,
+                            stanza=input_name,
+                            data=response,
+                            host=input_item.get("host")
+                        )
+                        ew.write_event(event)
+                    except Exception as e:
+                        EventWriter.log(ew, EventWriter.ERROR, '{} There was an error when request: {}'.format(self.pid, e))
+            elif input_item.get(ep.get('name')) == '1':                
+                try:
+                    response = self.__get_request(ew, base_url, path, auth_type, username, iname, session_key)
+                    EventWriter.log(ew, EventWriter.DEBUG, '{} Response: {}'.format(self.pid, response))
+                    event = Event(
+                        sourcetype=sourcetype,
+                        stanza=input_name,
+                        data=response,
+                        host=input_item.get("host")
+                    )
+                    ew.write_event(event)
+                except Exception as e:
+                    EventWriter.log(ew, EventWriter.ERROR, '{} There was an error when request: {}'.format(self.pid, e))
 
     def __urljoin(self, *args):
         trailing_slash = '/' if args[-1].endswith('/') else ''
@@ -316,7 +359,8 @@ class NiFiScript(Script):
                                                         'endpoint_system_diagnostics',
                                                         'endpoint_flow_status',
                                                         'endpoint_site_to_site',
-                                                        'endpoint_processor_history'
+                                                        'endpoint_processors_history',
+                                                        'endpoint_process_groups_history'
                                                         ] if k in input_item)
             item.update(**kwargs).refresh()
            

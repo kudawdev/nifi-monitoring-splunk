@@ -45,14 +45,29 @@
                <view name="edit" />
                <view name="create" />
             </element>
-            <element name="endpoint_processor_history" type="expando_textarea" label="List Processors ID">
+         </elements>
+      </element>
+
+      <element name="status_history" type="fieldset">
+         <key name="legend">Nifi Status History</key>
+         <view name="list" />
+         <view name="edit" />
+         <view name="create" /> 
+         <elements>
+            <element name="endpoint_processors_history" type="expando_textarea" label="List Processors ID">
                <view name="edit" />
                <view name="create" />
                <key name="exampleText">List of processors id for monitoring, comma or new line separated.</key>
             </element>
-
+            <element name="endpoint_process_groups_history" type="expando_textarea" label="List Process Groups ID">
+               <view name="edit" />
+               <view name="create" />
+               <key name="exampleText">List of process groups id for monitoring, comma or new line separated.</key>
+            </element>
          </elements>
       </element>
+
+     
 
       <element name="auth" type="fieldset">
          <key name="legend">Auth</key>
@@ -117,21 +132,8 @@
          </elements>
 
       </element>
-      
-      <element name="spl-ctrl_EnableAdvanced" type="checkbox" label="More settings" class="spl-mgr-advanced-switch">
-         <view name="edit" />
-         <view name="create" />
-         <onChange>
-            <key name="_action">showonly</key>
-            <key name="0">NONE</key>
-            <key name="1">ALL</key>
-            <group_set>
-               <group name="advanced" />
-            </group_set>
-         </onChange>
-      </element>
-      
-      <element name="advanced" type="fieldset" class="spl-mgr-advanced-options">
+
+      <element name="advanced_config" type="fieldset">
          <view name="edit" />
          <view name="create" />
          <elements>
@@ -182,6 +184,8 @@
             </element>
          </elements>
       </element>
+      
+      
       <element name="eai:acl.app" label="App">
          <view name="list" />
          <key name="processValueList">entity['eai:acl']['app'] or ""</key>

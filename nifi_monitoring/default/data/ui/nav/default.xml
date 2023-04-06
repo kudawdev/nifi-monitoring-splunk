@@ -5,7 +5,7 @@
   	<view name="nifi_instances_detail" />
     <view name="nifi_bulletin" />
     <view name="nifi_logs" />
-    <view name="nifi_processsgroups_status_history" />
+    <view name="status_history" />
   </collection>
   <collection label="Configuration">
     	<a href="lookup_edit?namespace=nifi_monitoring&amp;lookup=instance&amp;type=kv&amp;owner=nobody">NiFi Instances</a>

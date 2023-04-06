@@ -13,7 +13,10 @@ endpoint_flow_status = <value>
 endpoint_site_to_site = <value>
 *Enable Enpoint for site to site
 
-endpoint_processor_history = <value>
+endpoint_processors_history = <value>
+*Enable Enpoint for processor history
+
+endpoint_process_groups_history = <value>
 *Enable Enpoint for processor history
 
 auth_type = <value>

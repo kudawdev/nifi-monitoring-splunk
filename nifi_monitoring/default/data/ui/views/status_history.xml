@@ -1,9 +1,9 @@
 <form hideEdit="true" version="1.1">
-  <label>Process Groups Status History</label>
+  <label>Status History</label>
   <search id="baseSearch1">
     <query>
-| tstats count from datamodel=NIFI.ProcessGroups_Status by ProcessGroups_Status.statusHistory.componentDetails.Name, ProcessGroups_Status.statusHistory.componentDetails.Id, ProcessGroups_Status.cluster, host
-| rename "ProcessGroups_Status.statusHistory.componentDetails.*" as *, "ProcessGroups_Status.cluster" as cluster
+| tstats count from datamodel=NIFI.Status_History by Status_History.statusHistory.componentDetails.Name, Status_History.statusHistory.componentDetails.Id, Status_History.cluster, host, sourcetype
+| rename "Status_History.statusHistory.componentDetails.*" as *, "Status_History.cluster" as cluster
 | dedup Id
 | fields - count
     </query>
@@ -22,28 +22,35 @@
       </search>
       <choice value="*">All</choice>
     </input>
-    <input type="multiselect" token="host" searchWhenChanged="false">
-      <label>Nifi Instance</label>
+    <input type="multiselect" token="host">
+      <label>Host</label>
+      <choice value="*">All</choice>
+      <prefix>host="</prefix>
+      <suffix>"</suffix>
       <fieldForLabel>host</fieldForLabel>
       <fieldForValue>host</fieldForValue>
       <search base="baseSearch1">
-        <query>
-          | search cluster=$cluster$
+        <query>| search cluster=$cluster$
 | dedup host 
-| table host
-        </query>
+| table host</query>
+        <earliest>-1y@y</earliest>
+        <latest>@y</latest>
       </search>
-      <choice value="*">All</choice>
-      <valuePrefix>host="</valuePrefix>
-      <valueSuffix>"</valueSuffix>
-      <delimiter> OR </delimiter>
+    </input>
+    <input type="dropdown" token="type" searchWhenChanged="false">
+      <label>Type</label>
+      <search base="baseSearch1">
+        <query/>
+      </search>
+      <choice value="nifi:api:processors_history">Processors</choice>
+      <choice value="nifi:api:process_groups_history">Process Groups</choice>
     </input>
     <input type="multiselect" token="pg">
-      <label>Process Group</label>
+      <label>Component</label>
       <fieldForLabel>Name</fieldForLabel>
       <fieldForValue>Id</fieldForValue>
       <search base="baseSearch1">
-        <query>| search cluster=$cluster$ ($host$)
+        <query>| search cluster=$cluster$ $host$ sourcetype=$type$
 | table Name, Id</query>
       </search>
       <choice value="*">All</choice>
@@ -56,7 +63,7 @@
       <fieldForLabel>label</fieldForLabel>
       <fieldForValue>field</fieldForValue>
       <search>
-        <query>`index_nifi` sourcetype="nifi:api:processgroups_status_history" | dedup statusHistory.componentDetails.Id
+        <query>`index_nifi` sourcetype="$type$" | dedup statusHistory.componentDetails.Id
 | spath path=statusHistory.fieldDescriptors{} output=fd
 | mvexpand fd
 | spath input=fd
@@ -98,7 +105,7 @@
       <chart>
         <title>Metric over time by Process Group</title>
         <search>
-          <query>`index_nifi` sourcetype="nifi:api:processgroups_status_history" ($pg$) | dedup statusHistory.componentDetails.Id
+          <query>`index_nifi` $host$ sourcetype="$type$" ($pg$) | dedup statusHistory.componentDetails.Id
 | spath path=statusHistory.aggregateSnapshots{}.timestamp output=timestamp
 | spath path=statusHistory.aggregateSnapshots{} output=as
 | mvexpand as
