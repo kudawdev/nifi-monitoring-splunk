@@ -5,13 +5,13 @@ En esta etapa se detallarán los pasos necesarios para el correcto funcionamient
 
 Hay dos vías de configuración que permiten el envío de eventos a Splunk y su elección dependerá de los mecanismos de autenticación que NIFI tenga habilitado.
 
-- A. Envío directo: Esta configuración establecerá NIFI como la vía principal para el envío de datos a Splunk por medio de un conjunto de procesadores y debe ser utilizada cuando NIFI no tenga activado métodos de autenticación.
+- Envío directo: Esta configuración establecerá NIFI como la vía principal para el envío de datos a Splunk por medio de un conjunto de procesadores y debe ser utilizada cuando NIFI no tenga activado métodos de autenticación.
 
-- B. Splunk Data Input NiFi: Splunk se encargará de realizar peticiones a las instancias de NIFI para rescatar la información del Monitoring API por medio de la habilitación y uso del Data Input NIFI. Esta configuración debe ser utilizada cuando NIFI cuente con autenticación basica.
+- Splunk Data Input NiFi: Splunk se encargará de realizar peticiones a las instancias de NIFI para rescatar la información del Monitoring API por medio de la habilitación y uso del Data Input NIFI. Esta configuración debe ser utilizada cuando NIFI cuente con autenticación basica.
 
-[NOTA] Configura sólo una metodología (A o B), ambas en funcionamiento generarán información duplicada.
+[NOTA] Configura sólo una metodología, ambas en funcionamiento generarán información duplicada.
 
-## A. Envío Directo
+## Envío Directo
 
 ### 1. Configuración de HTTP Event Collector (HEC) en Splunk
 
@@ -156,7 +156,7 @@ Luego de haber completado todo el proceso de configuración, inicie la ejecució
 
 Sí toda la configuración se ejecutó de manera correcta, se iniciará el envío de la información a Splunk. Para que los datos enviados a splunk estén accesibles desde la aplicación deberá haber configurado el [Lookup de Instancias](/nifi-monitoring-splunk/es/installation/#configuracion-transversal)
 
-## B. Configuración del Data Input Nifi en Splunk
+## Configuración del Data Input Nifi en Splunk
 
 *Esta configuración debe ser aplicada cuando las instancias de NIFI cuenten con almenos autenticación básica*
 
@@ -178,13 +178,13 @@ Se desplegará una ventana como la siguiente:
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_3.jpeg)
 
-**Te recomendamos configurar de manera independiente cada uno de los recursos de monitoreo para eventuales modificaciones en la configuración.**
+**Te recomendamos configurar de manera independiente cada uno de los recursos de monitoreo para eventuales modificaciones en la configuración y debido a los tiempos de ejecución para obtención de datos.**
 
 Los recursos son:
 
-- NIFI Endpoints
-- NIFI Status History para Procesadores
-- NIFI Status History para Grupos de Procesos
+- a. NIFI Endpoints
+- b. NIFI Status History para Procesadores
+- c. NIFI Status History para Grupos de Procesos
 
 ### 1. Configuración básica de los recursos
 Para cada una de los recursos debes configurar todos los campos requeridos:
@@ -198,17 +198,17 @@ Para cada una de los recursos debes configurar todos los campos requeridos:
 - Host: Nombre del host de nifi, el cual debe corresponder a lo definido en el Lookup de Configuraciones.
 - Index: Index de destinto para esta fuente de datos. Se recomienda un index dedicado, por ejemplo: nifi. Si no existe, deberá crearlo previamente.
 
-### 2. NIFI Endpoints
+### a. NIFI Endpoints
 En el apartado NIFI Endpoints, selecciona los elementos a monitorear de la lista existente.
 
 - System Diagnostics
 - Flow Status
 - Site to Site
 
-### 3. NIFI Status History para Procesadores
+### b. NIFI Status History para Procesadores
 En el apartado NIFI Status History > List Processors ID especifica los ID de procesadores que serán monitorieados y separados por coma en caso de ser varios.
 
-### 4. NIFI Status History para Grupos de Procesos
+### c. NIFI Status History para Grupos de Procesos
 En el apartado NIFI Status History > Process Groups ID especifica los ID de los grupos de procesos que serán monitorieados y separados por coma en caso de ser varios.
 
 Una vez completada la configuración, haz clic en siguiente y la creación finalizará correctamente
@@ -254,5 +254,6 @@ Si el lookup está correctamente configurado la información podrá ser accesibl
 
  Para que esta búsqueda retorne resultados, los procesos de Nifi deben estar ejecutándose correctamente.
  Según la metodología de configuración deberás:
+
  1. Envío directo: Debes iniciar los procesos de NIFI [¿Cómo habilitar envío de datos?](#habilitacion-del-envio-de-datos)
- 2. Splunk Data Input NiFi: Los data inputs configurados deben estar habilitados. [¿Cómo habilitar los data input?](La URL)
+ 2. Splunk Data Input NiFi: Los data inputs configurados deben estar habilitados.
