@@ -174,6 +174,10 @@ En los local data input, identifica NiFi y luego clic en + Add new
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_2.png)
 
+Se desplegará una ventana como la siguiente:
+
+![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_3.pjeg)
+
 **Te recomendamos configurar de manera independiente cada uno de los recursos de monitoreo para eventuales modificaciones en la configuración.**
 
 Los recursos son:
@@ -182,9 +186,8 @@ Los recursos son:
 - NIFI Status History para Procesadores
 - NIFI Status History para Grupos de Procesos
 
-## Nuevo nifi data input
-
-Para cada una de los recursos debes configurar:
+### 1. Configuración básica de los recursos
+Para cada una de los recursos debes configurar todos los campos requeridos:
 
 - NIFI Instance name: Asigna un nombre a la instancia de NIFI
 - NIFI API URL: Dirección del API Rest de NIFI. (Ej. http://<direccion:puerto\>/nifi-api/)
@@ -195,26 +198,25 @@ Para cada una de los recursos debes configurar:
 - Host: Nombre del host de nifi, el cual debe corresponder a lo definido en el Lookup de Configuraciones.
 - Index: Index de destinto para esta fuente de datos. Se recomienda un index dedicado, por ejemplo: nifi. Si no existe, deberá crearlo previamente.
 
-## Configuración de los recursos
-### NIFI Endpoints
-Selecciona los elementos a monitorear de la lista existente.
-![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_nifi_endpoints.png)
+### 2. NIFI Endpoints
+En el apartado NIFI Endpoints, selecciona los elementos a monitorear de la lista existente.
 
-### NIFI Status History - Procesadores y Grupos de Procesos
-Configura el listado de procesadores o el listado de grupos de procesos especificando los ID respectivos y separando por comas o nuevas lineas en caso de ser múltiples IDs.
+- System Diagnostics
+- Flow Status
+- Site to Site
 
-Para conocer el ID de un procesador o grupo de proceso haz clic derecho sobre alguno de éstos elementos respectivamente y selecciona *View Status History*. Se desplegará la siguiente ventana, la cual incluye el ID del grupo de proceso o procesador, según lo que se haya seleccionado.
+### 3. NIFI Status History para Procesadores
+En el apartado NIFI Status History > List Processors ID especifica los ID de procesadores que serán monitorieados y separados por coma en caso de ser varios.
 
-![image](/nifi-monitoring-splunk/assets/images/nifi/id_status_history.png)
+### 4. NIFI Status History para Grupos de Procesos
+En el apartado NIFI Status History > Process Groups ID especifica los ID de los grupos de procesos que serán monitorieados y separados por coma en caso de ser varios.
 
-Si obtienes el mensaje de Insufficient history, prueba iniciando el grupo de procesos o procesador afectado, espera que se procesen datos y vuelve a intentar.
-
-Una vez establecidos los campos necesarios de la configuración, haz clic en siguiente y la creación finalizará correctamente
+Una vez completada la configuración, haz clic en siguiente y la creación finalizará correctamente
 ![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_success.png)
 
-Repite el proceso de configuración por cada recurso que necesites monitorear 
+Repite el proceso de configuración por cada recurso que necesites monitorear.
 
-Ejemplo de los 3 recursos creados
+Ejemplo de los 3 recursos creados de manera independiente
 ![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_4.png)
 
 ## Configuración transversal
