@@ -1,5 +1,6 @@
 # Configuración de NiFi Monitoring Splunk
 
+## Configuración
 En esta etapa se detallarán los pasos necesarios para el correcto funcionamiento del aplicativo NiFi Monitoring Splunk
 
 Hay dos vías de configuración que permiten el envío de eventos a Splunk y su elección dependerá de los mecanismos de autenticación que NIFI tenga habilitado.
@@ -74,8 +75,8 @@ Se desplegará una ventana emergente donde tendrás que configurar los siguiente
 
 - nifi_api_url: Corresponde a la ruta del API Rest de NIFI, (Ej: http://127.0.0.1:8080/nifi-api)
 - nifi_path: Corresponde a la ruta de instalación del servidor nifi (en caso de cluster debe estar instalado en la misma ruta en cada nodo). (Ej: /home/nifi/nifi-1.10.0/)
-- process_groups_list: Listado de **IDs** de los grupos de procesos que se necesitan monitorear.
-- processors_list: Listado de **IDs** de los procesadores que se necesitan monitorear.
+- process_groups_list: Listado de **ID de grupos de procesos** que se necesitan monitorear, separados por coma.
+- processors_list: Listado de **ID de procesadores** que se necesitan monitorear, separados por coma.
 - splunk_hec: Es la dirección del servidor splunk donde se configuró el data input HTTP Event Collector. (Ej: http://splunk1:8088/)
 - splunk_hec_token: Token obtenido al configurar [HTTP Event Collector](/nifi-monitoring-splunk/es/installation/#configuracion-de-http-event-collector-hec).
 
@@ -190,14 +191,21 @@ Se desplegará el siguiente formulario. Marque la casilla More settings para hab
 
 ==============================================================
 
-## Configuración transversal de Lookup NIFI Instances
+## Configuración transversal
 
-Es fundamental la configuración del lookup mantenedor de instancias monitoreadas. La etiqueta cluster es para asociar un grupo de nodos y host es el nombre de la instancia.
-Este paso es muy importante para la correcta operación de la aplicación ya que si un nuevo nodo nifi no es actualizado en la tabla de instancias no se mostrará la información respectiva.
+Independiente de la metodología de envío adoptada, este paso de configuración es requerido para el despliegue de datos en la aplicación de NIFI Monitoring Splunk.
 
-![image](/nifi-monitoring-splunk/assets/images/splunk/lookup_1.png)
+### Lookup de Instancias
 
-Para obtener el nombre del host, puede ejecutar la siguiente búsqueda con un rango de tiempo de últimos 60 minutos. Para que esta búsqueda retorne resultados, los procesos de Nifi deben estar ejecutándose correctamente. [¿Cómo ejecutar un proceso NIFI?](/nifi-monitoring-splunk/es/configuration/#habilitacion-del-envio-de-datos)
+Ve a Configuration > NiFi Instances para acceder a la vista de configuración de Lookups
+
+![image](/nifi-monitoring-splunk/assets/images/splunk/1_configure_instances.png)
+
+Completa la información de los campos, en donde, la etiqueta cluster es para asociar un grupo de nodos y host es el nombre de la instancia.
+
+![image](/nifi-monitoring-splunk/assets/images/splunk/2_configure_instances.png)
+
+Para obtener el nombre del host, ejecuta la siguiente búsqueda con un rango de tiempo de últimos 60 minutos.
 
 **Splunk Query**  
 ```sourcetype=nifi* | dedup host | table host ```
@@ -210,6 +218,16 @@ Si el lookup está correctamente configurado la información podrá ser accesibl
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_overview_lookup.png)
 
+![image](/nifi-monitoring-splunk/assets/images/splunk/3_configure_instances.png)
+
+¿No hay resultados en la búsqueda ejecutada?
+
+![image](/nifi-monitoring-splunk/assets/images/splunk/4_configure_instances.png)
+
+ Para que esta búsqueda retorne resultados, los procesos de Nifi deben estar ejecutándose correctamente.
+ Según la metodología de configuración deberás:
+ 1. Envío directo: Debes iniciar los procesos de NIFI
+ 2. Splunk Data Input NiFi: Los data inputs configurados deben estar habilitados.
 
 
 
