@@ -5,15 +5,15 @@ En esta etapa se detallarán los pasos necesarios para el correcto funcionamient
 
 Hay dos vías de configuración que permiten el envío de eventos a Splunk y su elección dependerá de los mecanismos de autenticación que NIFI tenga habilitado.
 
-1. Envío directo: Esta configuración establecerá NIFI como la vía principal para el envío de datos a Splunk por medio de un conjunto de procesadores y debe ser utilizada cuando NIFI no tenga activado métodos de autenticación.
+- A. Envío directo: Esta configuración establecerá NIFI como la vía principal para el envío de datos a Splunk por medio de un conjunto de procesadores y debe ser utilizada cuando NIFI no tenga activado métodos de autenticación.
 
-2. Splunk Data Input NiFi: Splunk se encargará de realizar peticiones a las instancias de NIFI para rescatar la información del Monitoring API por medio de la habilitación y uso del Data Input NIFI. Esta configuración debe ser utilizada cuando NIFI cuente con autenticación basica.
+- B. Splunk Data Input NiFi: Splunk se encargará de realizar peticiones a las instancias de NIFI para rescatar la información del Monitoring API por medio de la habilitación y uso del Data Input NIFI. Esta configuración debe ser utilizada cuando NIFI cuente con autenticación basica.
 
-[NOTA] Configura sólo una metodología, ambas en funcionamiento generarán información duplicada.
+[NOTA] Configura sólo una metodología (A o B), ambas en funcionamiento generarán información duplicada.
 
-## 1. Envío Directo
+## A. Envío Directo
 
-### Configuración de HTTP Event Collector (HEC) en Splunk
+### 1. Configuración de HTTP Event Collector (HEC) en Splunk
 
 Se necesita la configuración de un recopilador de eventos HTTP (HEC). Esto permite enviar eventos desde las instancias de nifi a una implementación de Splunk a través de los protocolos HTTP y HTTPS.
 
@@ -38,13 +38,13 @@ Proceso de configuración:
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/add_hec_3.png)
 
-### Importar Flow Definition en NIFI
+### 2. Importar Flow Definition en NIFI
 
 Descarga y utiliza el Flow Definition proporciado para la configuración de NiFi Monitoring a través de este link [NifiMonitoring](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/template/NifiMonitoring.json). También podrás encontrar este archivo dentro de la carpeta **flow_definition** del proyecto.
 
 El archivo Flow Definition es la estructura de un grupo de procesos encargado de recolectar y ejecutar el envío de datos de NIFI al Splunk. Está en formato JSON el cual puede ser directamente importado. 
 
-Para importar el Flow Definition, arrastra una caja de process group al lienzo de NiFi
+Para importar el Flow Definition, arrastra una caja de *process group* al lienzo de nifi
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/1_add_process_group.png)
 
@@ -65,7 +65,7 @@ Finalmente, verás el grupo de procesadores y en su interior contiene la siguien
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/4_flow_definition_loaded.png)
 
-### Configuración de variables globales
+### 3. Configuración de variables globales
 
 Configura las variables globales ya que son indispensable para su funcionamiento. Para configurar los parámetros haz clic derecho sobre la caja NiFIMonitoring > Variables.
 
@@ -74,7 +74,7 @@ Configura las variables globales ya que son indispensable para su funcionamiento
 Se desplegará una ventana emergente donde tendrás que configurar los siguientes parámetros:
 
 - nifi_api_url: Corresponde a la ruta del API Rest de NIFI, (Ej: http://127.0.0.1:8080/nifi-api)
-- nifi_path: Corresponde a la ruta de instalación del servidor nifi (en caso de cluster debe estar instalado en la misma ruta en cada nodo). (Ej: /home/nifi/nifi-1.10.0/)
+- nifi_path: Corresponde a la ruta de instalación en el servidor nifi (en caso de cluster debe estar instalado en la misma ruta en cada nodo). (Ej: /home/nifi/nifi-1.10.0/)
 - process_groups_list: Listado de **ID de grupos de procesos** que se necesitan monitorear, separados por coma.
 - processors_list: Listado de **ID de procesadores** que se necesitan monitorear, separados por coma.
 - splunk_hec: Es la dirección del servidor splunk donde se configuró el data input HTTP Event Collector. (Ej: http://splunk1:8088/)
@@ -83,7 +83,7 @@ Se desplegará una ventana emergente donde tendrás que configurar los siguiente
 ![image](/nifi-monitoring-splunk/assets/images/nifi/set_variable_2.png)
 
 
-### Configuración de componentes
+### 4. Configuración de componentes
 
 Posterior a la configuración de las variables es necesario crear los siguientes componentes. Para configurar accede a Nifi Settings desde el menú > controller Settings
 
@@ -146,7 +146,7 @@ Una vez configurados los reporting task deberás iniciar la ejecución haciendo 
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/nifi_settings_4.png)
 
-### Habilitación del envío de datos
+### 5. Habilitación del envío de datos
 
 Luego de haber completado todo el proceso de configuración, inicie la ejecución del grupo de procesos. Haga clic derecho sobre el grupo de procesos y luego en Start.
 
@@ -154,13 +154,13 @@ Luego de haber completado todo el proceso de configuración, inicie la ejecució
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/enable_sending_2.png)
 
-Sí toda la configuración se ejecutó de manera correcta, se iniciará el envío de la información a Splunk. Para que los datos enviados a splunk estén accesibles desde la aplicación deberá haber configurado el [Lookup de Instancias](/nifi-monitoring-splunk/es/installation/#configuracion-de-lookup-nifi-instances)
+Sí toda la configuración se ejecutó de manera correcta, se iniciará el envío de la información a Splunk. Para que los datos enviados a splunk estén accesibles desde la aplicación deberá haber configurado el [Lookup de Instancias](/nifi-monitoring-splunk/es/installation/#configuracion-transversal)
 
-## 2. Configuración del Data Input Nifi en Splunk
+## B. Configuración del Data Input Nifi en Splunk
 
 *Esta configuración debe ser aplicada cuando las instancias de NIFI cuenten con almenos autenticación básica*
 
-En en los data input de Splunk puedes configurar NIFI Endpoints para el monitoreo de System Diagnostics, Flow Status y Site to Site y el NIFI Status History para procesadores y grupos de procesos especificando sus respectivos ID.
+En en los data input de Splunk puedes configurar varios recursos, como: NIFI Endpoints para el monitoreo de System Diagnostics, Flow Status y Site to Site y el NIFI Status History para monitoreo específico de procesadores y grupos de procesos en base a los ID de éstos.
 
 Para configurar, en el splunk donde está instalada la aplicación Nifi Monitoring, accede al Home de la APP.
 
@@ -174,14 +174,15 @@ En los local data input, identifica NiFi y luego clic en + Add new
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_2.png)
 
-Te recomendamos configurar de manera independiente cada uno de los recursos de monitoreo para eventuales modificaciones en la configuración.
+**Te recomendamos configurar de manera independiente cada uno de los recursos de monitoreo para eventuales modificaciones en la configuración.**
 
 Los recursos son:
+
 - NIFI Endpoints
 - NIFI Status History para Procesadores
 - NIFI Status History para Grupos de Procesos
 
-## Configuración General
+## Nuevo nifi data input
 
 Para cada una de los recursos debes configurar:
 
