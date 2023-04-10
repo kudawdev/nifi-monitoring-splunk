@@ -176,7 +176,7 @@ En los local data input, identifica NiFi y luego clic en + Add new
 
 Se desplegará una ventana como la siguiente:
 
-![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_3.pjeg)
+![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_3.jpeg)
 
 **Te recomendamos configurar de manera independiente cada uno de los recursos de monitoreo para eventuales modificaciones en la configuración.**
 
