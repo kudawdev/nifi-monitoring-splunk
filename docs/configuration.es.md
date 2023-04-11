@@ -73,11 +73,11 @@ Configura las variables globales ya que son indispensable para su funcionamiento
 
 Se desplegará una ventana emergente donde tendrás que configurar los siguientes parámetros:
 
-- nifi_api_url: Corresponde a la ruta del API Rest de NIFI, (Ej: http://127.0.0.1:8080/nifi-api)
+- nifi_api_url: Corresponde a la ruta del API Rest de NIFI, (Ej: http://127.0.0.1:8080/nifi-api/)
 - nifi_path: Corresponde a la ruta de instalación en el servidor nifi (en caso de cluster debe estar instalado en la misma ruta en cada nodo). (Ej: /home/nifi/nifi-1.10.0/)
 - process_groups_list: Listado de **ID de grupos de procesos** que se necesitan monitorear, separados por coma.
 - processors_list: Listado de **ID de procesadores** que se necesitan monitorear, separados por coma.
-- splunk_hec: Es la dirección del servidor splunk donde se configuró el data input HTTP Event Collector. (Ej: http://splunk1:8088/)
+- splunk_hec: Es la dirección del servidor splunk donde se configuró el data input HTTP Event Collector. (Ej: http://<host>:8088/)
 - splunk_hec_token: Token obtenido al configurar [HTTP Event Collector](/nifi-monitoring-splunk/es/installation/#configuracion-de-http-event-collector-hec).
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/set_variable_2.png)

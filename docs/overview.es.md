@@ -15,7 +15,6 @@ La aplicación consta del siguiente árbol de navegación:
     - Alerts
     - Search
 
-
 ## Home
 
 La página principal de la aplicación de Nifi Monitoring donde se observa un pequeño diagrama que muestra el tipo de información obtenida desde los servidores NIFI para ser analizada por SPLUNK.
@@ -23,7 +22,6 @@ La página principal de la aplicación de Nifi Monitoring donde se observa un pe
 ![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_home.png)
 
 ## NIFI Monitor Overview
-
 
 En el panel de overview se puede observar un resumen de los distintos servidores NIFI monitoreados, muy similar a la barra superior que encontramos en el aplicativo inicial. Los indicadores son los siguientes:
 
