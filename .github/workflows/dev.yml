@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     container: kudaw/appinspect:latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Check app versions are equal
         run: |
           lista=`echo $(for d in $(ls -d nifi*);do cat $d/default/app.conf|grep ^version|awk '{print $3}';done) | tr ' ' '\n' | sort | uniq | tr '\n' ' ' | sed -e 's/[[:space:]]*$//'`
@@ -26,14 +26,14 @@ jobs:
       matrix:
         applications: ["nifi_monitoring", "nifi_TA_monitoring"]
     runs-on: ubuntu-latest
-    container: kudaw/appinspect:latest
+    container: kudaw/appinspect:2.32
     outputs:
       APP_VERSION: ${{ steps.get_app_id.outputs.APP_VERSION }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Get APP version
       id: get_app_id
-      run: echo "::set-output name=APP_VERSION::$(cat ${{ matrix.applications }}/default/app.conf | grep ^version | awk '{print $3}')"
+      run: echo "APP_VERSION=$(cat ${{ matrix.applications }}/default/app.conf | grep ^version | awk '{print $3}')" >> $GITHUB_OUTPUT
     - run: echo ${{ steps.get_app_id.outputs.APP_VERSION }}
     #- run: exit 1
     - name: Slim Package
@@ -48,7 +48,7 @@ jobs:
     - name: Check status appinspect
       run: if [ $(jq '.summary | select(.error>0 or .failure>0 or .warning>${{ env.MAX_WARNING }})' appinspect_result.json | wc -l) -gt 0 ]; then echo "Problems detected";jq '.summary' appinspect_result.json;exit -1; else jq '.summary' appinspect_result.json;fi
     - name: Upload Package
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       #if: ${{ success() }}
       with:
         name: ${{ matrix.applications }}
@@ -60,6 +60,6 @@ jobs:
     runs-on: ubuntu-latest
     container: kudaw/appinspect:latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: echo "TODO"
       

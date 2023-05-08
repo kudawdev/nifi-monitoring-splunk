@@ -38,9 +38,9 @@ export = system
 ### DATAMODELS
 
 [datamodels/NIFI]
-access = read : [ * ], write : [ admin, power ]
+access = read : [ * ], write : [ admin, power, sc_admin ]
 export = system
 
 [models/NIFI]
-access = read : [ * ], write : [ admin, power ]
+access = read : [ * ], write : [ admin, power, sc_admin ]
 export = system

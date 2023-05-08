@@ -10,7 +10,7 @@ services:
       SPLUNK_START_ARGS: '--accept-license'
       SPLUNK_PASSWORD: '${SPLUNK_PASSWORD}'
       SPLUNK_ROLE: 'splunk_standalone'
-      SPLUNK_APPS_URL: 'https://github.com/kudawdev/nifi-monitoring-splunk/releases/download/${NIFI_MONITORING_VERSION}/nifi_monitoring-${NIFI_MONITORING_VERSION}.tar.gz,https://github.com/kudawdev/nifi-monitoring-splunk/releases/download/${NIFI_MONITORING_VERSION}/nifi_TA_monitoring-${NIFI_MONITORING_VERSION}.tar.gz,https://splunkbase.splunk.com/app/1724/release/3.6.0/download'
+      SPLUNK_APPS_URL: 'https://github.com/kudawdev/nifi-monitoring-splunk/releases/download/${NIFI_MONITORING_VERSION}/nifi_monitoring-${NIFI_MONITORING_VERSION}.tar.gz,https://github.com/kudawdev/nifi-monitoring-splunk/releases/download/${NIFI_MONITORING_VERSION}/nifi_TA_monitoring-${NIFI_MONITORING_VERSION}.tar.gz,https://splunkbase.splunk.com/app/1724/release/3.6.0/download,https://splunkbase.splunk.com/app/3119/release/1.5.0/download'
       SPLUNK_HEC_TOKEN: '${SPLUNK_HEC_TOKEN}'
       SPLUNKBASE_USERNAME: '${SPLUNKBASE_USERNAME}'
       SPLUNKBASE_PASSWORD: '${SPLUNKBASE_PASSWORD}'
@@ -62,5 +62,6 @@ volumes:
 
 networks:
   nifi_network:
-    external: true
+    driver: overlay
+    external: false
     name: nifi_network

@@ -4,6 +4,21 @@
 api_url = <value>
 *This is the nifi api url base with port and nifi-api
 
+endpoint_system_diagnostics = <value>
+*Enable Enpoint for system diagnostics
+
+endpoint_flow_status = <value>
+*Enable Enpoint for flow status
+
+endpoint_site_to_site = <value>
+*Enable Enpoint for site to site
+
+endpoint_processors_history = <value>
+*Enable Enpoint for processor history
+
+endpoint_process_groups_history = <value>
+*Enable Enpoint for processor history
+
 auth_type = <value>
 *Authentication type [none | basic ]
 
@@ -18,4 +33,3 @@ interval = <value>
 
 host = <value>
 *Hostname NiFi instance
-

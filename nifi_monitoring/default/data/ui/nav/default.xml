@@ -5,13 +5,10 @@
   	<view name="nifi_instances_detail" />
     <view name="nifi_bulletin" />
     <view name="nifi_logs" />
-    <view name="nifi_counters" />
+    <view name="nifi_status_history" />
   </collection>
-  <!--<view name="analytics_workspace" />-->
   <collection label="Configuration">
-    <collection label="Lookups">
     	<a href="lookup_edit?namespace=nifi_monitoring&amp;lookup=instance&amp;type=kv&amp;owner=nobody">NiFi Instances</a>
-  	</collection>
   </collection>
   <view name="alerts" />
   <view name="search" />

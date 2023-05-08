@@ -3,7 +3,7 @@
     "displayName": "NIFI",
     "description": "",
     "objectSummary": {
-        "Event-Based": 5,
+        "Event-Based": 8,
         "Transaction-Based": 0,
         "Search-Based": 0
     },
@@ -1246,6 +1246,306 @@
                 }
             ],
             "lineage": "Logs"
+        },
+        {
+            "objectName": "Status_History",
+            "displayName": "Status History",
+            "parentName": "BaseEvent",
+            "comment": "",
+            "fields": [
+                {
+                    "fieldName": "cluster",
+                    "owner": "Status_History",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cluster",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "statusHistory.componentDetails.Id",
+                    "owner": "Status_History",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "id",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "statusHistory.componentDetails.Name",
+                    "owner": "Status_History",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "name",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "_time",
+                    "owner": "BaseEvent",
+                    "type": "timestamp",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "_time",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "host",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "host",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "source",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "source",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "sourcetype",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "sourcetype",
+                    "comment": ""
+                }
+            ],
+            "calculations": [],
+            "constraints": [
+                {
+                    "search": "`index_nifi` sourcetype=nifi:api:process*",
+                    "owner": "Status_History"
+                }
+            ],
+            "lineage": "Status_History"
+        },
+        {
+            "objectName": "Status_History_Process_Groups",
+            "displayName": "Status History Process Groups",
+            "parentName": "Status_History",
+            "comment": "",
+            "fields": [
+                {
+                    "fieldName": "cluster",
+                    "owner": "Status_History",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cluster",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "statusHistory.componentDetails.Id",
+                    "owner": "Status_History",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "id",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "statusHistory.componentDetails.Name",
+                    "owner": "Status_History",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "name",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "_time",
+                    "owner": "BaseEvent",
+                    "type": "timestamp",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "_time",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "host",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "host",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "source",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "source",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "sourcetype",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "sourcetype",
+                    "comment": ""
+                }
+            ],
+            "calculations": [],
+            "constraints": [
+                {
+                    "search": "sourcetype=\"nifi:api:process_groups_history\"",
+                    "owner": "Status_History.Status_History_Process_Groups"
+                }
+            ],
+            "lineage": "Status_History.Status_History_Process_Groups"
+        },
+        {
+            "objectName": "Status_History_Processors",
+            "displayName": "Status History Processors",
+            "parentName": "Status_History",
+            "comment": "",
+            "fields": [
+                {
+                    "fieldName": "cluster",
+                    "owner": "Status_History",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "cluster",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "statusHistory.componentDetails.Id",
+                    "owner": "Status_History",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "id",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "statusHistory.componentDetails.Name",
+                    "owner": "Status_History",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "name",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "_time",
+                    "owner": "BaseEvent",
+                    "type": "timestamp",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "_time",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "host",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "host",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "source",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "source",
+                    "comment": ""
+                },
+                {
+                    "fieldName": "sourcetype",
+                    "owner": "BaseEvent",
+                    "type": "string",
+                    "fieldSearch": "",
+                    "required": false,
+                    "multivalue": false,
+                    "hidden": false,
+                    "editable": true,
+                    "displayName": "sourcetype",
+                    "comment": ""
+                }
+            ],
+            "calculations": [],
+            "constraints": [
+                {
+                    "search": "sourcetype=\"nifi:api:processors_history\"",
+                    "owner": "Status_History.Status_History_Processors"
+                }
+            ],
+            "lineage": "Status_History.Status_History_Processors"
         }
     ],
     "objectNameList": [
@@ -1253,6 +1553,9 @@
         "Reporting_Task",
         "Reporting_Bulletin",
         "System_Diagnostics",
-        "Logs"
+        "Logs",
+        "Status_History",
+        "Status_History_Process_Groups",
+        "Status_History_Processors"
     ]
 }

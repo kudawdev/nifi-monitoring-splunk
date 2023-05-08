@@ -1,0 +1,149 @@
+<form hideEdit="true" version="1.1">
+  <label>Status History</label>
+  <search id="baseSearch1">
+    <query>
+| tstats count from datamodel=NIFI.Status_History by Status_History.statusHistory.componentDetails.Name, Status_History.statusHistory.componentDetails.Id, Status_History.cluster, host, sourcetype
+| rename "Status_History.statusHistory.componentDetails.*" as *, "Status_History.cluster" as cluster
+| dedup Id
+| fields - count
+    </query>
+    <earliest>-24h@h</earliest>
+    <latest>now</latest>
+  </search>
+  <fieldset submitButton="true">
+    <input type="dropdown" token="cluster" searchWhenChanged="false">
+      <label>Nifi Cluster</label>
+      <fieldForLabel>cluster</fieldForLabel>
+      <fieldForValue>cluster</fieldForValue>
+      <search base="baseSearch1">
+        <query>
+          | dedup cluster | table cluster
+        </query>
+      </search>
+      <choice value="*">All</choice>
+    </input>
+    <input type="multiselect" token="host">
+      <label>Host</label>
+      <choice value="*">All</choice>
+      <prefix>host="</prefix>
+      <suffix>"</suffix>
+      <fieldForLabel>host</fieldForLabel>
+      <fieldForValue>host</fieldForValue>
+      <search base="baseSearch1">
+        <query>| search cluster=$cluster$
+| dedup host 
+| table host</query>
+        <earliest>-1y@y</earliest>
+        <latest>@y</latest>
+      </search>
+    </input>
+    <input type="dropdown" token="type" searchWhenChanged="false">
+      <label>Type</label>
+      <search base="baseSearch1">
+        <query/>
+      </search>
+      <choice value="nifi:api:processors_history">Processors</choice>
+      <choice value="nifi:api:process_groups_history">Process Groups</choice>
+    </input>
+    <input type="multiselect" token="pg">
+      <label>Component</label>
+      <fieldForLabel>Name</fieldForLabel>
+      <fieldForValue>Id</fieldForValue>
+      <search base="baseSearch1">
+        <query>| search cluster=$cluster$ $host$ sourcetype=$type$
+| table Name, Id</query>
+      </search>
+      <choice value="*">All</choice>
+      <valuePrefix>statusHistory.componentDetails.Id="</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter> OR </delimiter>
+    </input>
+    <input type="dropdown" token="metric">
+      <label>Metric</label>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>field</fieldForValue>
+      <search>
+        <query>`index_nifi` sourcetype="$type$" | dedup statusHistory.componentDetails.Id
+| spath path=statusHistory.fieldDescriptors{} output=fd
+| mvexpand fd
+| spath input=fd
+| dedup field
+| table field, label, description</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+    <input type="dropdown" token="operation">
+      <label>Operation</label>
+      <choice value="avg">Avg</choice>
+      <choice value="max">Max</choice>
+      <choice value="min">Min</choice>
+      <choice value="sum">Sum</choice>
+      <default>avg</default>
+      <initialValue>avg</initialValue>
+    </input>
+    <input type="dropdown" token="span">
+      <label>Span</label>
+      <choice value="1m">1m</choice>
+      <choice value="5m">5m</choice>
+      <choice value="30m">30m</choice>
+      <choice value="1h">1h</choice>
+      <choice value="1d">1d</choice>
+      <default>1m</default>
+      <initialValue>1m</initialValue>
+    </input>
+    <input type="radio" token="trellis">
+      <label>Chart</label>
+      <choice value="0">Line Chart</choice>
+      <choice value="1">Trellis</choice>
+      <default>0</default>
+      <initialValue>0</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <title>Metric over time by Process Group</title>
+        <search>
+          <query>`index_nifi` $host$ sourcetype="$type$" ($pg$) | dedup statusHistory.componentDetails.Id
+| spath path=statusHistory.aggregateSnapshots{}.timestamp output=timestamp
+| spath path=statusHistory.aggregateSnapshots{} output=as
+| mvexpand as
+| eval new_timestamp=json_extract(as, "timestamp"), $metric$=json_extract(as, "statusMetrics.$metric$")
+| eval _time=strptime(strftime(substr(new_timestamp, 0, 10), "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S")
+| timechart span=$span$ $operation$($metric$) as $metric$ by statusHistory.componentDetails.Name</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.text">$metric$</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="height">469</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">$trellis$</option>
+      </chart>
+    </panel>
+  </row>
+  <row id="footer">
+    <panel>
+      <html>
+        <style>
+            [id^="footer"] .dashboard-panel {
+              background:#f2f4f5 !important;
+            }
+          </style>
+        <div style="text-align: center; font-weight: bold; font-size: 14px;">
+           Developed by
+           <a href="https://www.kudaw.com" target="_blank" style="text-decoration: none;">
+             <img src="/static/app/nifi_monitoring/kudaw.png" style="height:34px; border:0; margin-left:10px"/>
+           </a>
+          </div>
+      </html>
+    </panel>
+  </row>
+</form>
