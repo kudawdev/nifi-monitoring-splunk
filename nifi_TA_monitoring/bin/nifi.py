@@ -2,7 +2,7 @@ import sys
 import os
 import requests
 import urllib3
-#import dotenv
+import dotenv
 import xml.etree.ElementTree as ElementTree
 import uuid
 
@@ -11,8 +11,8 @@ import splunklib.client as client
 from splunklib.modularinput import EventWriter, Argument, Scheme, Event, Script
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-#dotenv_file = dotenv.find_dotenv()
-#dotenv.load_dotenv(dotenv_file)
+dotenv_file = dotenv.find_dotenv()
+dotenv.load_dotenv(dotenv_file)
 
 
 class NiFiScript(Script):
@@ -305,7 +305,7 @@ class NiFiScript(Script):
                 if response.status_code == 401:
                     EventWriter.log(ew, EventWriter.ERROR, '{} Error HTTP request - status_code: {}, reason: {}, url: {}'.format(self.pid, response.status_code, response.reason, url))
                     token = self.__get_token(ew, base_url, username, password)
-                    #dotenv.set_key(dotenv_file, input_name, token)
+                    dotenv.set_key(dotenv_file, input_name, token)
                     headers = {'Content-Type': 'application/json', 'Accept':'application/json', 'Authorization': 'Bearer {}'.format(token)}
                     response = requests.get(url, **req_args)
                     if response.status_code >= 400:
