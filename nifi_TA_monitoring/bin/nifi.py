@@ -354,7 +354,6 @@ class NiFiScript(Script):
             kwargs = dict((k, input_item[k]) for k in ['username', 
                                                         'api_url',
                                                         'auth_type',
-                                                        'password',
                                                         'interval',
                                                         'endpoint_system_diagnostics',
                                                         'endpoint_flow_status',
@@ -362,6 +361,7 @@ class NiFiScript(Script):
                                                         'endpoint_processors_history',
                                                         'endpoint_process_groups_history'
                                                         ] if k in input_item)
+            kwargs['password'] = self.mask
             item.update(**kwargs).refresh()
            
         except Exception as e:
