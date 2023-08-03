@@ -65,3 +65,4 @@ networks:
     driver: overlay
     external: false
     name: nifi_network
+    attachable: true
