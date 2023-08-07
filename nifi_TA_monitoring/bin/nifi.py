@@ -328,7 +328,7 @@ class NiFiScript(Script):
 
 
     def __encrypt_password(self, ew, username, password, session_key):
-        EventWriter.log(ew, EventWriter.INFO, '{} Init Encrypt Password, {}'.format(self.pid, dotenv_file))
+        EventWriter.log(ew, EventWriter.INFO, '{} Init Encrypt Password'.format(self.pid))
 
         args = {'token': session_key}
         service = client.connect(**args)
