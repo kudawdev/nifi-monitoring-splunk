@@ -9,6 +9,9 @@
   </collection>
   <collection label="Configuration">
     	<a href="lookup_edit?namespace=nifi_monitoring&amp;lookup=instance&amp;type=kv&amp;owner=nobody">NiFi Instances</a>
+  		<collection label="Internal Monitoring">
+    		<view name="nifi_internal_monitoring" />
+    	</collection>
   </collection>
   <view name="alerts" />
   <view name="search" />
