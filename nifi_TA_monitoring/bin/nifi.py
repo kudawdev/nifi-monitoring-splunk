@@ -296,7 +296,7 @@ class NiFiScript(Script):
         else:
             dotenv.load_dotenv(dotenv_file)
             token = os.environ.get(unicodedata.normalize('NFKD',input_name).replace(' ',''), "unknown")
-            EventWriter.log(ew, EventWriter.INFO, '{} Get token base_url:{} path:{}, auth_type:{}, username:{}, input_name:{}, token:{}'.format(self.pid, base_url, path, auth_type, username, input_name.replace(' ','').replace('\xc2\xa0',''), token))
+            EventWriter.log(ew, EventWriter.INFO, '{} Get token base_url:{} path:{}, auth_type:{}, username:{}, input_name:{}, token:{}'.format(self.pid, base_url, path, auth_type, username, input_name, token))
             
             url = self.__urljoin(base_url, path)
 
