@@ -1,0 +1,66 @@
+<form refresh="60" version="1.1" hideEdit="true">
+  <label>Nifi TA Monitoring</label>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="time" token="time">
+      <label>Time</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="dropdown" token="severity">
+      <label>Severity</label>
+      <choice value="INFO">INFO</choice>
+      <choice value="ERROR">ERROR</choice>
+      <choice value="">ALL</choice>
+      <default></default>
+    </input>
+    <input type="dropdown" token="span">
+      <label>Time Span</label>
+      <choice value="1min">1 minute</choice>
+      <choice value="5min">5 minutes</choice>
+      <choice value="10min">10 minutes</choice>
+      <default>5min</default>
+      <initialValue>5min</initialValue>
+    </input>
+    <input type="text" token="search">
+      <label>Search</label>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <chart>
+        <title>HTTP Status Response</title>
+        <search>
+          <query>index=_internal "nifi log"  "status_code"
+| rex "status_code: (?P&lt;status_code&gt;\d+)"
+| eval status = case(status_code == 200, "OK", status_code IN (404), "ERROR", 1==1, "No Aplica")
+| search status IN ("OK", "ERROR")
+| timechart span=$span$ count by status</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.fieldColors">{"ERROR": 0xD32F2F, "OK": 0x4CAF50}</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <event>
+        <search>
+          <query>index=_internal "nifi log" $severity$ $search$</query>
+          <earliest>$time.earliest$</earliest>
+          <latest>$time.latest$</latest>
+        </search>
+        <option name="list.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </event>
+    </panel>
+  </row>
+</form>

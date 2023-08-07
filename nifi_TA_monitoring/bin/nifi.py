@@ -2,18 +2,22 @@ import sys
 import os
 import requests
 import urllib3
-#import dotenv
+import dotenv
 import xml.etree.ElementTree as ElementTree
 import uuid
+import unicodedata
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))
 import splunklib.client as client
 from splunklib.modularinput import EventWriter, Argument, Scheme, Event, Script
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-#dotenv_file = dotenv.find_dotenv()
-#dotenv.load_dotenv(dotenv_file)
+if dotenv.find_dotenv() == '':
+    with open(os.path.join(os.path.dirname(__file__), ".env"), 'w'):
+        pass
 
+dotenv_file = dotenv.find_dotenv()
+dotenv.load_dotenv(dotenv_file)
 
 class NiFiScript(Script):
 
@@ -290,8 +294,9 @@ class NiFiScript(Script):
             except Exception as error:
                 EventWriter.log(ew, EventWriter.ERROR, '{} Error request - {}'.format(self.pid, error))
         else:
-            token = os.environ.get(input_name, "unknown")
-            EventWriter.log(ew, EventWriter.INFO, '{} Get token base_url:{} path:{}, auth_type:{}, username:{}, password:{}, input_name:{}, token:{}'.format(self.pid, base_url, path, auth_type, username, password, input_name, token))
+            dotenv.load_dotenv(dotenv_file)
+            token = os.environ.get(unicodedata.normalize('NFKD',input_name).replace(' ',''), "unknown")
+            EventWriter.log(ew, EventWriter.INFO, '{} Get token base_url:{} path:{}, auth_type:{}, username:{}, input_name:{}, token:{}'.format(self.pid, base_url, path, auth_type, username, input_name, token))
             
             url = self.__urljoin(base_url, path)
 
@@ -305,7 +310,7 @@ class NiFiScript(Script):
                 if response.status_code == 401:
                     EventWriter.log(ew, EventWriter.ERROR, '{} Error HTTP request - status_code: {}, reason: {}, url: {}'.format(self.pid, response.status_code, response.reason, url))
                     token = self.__get_token(ew, base_url, username, password)
-                    #dotenv.set_key(dotenv_file, input_name, token)
+                    dotenv.set_key(dotenv_file, unicodedata.normalize('NFKD',input_name).replace(' ',''), token)
                     headers = {'Content-Type': 'application/json', 'Accept':'application/json', 'Authorization': 'Bearer {}'.format(token)}
                     response = requests.get(url, **req_args)
                     if response.status_code >= 400:
@@ -323,7 +328,7 @@ class NiFiScript(Script):
 
 
     def __encrypt_password(self, ew, username, password, session_key):
-        EventWriter.log(ew, EventWriter.INFO, '{} Init Encrypt Password'.format(self.pid, ))
+        EventWriter.log(ew, EventWriter.INFO, '{} Init Encrypt Password'.format(self.pid))
 
         args = {'token': session_key}
         service = client.connect(**args)
@@ -354,7 +359,6 @@ class NiFiScript(Script):
             kwargs = dict((k, input_item[k]) for k in ['username', 
                                                         'api_url',
                                                         'auth_type',
-                                                        'password',
                                                         'interval',
                                                         'endpoint_system_diagnostics',
                                                         'endpoint_flow_status',
@@ -362,6 +366,7 @@ class NiFiScript(Script):
                                                         'endpoint_processors_history',
                                                         'endpoint_process_groups_history'
                                                         ] if k in input_item)
+            kwargs['password'] = self.mask
             item.update(**kwargs).refresh()
            
         except Exception as e:
