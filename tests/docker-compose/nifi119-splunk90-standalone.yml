@@ -10,7 +10,6 @@ services:
       SPLUNK_START_ARGS: '--accept-license'
       SPLUNK_PASSWORD: '${SPLUNK_PASSWORD}'
       SPLUNK_ROLE: 'splunk_standalone'
-      SPLUNK_HEC_TOKEN: '${SPLUNK_HEC_TOKEN}'
     networks:
       - nifi_network
     ports:
