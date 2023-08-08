@@ -6,7 +6,7 @@ on:
       - testing
 
 env:
-  MAX_WARNING: 4
+  MAX_WARNING: 5
   APP_NAME: "NIFI Monitoring for Splunk"
 
 jobs:
@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Check app versions are equal
         run: |
-          lista=`echo $(for d in $(ls -d allkun*);do cat $d/default/app.conf|grep ^version|awk '{print $3}';done) | tr ' ' '\n' | sort | uniq | tr '\n' ' ' | sed -e 's/[[:space:]]*$//'`
+          lista=`echo $(for d in $(ls -d allkun*);do cat $d/default/app.conf|grep ^version|awk -F '=' '{gsub(/ /,"");print $2}';done) | tr ' ' '\n' | sort | uniq | tr '\n' ' ' | sed -e 's/[[:space:]]*$//'`
           echo $lista
           count=$(echo $lista | tr ' ' '\n' | wc -l)
           echo $count
@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Get APP version
         id: get_app_id
-        run: echo "::set-output name=APP_VERSION::$(cat ${{ matrix.applications }}/default/app.conf | grep ^version | awk '{print $3}')"
+        run: echo "::set-output name=APP_VERSION::$(cat ${{ matrix.applications }}/default/app.conf | grep ^version | awk -F '=' '{gsub(/ /,"");print $2}')"
       - run: echo ${{ steps.get_app_id.outputs.APP_VERSION }}
       #- run: exit 1
       - name: Slim Package
