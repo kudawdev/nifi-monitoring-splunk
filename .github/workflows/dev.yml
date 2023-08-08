@@ -26,7 +26,7 @@ jobs:
       matrix:
         applications: ["nifi_monitoring", "nifi_TA_monitoring"]
     runs-on: ubuntu-latest
-    container: kudaw/appinspect:2.32
+    container: kudaw/appinspect:latest
     outputs:
       APP_VERSION: ${{ steps.get_app_id.outputs.APP_VERSION }}
     steps:
