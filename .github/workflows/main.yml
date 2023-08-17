@@ -1,9 +1,6 @@
 name: Appinspect, Test, Merge and Release
 
-on:
-  push:
-    branches:
-      - main
+on: workflow_dispatch
 
 env:
   MAX_WARNING: 5
@@ -80,10 +77,11 @@ jobs:
       #   run: ls -l ${{ matrix.applications }}-${{needs.appinspect.outputs.APP_VERSION}}.tar.gz
       # - name: show path
       #   run: echo $(pwd)
-      - uses: "marvinpinto/action-automatic-releases@latest"
+      - name: Release
+        uses: softprops/action-gh-release@v1
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: ${{needs.appinspect.outputs.APP_VERSION}}
+          tag_name: ${{ needs.appinspect.outputs.APP_VERSION }}
           prerelease: true
-          title: "New Release for ${{ env.APP_NAME }}"
-          files: ${{steps.download.outputs.download-path}}
+          name: "New Release for ${{ env.APP_NAME }}"
+          files: |
+              

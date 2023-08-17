@@ -67,6 +67,7 @@ volumes:
 
 networks:
   nifi_network:
-    driver: overlay
+    driver: bridge
     external: false
     name: nifi_network
+    attachable: true
