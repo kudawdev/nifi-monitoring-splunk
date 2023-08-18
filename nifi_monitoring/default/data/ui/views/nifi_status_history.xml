@@ -33,8 +33,6 @@
         <query>| search cluster=$cluster$
 | dedup host 
 | table host</query>
-        <earliest>-1y@y</earliest>
-        <latest>@y</latest>
       </search>
     </input>
     <input type="dropdown" token="type" searchWhenChanged="false">
