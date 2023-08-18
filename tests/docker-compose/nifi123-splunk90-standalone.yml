@@ -23,7 +23,7 @@ services:
 
   
   nifi1:
-    image: apache/nifi:1.19.1
+    image: apache/nifi:1.23.0
     hostname: nifi1
     environment:
       NIFI_WEB_HTTP_HOST: '0.0.0.0'
@@ -40,7 +40,6 @@ services:
       - nifi_network
     ports:
       - 38080:8080/tcp
-      - 38443:8443/tcp
     deploy:
       mode: replicated
       replicas: 1
