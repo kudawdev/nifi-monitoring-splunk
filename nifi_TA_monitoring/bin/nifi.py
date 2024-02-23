@@ -3,7 +3,7 @@ import os
 import requests
 import urllib3
 import dotenv
-import xml.etree.ElementTree as ElementTree
+#import xml.etree.ElementTree as ElementTree
 import uuid
 import unicodedata
 
