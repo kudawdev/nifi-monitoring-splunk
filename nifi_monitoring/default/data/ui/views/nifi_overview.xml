@@ -39,11 +39,6 @@
           <query>| inputlookup instance 
 | join type=left host 
     [| tstats last(systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage{}.freeSpace) as contentFreeSpace last(systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage{}.usedSpace) as contentUsedSpace last(systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage{}.utilization) as contentUtilization last(systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.freeSpace) as flowFreeSpace last(systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.usedSpace) as flowUsedSpace last(systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.utilization) as flowUtilization last(systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage{}.freeSpace) as provenanceFreeSpace last(systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage{}.usedSpace) as provenanceUsedSpace last(systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage{}.utilization) as provenanceUtilization last(System_Diagnostics.cluster) as cluster from datamodel=NIFI.System_Diagnostics groupby host ] 
-| join type=left host 
-    [ search sourcetype="nifi:log:*" 
-    | stats count as logcount by host] 
-| eval status=if(logcount&gt;0,"Up","Down") 
-|sort + status,cluster,host
 | eval "Content (Used/Free)" = contentUsedSpace+" / "+contentFreeSpace 
 | eval "Flow (Used/Free)" = flowUsedSpace+" / "+flowFreeSpace 
 | eval "Provenance (Used/Free)" = provenanceUsedSpace+" / "+provenanceFreeSpace 
@@ -55,9 +50,9 @@
           <refreshType>delay</refreshType>
         </search>
         <option name="drilldown">cell</option>
+        <option name="link.visible">0</option>
         <option name="refresh.display">none</option>
         <option name="rowNumbers">false</option>
-        <option name="link.visible">0</option>
         <format type="number" field="contentUtilization"></format>
         <drilldown>
           <link target="_blank">/app/nifi_monitoring/nifi_instances_detail?form.host=$click.value$</link>
