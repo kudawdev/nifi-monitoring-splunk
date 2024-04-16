@@ -86,6 +86,6 @@ jobs:
           prerelease: true
           name: "New Release for ${{ env.APP_NAME }}"
           files: |
-              artifacts/nifi_monitoring/nifi_monitoring-${{ steps.get_app_id.outputs.APP_VERSION }}.tar.gz
-              artifacts/nifi_TA_monitoring/nifi_TA_monitoring-${{ steps.get_app_id.outputs.APP_VERSION }}.tar.gz
+              artifacts/nifi_monitoring/nifi_monitoring-${{needs.appinspect.outputs.APP_VERSION}}.tar.gz
+              artifacts/nifi_TA_monitoring/nifi_TA_monitoring-${{needs.appinspect.outputs.APP_VERSION}}.tar.gz
               
