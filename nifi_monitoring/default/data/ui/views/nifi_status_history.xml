@@ -61,7 +61,7 @@
       <fieldForLabel>label</fieldForLabel>
       <fieldForValue>field</fieldForValue>
       <search>
-        <query>`index_nifi` sourcetype="$type$" | dedup statusHistory.componentDetails.Id
+        <query>`index_nifi` sourcetype="$type$" 
 | spath path=statusHistory.fieldDescriptors{} output=fd
 | mvexpand fd
 | spath input=fd
@@ -97,21 +97,28 @@
       <default>0</default>
       <initialValue>0</initialValue>
     </input>
+    <input type="time" token="timetk">
+      <label>Time:</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
   </fieldset>
   <row>
     <panel>
       <chart>
         <title>Metric over time by Process Group</title>
         <search>
-          <query>`index_nifi` $host$ sourcetype="$type$" ($pg$) | dedup statusHistory.componentDetails.Id
+          <query>`index_nifi` $host$ sourcetype="$type$" ($pg$)
 | spath path=statusHistory.aggregateSnapshots{}.timestamp output=timestamp
 | spath path=statusHistory.aggregateSnapshots{} output=as
 | mvexpand as
 | eval new_timestamp=json_extract(as, "timestamp"), $metric$=json_extract(as, "statusMetrics.$metric$")
 | eval _time=strptime(strftime(substr(new_timestamp, 0, 10), "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S")
 | timechart span=$span$ $operation$($metric$) as $metric$ by statusHistory.componentDetails.Name</query>
-          <earliest>-24h@h</earliest>
-          <latest>now</latest>
+          <earliest>$timetk.earliest$</earliest>
+          <latest>$timetk.latest$</latest>
           <sampleRatio>1</sampleRatio>
         </search>
         <option name="charting.axisTitleX.visibility">visible</option>
@@ -119,6 +126,7 @@
         <option name="charting.axisTitleY.visibility">visible</option>
         <option name="charting.axisTitleY2.visibility">visible</option>
         <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">connect</option>
         <option name="charting.drilldown">none</option>
         <option name="charting.legend.placement">right</option>
         <option name="height">469</option>
