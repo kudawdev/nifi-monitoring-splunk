@@ -73,6 +73,8 @@ jobs:
         id: download
         with:
           path: artifacts
+      - name: list file detail
+        run: ls -lR 
       # - name: list file detail
       #   run: ls -l ${{ matrix.applications }}-${{needs.appinspect.outputs.APP_VERSION}}.tar.gz
       # - name: show path
@@ -84,4 +86,6 @@ jobs:
           prerelease: true
           name: "New Release for ${{ env.APP_NAME }}"
           files: |
+              nifi_monitoring-${{ steps.get_app_id.outputs.APP_VERSION }}.tar.gz
+              nifi_TA_monitoring-${{ steps.get_app_id.outputs.APP_VERSION }}.tar.gz
               
