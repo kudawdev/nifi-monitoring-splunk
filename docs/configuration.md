@@ -69,8 +69,8 @@ A pop-up window will be displayed where you will have to configure the following
 
 - nifi_api_url: Corresponds to the route of the NIFI Rest API, (Eg: http://127.0.0.1:8080/nifi-api/)
 - nifi_path: Corresponds to the nifi server installation path (in case of a cluster, it must be installed in the same path on each node). Example: /home/nifi/nifi-1.10.0/
-- process_groups_list: List of **IDs of process groups** that need to be monitored, separated by commas.
-- processors_list: List of **Processor IDs** that need to be monitored, separated by commas.
+- process_groups_list: List of **IDs of process groups** that need to be monitored, separated by line break.
+- processors_list: List of **Processor IDs** that need to be monitored, separated by line break.
 - splunk_hec: It is the address of the splunk server where the data input HTTP Event Collector was configured. (Eg. http://<host>:8088/)
 - splunk_hec_token: Token obtained when configuring [HTTP Event Collector](/nifi-monitoring-splunk/#configure-http-event-collector-hec).
 
