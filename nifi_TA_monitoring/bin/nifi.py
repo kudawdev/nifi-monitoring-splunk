@@ -6,6 +6,7 @@ import dotenv
 #import xml.etree.ElementTree as ElementTree
 import uuid
 import unicodedata
+import json
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))
 import splunklib.client as client
@@ -183,7 +184,21 @@ class NiFiScript(Script):
             sourcetype = ep.get("sourcetype")
             EventWriter.log(ew, EventWriter.INFO, '{} Request endpoint: {}'.format(self.pid, ep))
             
-            if (ep.get('name') == 'endpoint_processors_history') and (processors):
+            if input_item.get(ep.get('name')) == '1':
+                try:
+                    response = self.__get_request(ew, base_url, path, auth_type, username, iname, session_key)
+                    EventWriter.log(ew, EventWriter.DEBUG, '{} Response: {}'.format(self.pid, response))
+                    event = Event(
+                        sourcetype=sourcetype,
+                        stanza=input_name,
+                        data=response,
+                        host=input_item.get("host")
+                    )
+                    ew.write_event(event)
+                except Exception as e:
+                    EventWriter.log(ew, EventWriter.ERROR, '{} There was an error when request: {}'.format(self.pid, e))
+            
+            elif (ep.get('name') == 'endpoint_processors_history') and (processors):
                 plist = list(map(lambda v: v.replace('\n',''), filter(lambda u: u != '', processors.replace('\n', ',').split(','))))
                 EventWriter.log(ew, EventWriter.INFO, '{} list of plist: {}'.format(self.pid, plist))
                 for p in plist:
@@ -192,31 +207,22 @@ class NiFiScript(Script):
                     try:
                         response = self.__get_request(ew, base_url, new_path, auth_type, username, iname, session_key)
                         EventWriter.log(ew, EventWriter.DEBUG, '{} Response: {}'.format(self.pid, response))
+                        data_json = json.loads(response)
+                        if "aggregateSnapshots" in data_json["statusHistory"]:
+                            data_json["statusHistory"]["aggregateSnapshots"] = data_json["statusHistory"]["aggregateSnapshots"][-1:]
+
+                        data_str = json.dumps(data_json)
                         event = Event(
                             sourcetype=sourcetype,
                             stanza=input_name,
-                            data=response,
+                            data=data_str,
                             host=input_item.get("host")
                         )
                         ew.write_event(event)
                     except Exception as e:
                         EventWriter.log(ew, EventWriter.ERROR, '{} There was an error when request: {}'.format(self.pid, e))
-            elif input_item.get(ep.get('name')) == '1':                
-                try:
-                    response = self.__get_request(ew, base_url, path, auth_type, username, iname, session_key)
-                    EventWriter.log(ew, EventWriter.DEBUG, '{} Response: {}'.format(self.pid, response))
-                    event = Event(
-                        sourcetype=sourcetype,
-                        stanza=input_name,
-                        data=response,
-                        host=input_item.get("host")
-                    )
-                    ew.write_event(event)
-                except Exception as e:
-                    EventWriter.log(ew, EventWriter.ERROR, '{} There was an error when request: {}'.format(self.pid, e))
 
-
-            if (ep.get('name') == 'endpoint_process_groups_history') and (process_groups):
+            elif (ep.get('name') == 'endpoint_process_groups_history') and (process_groups):
                 plist = list(map(lambda v: v.replace('\n',''), filter(lambda u: u != '', process_groups.replace('\n', ',').split(','))))
                 EventWriter.log(ew, EventWriter.INFO, '{} list of plist: {}'.format(self.pid, plist))
                 for p in plist:
@@ -225,28 +231,24 @@ class NiFiScript(Script):
                     try:
                         response = self.__get_request(ew, base_url, new_path, auth_type, username, iname, session_key)
                         EventWriter.log(ew, EventWriter.DEBUG, '{} Response: {}'.format(self.pid, response))
+                        data_json = json.loads(response)
+                        if "aggregateSnapshots" in data_json["statusHistory"]:
+                            data_json["statusHistory"]["aggregateSnapshots"] = data_json["statusHistory"]["aggregateSnapshots"][-1:]
+
+                        data_str = json.dumps(data_json)
                         event = Event(
                             sourcetype=sourcetype,
                             stanza=input_name,
-                            data=response,
+                            data=data_str,
                             host=input_item.get("host")
                         )
                         ew.write_event(event)
                     except Exception as e:
                         EventWriter.log(ew, EventWriter.ERROR, '{} There was an error when request: {}'.format(self.pid, e))
-            elif input_item.get(ep.get('name')) == '1':                
-                try:
-                    response = self.__get_request(ew, base_url, path, auth_type, username, iname, session_key)
-                    EventWriter.log(ew, EventWriter.DEBUG, '{} Response: {}'.format(self.pid, response))
-                    event = Event(
-                        sourcetype=sourcetype,
-                        stanza=input_name,
-                        data=response,
-                        host=input_item.get("host")
-                    )
-                    ew.write_event(event)
-                except Exception as e:
-                    EventWriter.log(ew, EventWriter.ERROR, '{} There was an error when request: {}'.format(self.pid, e))
+                        
+            else:
+                EventWriter.log(ew, EventWriter.INFO, 'there wasnt an endpoint detected: ')
+                pass
 
     def __urljoin(self, *args):
         trailing_slash = '/' if args[-1].endswith('/') else ''
@@ -378,7 +380,7 @@ class NiFiScript(Script):
         args = {'token': session_key}
         service = client.connect(**args)
         
-        # Retrieve the password from the storage/passwords endpoint	
+        # Retrieve the password from the storage/passwords endpoint 
         for storage_password in service.storage_passwords:
             if storage_password.username == username:
                 return storage_password.content.clear_password
