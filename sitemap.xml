@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://kudawdev.github.io/nifi-monitoring-splunk/</loc>
+         <lastmod>2024-04-16</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://kudawdev.github.io/nifi-monitoring-splunk/configuration/</loc>
+         <lastmod>2024-04-16</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://kudawdev.github.io/nifi-monitoring-splunk/contributing/</loc>
+         <lastmod>2024-04-16</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://kudawdev.github.io/nifi-monitoring-splunk/installation/</loc>
+         <lastmod>2024-04-16</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://kudawdev.github.io/nifi-monitoring-splunk/overview/</loc>
+         <lastmod>2024-04-16</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://kudawdev.github.io/nifi-monitoring-splunk/references/</loc>
+         <lastmod>2024-04-16</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+</urlset>

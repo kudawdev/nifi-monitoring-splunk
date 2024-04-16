@@ -1,0 +1,934 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Nifi Monitoring Splunk Documentation">
+      
+      
+      
+        <meta name="author" content="Kudaw S.A.">
+      
+      
+        <link rel="canonical" href="https://kudawdev.github.io/nifi-monitoring-splunk/configuration/">
+      
+      <link rel="icon" href="../assets/images/favicon.ico">
+      <meta name="generator" content="mkdocs-1.3.0, mkdocs-material-7.2.8">
+    
+    
+      
+        <title>NIFI Configuration - Nifi Monitoring Splunk</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.92558b1b.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.3f5d1f46.min.css">
+        
+          
+          
+          <meta name="theme-color" content="#000000">
+        
+      
+    
+    
+    
+      
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700%7CRoboto+Mono&display=fallback">
+        <style>:root{--md-text-font-family:"Roboto";--md-code-font-family:"Roboto Mono"}</style>
+      
+    
+    
+    
+      <link rel="stylesheet" href="../assets/css/theme.css">
+    
+    
+      
+
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="" data-md-color-primary="black" data-md-color-accent="black">
+  
+    
+    <script>function __prefix(e){return new URL("..",location).pathname+"."+e}function __get(e,t=localStorage){return JSON.parse(t.getItem(__prefix(e)))}</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#configuring-nifi-monotoring-splunk" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Nifi Monitoring Splunk" class="md-header__button md-logo" aria-label="Nifi Monitoring Splunk" data-md-component="logo">
+      
+  <img src="../assets/images/nifi.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nifi Monitoring Splunk
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              NIFI Configuration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <div class="md-header__option">
+        <div class="md-select">
+          
+          <button class="md-header__button md-icon" aria-label="Select language">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.52 17.52 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04M18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12m-2.62 7 1.62-4.33L19.12 17h-3.24z"/></svg>
+          </button>
+          <div class="md-select__inner">
+            <ul class="md-select__list">
+              
+                <li class="md-select__item">
+                  <a href=".." hreflang="en" class="md-select__link">
+                    English
+                  </a>
+                </li>
+                
+                <li class="md-select__item">
+                  <a href="/nifi-monitoring-splunk/es/" hreflang="es" class="md-select__link">
+                    Español
+                  </a>
+                </li>
+                
+            </ul>
+          </div>
+        </div>
+      </div>
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+      </label>
+      
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        
+<a href="https://github.com/kudawdev/nifi-monitoring-splunk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    NIFI Monitoring Splunk
+  </div>
+</a>
+      </div>
+    
+  </nav>
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Nifi Monitoring Splunk" class="md-nav__button md-logo" aria-label="Nifi Monitoring Splunk" data-md-component="logo">
+      
+  <img src="../assets/images/nifi.png" alt="logo">
+
+    </a>
+    Nifi Monitoring Splunk
+  </label>
+  
+    <div class="md-nav__source">
+      
+<a href="https://github.com/kudawdev/nifi-monitoring-splunk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    NIFI Monitoring Splunk
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        Introduction
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        Install and configure NIFI Monitoring on Splunk
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          NIFI Configuration
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        NIFI Configuration
+      </a>
+      
+        
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    Configuration
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#direct-sending" class="md-nav__link">
+    Direct Sending
+  </a>
+  
+    <nav class="md-nav" aria-label="Direct Sending">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-configuring-http-event-collector-hec-in-splunk" class="md-nav__link">
+    1. Configuring HTTP Event Collector (HEC) in Splunk
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-import-flow-definition-in-nifi" class="md-nav__link">
+    2. Import Flow Definition in NIFI
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-global-variables-configuration" class="md-nav__link">
+    3. Global variables configuration
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-components-configuration" class="md-nav__link">
+    4. Components configuration
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-enabling-the-sending-of-data" class="md-nav__link">
+    5. Enabling the sending of data
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-of-nifi-data-input-in-splunk" class="md-nav__link">
+    Configuration of Nifi Data Input in Splunk
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration of Nifi Data Input in Splunk">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-basic-resource-configuration" class="md-nav__link">
+    1. Basic resource configuration
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-nifi-endpoints" class="md-nav__link">
+    a. NIFI Endpoints
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-nifi-status-history-for-processors" class="md-nav__link">
+    b. NIFI Status History for Processors
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c-nifi-status-history-for-process-groups" class="md-nav__link">
+    c. NIFI Status History for Process Groups
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#transverse-configuration" class="md-nav__link">
+    Transverse configuration
+  </a>
+  
+    <nav class="md-nav" aria-label="Transverse configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#instance-lookup" class="md-nav__link">
+    Instance Lookup
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/" class="md-nav__link">
+        Data Reference
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        Contribute
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    Configuration
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#direct-sending" class="md-nav__link">
+    Direct Sending
+  </a>
+  
+    <nav class="md-nav" aria-label="Direct Sending">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-configuring-http-event-collector-hec-in-splunk" class="md-nav__link">
+    1. Configuring HTTP Event Collector (HEC) in Splunk
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-import-flow-definition-in-nifi" class="md-nav__link">
+    2. Import Flow Definition in NIFI
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-global-variables-configuration" class="md-nav__link">
+    3. Global variables configuration
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-components-configuration" class="md-nav__link">
+    4. Components configuration
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-enabling-the-sending-of-data" class="md-nav__link">
+    5. Enabling the sending of data
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-of-nifi-data-input-in-splunk" class="md-nav__link">
+    Configuration of Nifi Data Input in Splunk
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration of Nifi Data Input in Splunk">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-basic-resource-configuration" class="md-nav__link">
+    1. Basic resource configuration
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-nifi-endpoints" class="md-nav__link">
+    a. NIFI Endpoints
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-nifi-status-history-for-processors" class="md-nav__link">
+    b. NIFI Status History for Processors
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c-nifi-status-history-for-process-groups" class="md-nav__link">
+    c. NIFI Status History for Process Groups
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#transverse-configuration" class="md-nav__link">
+    Transverse configuration
+  </a>
+  
+    <nav class="md-nav" aria-label="Transverse configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#instance-lookup" class="md-nav__link">
+    Instance Lookup
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content" data-md-component="content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                  <a href="https://github.com/kudawdev/nifi-monitoring-splunk/edit/master/docs/configuration.md" title="Edit this page" class="md-content__button md-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/></svg>
+                  </a>
+                
+                
+                <h1 id="configuring-nifi-monotoring-splunk">Configuring NIFI Monotoring Splunk<a class="headerlink" href="#configuring-nifi-monotoring-splunk" title="Permanent link">&para;</a></h1>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<p>At this stage, all the necessary steps that must be carried out by the side of our nifi instances that are to be monitored will be detailed.</p>
+<p>There are two ways of configuration that allow the sending of events to Splunk and their choice depends on the authentication mechanisms that NIFI has enabled.</p>
+<ul>
+<li>
+<p>Direct sending: This configuration will establish NIFI as the main way to send data to Splunk and should be used when NIFI does not have authentication methods enabled.</p>
+</li>
+<li>
+<p>Splunk Data Input NiFi: Splunk will be in charge of making requests to the NIFI instances to retrieve the information from the Monitoring API by enabling and using the Data Input NIFI. This configuration should be used when NIFI has basic authentication.</p>
+</li>
+</ul>
+<p>[NOTE] Configure only one methodology, both running will generate duplicate information.</p>
+<h2 id="direct-sending">Direct Sending<a class="headerlink" href="#direct-sending" title="Permanent link">&para;</a></h2>
+<h3 id="1-configuring-http-event-collector-hec-in-splunk">1. Configuring HTTP Event Collector (HEC) in Splunk<a class="headerlink" href="#1-configuring-http-event-collector-hec-in-splunk" title="Permanent link">&para;</a></h3>
+<p>Configuration of an HTTP Event Collector (HEC) is required. This allows events to be sent from nifi instances to a Splunk implementation via the HTTP and HTTPS protocols.</p>
+<p>To configure, from the Splunk menu select Settings &gt; Data Inputs. In the Local Inputs list, identify HTTP Event Collector and add a new one.</p>
+<p>In the configuration process you must:</p>
+<ul>
+<li>Assign a name for the data input,</li>
+<li>Set the sourcetype to <strong>automatic</strong>,</li>
+<li>Select the <em>App Context</em> <strong>NIFI Monitoring</strong> and finally</li>
+<li>Select the Index where the data will be stored.</li>
+</ul>
+<p>It is recommended to use a dedicated Index for this monitoring. If it does not exist, you must create it prior to this configuration.</p>
+<p>At the end of the configuration of this Event Collector, a Token Value will be created, which is necessary to later configure the sending of data from NIFI.</p>
+<p>Configuration process:</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/add_hec_1.png" /></p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/add_hec_2.png" /></p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/add_hec_3.png" /></p>
+<h3 id="2-import-flow-definition-in-nifi">2. Import Flow Definition in NIFI<a class="headerlink" href="#2-import-flow-definition-in-nifi" title="Permanent link">&para;</a></h3>
+<p>Download and use the provided Flow Definition for NiFi Monitoring setup via this link <a href="https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/template/NifiMonitoring.json">NifiMonitoring</a>. You can also find this file inside the <strong>flow_definition</strong> folder of the project.</p>
+<p>The Flow Definition file is the structure of a group of processes in charge of collecting and executing the sending of NIFI data to Splunk. It is in JSON format which can be directly imported.</p>
+<p>To import the Flow Definition, drag a <em>process group</em> box onto the nifi canvas</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/1_add_process_group.png" /></p>
+<p>In the pop-up window, select the import icon, browse your computer, and select the NiFiMonitoring.json flow definition to import.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/2_import_flow_definition.png" /></p>
+<p>Once imported, click "add" to finish importing the flow definition.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/3_load_flow_definition.png" /></p>
+<p>Finally, you will see the processor group and inside it contains the following structure:</p>
+<h3 id="3-global-variables-configuration">3. Global variables configuration<a class="headerlink" href="#3-global-variables-configuration" title="Permanent link">&para;</a></h3>
+<p>It is essential to configure global variables as they are imprescindible for their operation. To configure the parameters, right click on the NifiMonitoring box &gt; Variables.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/set_variable.png" /></p>
+<p>A pop-up window will be displayed where you will have to configure the following parameters:</p>
+<ul>
+<li>nifi_api_url: Corresponds to the route of the NIFI Rest API, (Eg: http://127.0.0.1:8080/nifi-api/)</li>
+<li>nifi_path: Corresponds to the nifi server installation path (in case of a cluster, it must be installed in the same path on each node). Example: /home/nifi/nifi-1.10.0/</li>
+<li>process_groups_list: List of <strong>IDs of process groups</strong> that need to be monitored, separated by line break.</li>
+<li>processors_list: List of <strong>Processor IDs</strong> that need to be monitored, separated by line break.</li>
+<li>splunk_hec: It is the address of the splunk server where the data input HTTP Event Collector was configured. (Eg. http://<host>:8088/)</li>
+<li>splunk_hec_token: Token obtained when configuring <a href="/nifi-monitoring-splunk/#configure-http-event-collector-hec">HTTP Event Collector</a>.</li>
+</ul>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/set_variable_2.png" /></p>
+<h3 id="4-components-configuration">4. Components configuration<a class="headerlink" href="#4-components-configuration" title="Permanent link">&para;</a></h3>
+<p>After configuring the variables, it is necessary to create the following components. To configure access Nifi Settings from the menu &gt; Controller Settings</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/controller_settings.png" /></p>
+<p>A pop-up window like the following will be displayed:</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/nifi_settings.png" /></p>
+<p>In the Reporting Task Controller Services tab, add the <strong>JsonRecordSetWriter</strong> controller service, which will allow parsing the results obtained from the Reporting Task service for later indexing in splunk. To add, click the (+) button</p>
+<p>The window to add the controller will be displayed. Filter the list of options with the item to be added, select it and add it to the configuration.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/add_controller_service.png" /></p>
+<p>Once added, you must enable its operation by clicking on the lightning bolt icon (ϟ) and in the pop-up window confirm. This will enable the controller and you should have a configuration like the following.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/nifi_settings_2.png" /></p>
+<p>In this same window, in the Reporting Task tab, the following reports must be configured.</p>
+<ul>
+<li>MonitorDiskUsage</li>
+<li>SitetoSiteBulletinReportingTask</li>
+<li>SitetoSiteMetricsReportingTask</li>
+</ul>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/nifi_settings_3.png" /></p>
+<p>Add and find the required reporting tasks in the same way as the previous step, by clicking the (+) icon. Once added you can have a view like the following.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/reporting_task.png" /></p>
+<p>Configure task reports with the following information:</p>
+<ul>
+<li>MonitorDiskUsage: Internal reporting system that generates events as the threshold defined for the use of the filesystem is exceeded and captured in a specific flow.</li>
+</ul>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/monitor_disk_usage.png" /></p>
+<ul>
+<li>
+<p>SiteToSiteBulletinReportingTask: Internal reporting system that generates events as bulletin type errors are generated and captured in a specific flow. The configuration should be as follows:</p>
+<ul>
+<li>Destination URL: http://${hostname(true)}:8080/nifi</li>
+<li>Input Port Name: bulletin_report</li>
+<li>Instance URL: http://${hostname(true)}:8080/nifi</li>
+<li>Transport Protocol: HTTP</li>
+<li>Record Writer: JsonRecordSetWriter</li>
+</ul>
+</li>
+</ul>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/bulletin_reporting_task.png" /></p>
+<ul>
+<li>
+<p>SiteToSiteMetricsReportingTask: Internal reporting system that generates events as metrics are generated from the same environment and captured in a specific flow. The configuration should be as follows:</p>
+<ul>
+<li>Destination URL: http://${hostname(true)}:8080/nifi</li>
+<li>Input Port Name: reporting_task</li>
+<li>Instance URL: http://${hostname(true)}:8080/nifi</li>
+<li>Transport Protocol: HTTP</li>
+<li>Record Writer: JsonRecordSetWriter</li>
+<li>Output Format: Record Formats</li>
+</ul>
+</li>
+</ul>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/metrics_reporting_task.png" /></p>
+<p>Once the reporting tasks have been configured, you must start the execution by clicking start (►) on each of them.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/nifi_settings_4.png" /></p>
+<h3 id="5-enabling-the-sending-of-data">5. Enabling the sending of data<a class="headerlink" href="#5-enabling-the-sending-of-data" title="Permanent link">&para;</a></h3>
+<p>After completing the entire configuration process, start the process group execution. Right click on the process group and then Start.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/enable_sending_1.png" /></p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/nifi/enable_sending_2.png" /></p>
+<p>If all the configuration was successful, the information will be sent to Splunk. For the data sent to splunk to be accessible from the application, you must have configured the <a href="/nifi-monitoring-splunk/installation/#lookup-nifi-instances-configuration">NIFI Instances Lookup</a></p>
+<h2 id="configuration-of-nifi-data-input-in-splunk">Configuration of Nifi Data Input in Splunk<a class="headerlink" href="#configuration-of-nifi-data-input-in-splunk" title="Permanent link">&para;</a></h2>
+<p><em>This configuration must be applied when the NIFI instances have at least basic authentication</em></p>
+<p>In the Splunk data inputs you can configure several resources, such as: NIFI Endpoints for monitoring System Diagnostics, Flow Status and Site to Site and the NIFI Status History for specific monitoring of processors and process groups based on their IDs.
+To configure, in the splunk where the Nifi Monitoring application is installed, access the Home of the APP.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/nifi_home.png" /></p>
+<p>Then in Settings Data Inputs</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/data_input_1.png" /></p>
+<p>In the local data input, identify NiFi and then click on + Add new</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/data_input_2.png" /></p>
+<p>A window like the following will be displayed:</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/data_input_3.jpeg" /></p>
+<p><strong>We recommend that you configure each of the monitoring resources independently for eventual changes in the configuration and due to execution times to obtain data.</strong></p>
+<p>The resources are:</p>
+<ul>
+<li>a. NIFI Endpoints</li>
+<li>b. NIFI Status History for Processors</li>
+<li>c. NIFI Status History for Process Groups</li>
+</ul>
+<h3 id="1-basic-resource-configuration">1. Basic resource configuration<a class="headerlink" href="#1-basic-resource-configuration" title="Permanent link">&para;</a></h3>
+<p>For each of the resources you must configure all the required fields:</p>
+<ul>
+<li>NIFI Instance name: Assigns a name to the NIFI instance</li>
+<li>NIFI API URL: NIFI Rest API address. (eg. http://&lt;address:port&gt;/nifi-api/)</li>
+<li>Auth Type: Authentication type:<ul>
+<li>none: No authentication</li>
+<li>basic: Access with username and password credentials</li>
+</ul>
+</li>
+<li>Interval: Time in seconds in which the requests will be executed to extract the information, by default, 60 seconds.</li>
+<li>Host: Name of the nifi host, which must correspond to what is defined in the Configuration Lookup.</li>
+<li>Index: Destination index for this data source. A dedicated index is recommended, for example: nifi. If it does not exist, you must create it first.</li>
+</ul>
+<h3 id="a-nifi-endpoints">a. NIFI Endpoints<a class="headerlink" href="#a-nifi-endpoints" title="Permanent link">&para;</a></h3>
+<p>In the NIFI Endpoints section, select the elements to monitor from the existing list.</p>
+<ul>
+<li>System Diagnostics</li>
+<li>Flow Status</li>
+<li>Site to Site</li>
+</ul>
+<h3 id="b-nifi-status-history-for-processors">b. NIFI Status History for Processors<a class="headerlink" href="#b-nifi-status-history-for-processors" title="Permanent link">&para;</a></h3>
+<p>In the NIFI Status History &gt; List Processors ID section, specify the processor IDs that will be monitored and separated by commas if there are several.</p>
+<h3 id="c-nifi-status-history-for-process-groups">c. NIFI Status History for Process Groups<a class="headerlink" href="#c-nifi-status-history-for-process-groups" title="Permanent link">&para;</a></h3>
+<p>In the NIFI Status History &gt; Process Groups ID section, specify the IDs of the process groups that will be monitored and separated by a comma if there are several.</p>
+<p>After the configuration is complete, click next and the creation will finish successfully
+<img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/data_input_success.png" /></p>
+<p>Repeat the configuration process for each resource you need to monitor.</p>
+<p>Example of the 3 resources created independently
+<img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/data_input_4.png" /></p>
+<h2 id="transverse-configuration">Transverse configuration<a class="headerlink" href="#transverse-configuration" title="Permanent link">&para;</a></h2>
+<p>Regardless of the shipping methodology adopted, this configuration step is required for data display in the NIFI Monitoring Splunk application.</p>
+<h3 id="instance-lookup">Instance Lookup<a class="headerlink" href="#instance-lookup" title="Permanent link">&para;</a></h3>
+<p>Go to Configuration &gt; NiFi Instances to access the Lookups configuration view</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/1_configure_instances.png" /></p>
+<p>Complete the information in the fields, where the cluster label is to associate a group of nodes and host is the name of the instance.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/2_configure_instances.png" /></p>
+<p>To obtain the name of the host, execute the following search with a time range of the last 60 minutes.</p>
+<p><strong>Splunk Query</strong><br />
+<code>sourcetype=nifi* | dedup host | table host</code></p>
+<p>The result of this query will return the list of hosts that must be configured in the lookup.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/sourcetype_search.png" /></p>
+<p>If the lookup is correctly configured, the information can be accessed from the Overview panel.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/nifi_overview_lookup.png" /></p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/3_configure_instances.png" /></p>
+<p>There are no results in the executed search?</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/4_configure_instances.png" /></p>
+<p>For this search to return results, the Nifi processes must be running correctly.
+ According to the configuration methodology you must:</p>
+<ol>
+<li>Direct sending: You must start the NIFI processes <a href="#Enabling-the-sending-of-data">How to enable data sending?</a></li>
+<li>Splunk Data Input NiFi: The configured data inputs must be enabled.</li>
+</ol>
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+        
+      </main>
+      
+        
+<footer class="md-footer">
+  
+    <nav class="md-footer__inner md-grid" aria-label="Footer">
+      
+        
+        <a href="../installation/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Install and configure NIFI Monitoring on Splunk" rel="prev">
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+          </div>
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              Install and configure NIFI Monitoring on Splunk
+            </div>
+          </div>
+        </a>
+      
+      
+        
+        <a href="../references/" class="md-footer__link md-footer__link--next" aria-label="Next: Data Reference" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              Data Reference
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>
+          </div>
+        </a>
+      
+    </nav>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+          <div class="md-footer-copyright__highlight">
+            Copyright &copy; 2021 Kudaw S.A. All Rights Reserved
+          </div>
+        
+        Made with
+        <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+          Material for MkDocs
+        </a>
+        
+      </div>
+      
+  <div class="md-footer-social">
+    
+      
+      
+        
+        
+      
+      <a href="https://www.kudaw.com/" target="_blank" rel="noopener" title="www.kudaw.com" class="md-footer-social__link">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path d="M280.37 148.26 96 300.11V464a16 16 0 0 0 16 16l112.06-.29a16 16 0 0 0 15.92-16V368a16 16 0 0 1 16-16h64a16 16 0 0 1 16 16v95.64a16 16 0 0 0 16 16.05L464 480a16 16 0 0 0 16-16V300L295.67 148.26a12.19 12.19 0 0 0-15.3 0zM571.6 251.47 488 182.56V44.05a12 12 0 0 0-12-12h-56a12 12 0 0 0-12 12v72.61L318.47 43a48 48 0 0 0-61 0L4.34 251.47a12 12 0 0 0-1.6 16.9l25.5 31A12 12 0 0 0 45.15 301l235.22-193.74a12.19 12.19 0 0 1 15.3 0L530.9 301a12 12 0 0 0 16.9-1.6l25.5-31a12 12 0 0 0-1.7-16.93z"/></svg>
+      </a>
+    
+      
+      
+        
+        
+      
+      <a href="https://www.linkedin.com/company/kudaw-latam" target="_blank" rel="noopener" title="www.linkedin.com" class="md-footer-social__link">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3zM135.4 416H69V202.2h66.5V416zm-33.2-243c-21.3 0-38.5-17.3-38.5-38.5S80.9 96 102.2 96c21.2 0 38.5 17.3 38.5 38.5 0 21.3-17.2 38.5-38.5 38.5zm282.1 243h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9V416z"/></svg>
+      </a>
+    
+      
+      
+        
+        
+      
+      <a href="https://hub.docker.com/r/kudaw" target="_blank" rel="noopener" title="hub.docker.com" class="md-footer-social__link">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><path d="M349.9 236.3h-66.1v-59.4h66.1v59.4zm0-204.3h-66.1v60.7h66.1V32zm78.2 144.8H362v59.4h66.1v-59.4zm-156.3-72.1h-66.1v60.1h66.1v-60.1zm78.1 0h-66.1v60.1h66.1v-60.1zm276.8 100c-14.4-9.7-47.6-13.2-73.1-8.4-3.3-24-16.7-44.9-41.1-63.7l-14-9.3-9.3 14c-18.4 27.8-23.4 73.6-3.7 103.8-8.7 4.7-25.8 11.1-48.4 10.7H2.4c-8.7 50.8 5.8 116.8 44 162.1 37.1 43.9 92.7 66.2 165.4 66.2 157.4 0 273.9-72.5 328.4-204.2 21.4.4 67.6.1 91.3-45.2 1.5-2.5 6.6-13.2 8.5-17.1l-13.3-8.9zm-511.1-27.9h-66v59.4h66.1v-59.4zm78.1 0h-66.1v59.4h66.1v-59.4zm78.1 0h-66.1v59.4h66.1v-59.4zm-78.1-72.1h-66.1v60.1h66.1v-60.1z"/></svg>
+      </a>
+    
+      
+      
+        
+        
+      
+      <a href="https://github.com/kudawdev" target="_blank" rel="noopener" title="github.com" class="md-footer-social__link">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+      </a>
+    
+  </div>
+
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    <script id="__config" type="application/json">{"base": "..", "features": ["instant"], "search": "../assets/javascripts/workers/search.94ec81fe.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.48dfec6c.min.js"></script>
+      
+        <script src="../assets/js/theme.js"></script>
+      
+    
+  </body>
+</html>
