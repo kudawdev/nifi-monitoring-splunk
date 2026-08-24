@@ -31,6 +31,75 @@
   </fieldset>
   <row>
     <panel>
+      <title>Configuration</title>
+      <single>
+        <title>Events the app can see (index_nifi macro)</title>
+        <search>
+          <query>| tstats count where `index_nifi` sourcetype=nifi:* by sourcetype
+| stats sum(count) as events, dc(sourcetype) as sourcetypes</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="field">events</option>
+        <option name="rangeColors">["0xD32F2F","0x4CAF50"]</option>
+        <option name="rangeValues">[0]</option>
+        <option name="underLabel">zero means the macro points at the wrong index</option>
+        <option name="useColors">1</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Where NiFi data actually is</title>
+      <table>
+        <title>Set the index_nifi macro to whichever index this lists</title>
+        <search>
+          <!-- The one place index=* is the right thing to do: this panel
+               exists to find out where the data landed, it runs only when
+               someone opens this page, and tstats reads index-time metadata
+               rather than scanning events. -->
+          <query>| tstats count where index=* sourcetype=nifi:* by index, sourcetype
+| stats sum(count) as events, values(sourcetype) as sourcetypes by index
+| sort - events</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="wrap">false</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Collection</title>
+      <table>
+        <title>NiFi version and collection path per instance</title>
+        <search>
+          <query>| tstats latest(_time) as last_seen where `index_nifi` sourcetype=nifi:* by host, sourcetype
+| eval path = case(
+    like(sourcetype, "nifi:api:%"), "REST pull (TA modular input)",
+    like(sourcetype, "nifi:reporting:%"), "HEC push (reporting task)",
+    like(sourcetype, "nifi:log:%"), "log file",
+    1==1, sourcetype)
+| stats latest(last_seen) as last_seen, values(path) as paths by host
+| join type=left host
+    [| tstats latest(niFiVersion) as nifi_version, latest(javaVersion) as java_version
+         where `index_nifi` sourcetype="nifi:api:version_info" by host]
+| eval last_seen = strftime(last_seen, "%Y-%m-%d %H:%M:%S")
+| table host, nifi_version, java_version, paths, last_seen
+| sort host</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="wrap">false</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
       <chart>
         <title>HTTP Status Response</title>
         <search>

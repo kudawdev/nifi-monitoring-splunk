@@ -28,7 +28,7 @@ class IngestTest(IntegrationTestCase):
     def test_the_modular_input_produces_events(self):
         rows = wait_for_events(
             self.splunk,
-            'index=main sourcetype="nifi:api:*" | stats count by sourcetype',
+            'index=nifi sourcetype="nifi:api:*" | stats count by sourcetype',
             minimum=1,
         )
         self.assertTrue(
@@ -38,12 +38,12 @@ class IngestTest(IntegrationTestCase):
     def test_every_core_sourcetype_arrives(self):
         wait_for_events(
             self.splunk,
-            'index=main sourcetype="nifi:api:*" | stats count by sourcetype',
+            'index=nifi sourcetype="nifi:api:*" | stats count by sourcetype',
             minimum=len(CORE_SOURCETYPES),
         )
         rows = search(
             self.splunk,
-            'index=main sourcetype="nifi:api:*" | stats count by sourcetype',
+            'index=nifi sourcetype="nifi:api:*" | stats count by sourcetype',
         )
         seen = {row["sourcetype"] for row in rows}
         for sourcetype in CORE_SOURCETYPES:
@@ -53,7 +53,7 @@ class IngestTest(IntegrationTestCase):
     def test_the_removed_sourcetype_is_no_longer_collected(self):
         rows = search(
             self.splunk,
-            'index=main sourcetype="nifi:api:site_to_site" | stats count',
+            'index=nifi sourcetype="nifi:api:site_to_site" | stats count',
         )
         count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
         self.assertEqual(count, 0, "site_to_site is still being ingested")
@@ -62,7 +62,7 @@ class IngestTest(IntegrationTestCase):
         """INDEXED_EXTRACTIONS must turn the JSON into the datamodel's fields."""
         rows = wait_for_events(
             self.splunk,
-            'index=main sourcetype="nifi:api:flow_status" '
+            'index=nifi sourcetype="nifi:api:flow_status" '
             "| head 1 | table controllerStatus.activeThreadCount, "
             "controllerStatus.runningCount, controllerStatus.flowFilesQueued",
             minimum=1,
@@ -82,7 +82,7 @@ class IngestTest(IntegrationTestCase):
         instances by cluster."""
         rows = wait_for_events(
             self.splunk,
-            'index=main sourcetype="nifi:api:flow_status" '
+            'index=nifi sourcetype="nifi:api:flow_status" '
             "| head 1 | table host, cluster",
             minimum=1,
         )
@@ -121,7 +121,7 @@ class IngestTest(IntegrationTestCase):
 
         last_event = search(
             self.splunk,
-            'index=main sourcetype="nifi:api:*" | stats max(_time) as last_event',
+            'index=nifi sourcetype="nifi:api:*" | stats max(_time) as last_event',
             earliest="-1h",
         )
         self.assertTrue(last_event and last_event[0].get("last_event"))
@@ -173,7 +173,7 @@ class VersionDetectionTest(IntegrationTestCase):
     def test_the_detected_version_is_indexed(self):
         rows = wait_for_events(
             self.splunk,
-            'index=main sourcetype="nifi:api:version_info" '
+            'index=nifi sourcetype="nifi:api:version_info" '
             "| head 1 | table niFiVersion, javaVersion",
             minimum=1,
         )
@@ -185,7 +185,7 @@ class VersionDetectionTest(IntegrationTestCase):
         running, which would make every other assertion suspect."""
         rows = wait_for_events(
             self.splunk,
-            'index=main sourcetype="nifi:api:version_info" '
+            'index=nifi sourcetype="nifi:api:version_info" '
             "| stats values(niFiVersion) as versions",
             minimum=1,
         )
@@ -200,7 +200,7 @@ class VersionDetectionTest(IntegrationTestCase):
         endpoint must not double the events."""
         rows = search(
             self.splunk,
-            'index=main sourcetype="nifi:api:system_diagnostics" '
+            'index=nifi sourcetype="nifi:api:system_diagnostics" '
             '| bin _time span=1s | stats count by _time | where count > 1',
         )
         self.assertEqual(
@@ -244,7 +244,7 @@ class BulletinPollingTest(IntegrationTestCase):
     def test_any_bulletin_indexed_carries_the_datamodel_fields(self):
         rows = search(
             self.splunk,
-            'index=main sourcetype="nifi:api:bulletin_board" '
+            'index=nifi sourcetype="nifi:api:bulletin_board" '
             "| head 1 | table bulletinLevel, bulletinCategory, bulletinSourceName",
         )
         if not rows:
@@ -265,7 +265,7 @@ class FlowMetricsTest(IntegrationTestCase):
     def test_samples_are_indexed_as_individual_events(self):
         rows = wait_for_events(
             self.splunk,
-            'index=main sourcetype="nifi:api:flow_metrics" | stats count',
+            'index=nifi sourcetype="nifi:api:flow_metrics" | stats count',
             minimum=1,
         )
         count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
@@ -276,7 +276,7 @@ class FlowMetricsTest(IntegrationTestCase):
         two uncorrelated multivalue fields without it."""
         rows = wait_for_events(
             self.splunk,
-            'index=main sourcetype="nifi:api:flow_metrics" metric_name=nifi_jvm_heap_used '
+            'index=nifi sourcetype="nifi:api:flow_metrics" metric_name=nifi_jvm_heap_used '
             "| head 1 | table metric_name, metric_value, instance",
             minimum=1,
         )
@@ -288,7 +288,7 @@ class FlowMetricsTest(IntegrationTestCase):
     def test_the_parallel_arrays_are_gone(self):
         rows = search(
             self.splunk,
-            'index=main sourcetype="nifi:api:flow_metrics" '
+            'index=nifi sourcetype="nifi:api:flow_metrics" '
             "| head 1 | table labelNames, labelValues",
         )
         if rows:
@@ -298,7 +298,7 @@ class FlowMetricsTest(IntegrationTestCase):
     def test_component_labels_are_present_on_component_metrics(self):
         rows = wait_for_events(
             self.splunk,
-            'index=main sourcetype="nifi:api:flow_metrics" component_type=* '
+            'index=nifi sourcetype="nifi:api:flow_metrics" component_type=* '
             "| head 1 | table metric_name, component_type, component_name",
             minimum=1,
         )
@@ -314,6 +314,63 @@ class FlowMetricsTest(IntegrationTestCase):
         )
         count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
         self.assertEqual(count, 0, "flow metrics collection logged errors")
+
+
+class IndexAndAccelerationTest(IntegrationTestCase):
+    """The app has to find its own data, and the datamodel the panels query
+    has to be accelerated (B-6, APP-2)."""
+
+    def test_the_index_the_macro_points_at_exists(self):
+        rows = search(
+            self.splunk,
+            "| rest /services/data/indexes | search title=nifi | table title",
+        )
+        self.assertTrue(rows, "the nifi index was not created by the app")
+
+    def test_the_macro_resolves_to_data(self):
+        """Runs the macro itself, so a macro pointing at an empty index fails
+        here rather than showing empty panels."""
+        rows = wait_for_events(
+            self.splunk,
+            "| tstats count where `index_nifi` sourcetype=nifi:* by sourcetype",
+            minimum=1,
+        )
+        self.assertTrue(rows, "the index_nifi macro finds no NiFi data")
+
+    def test_the_datamodel_is_accelerated(self):
+        """The REST field is a flag, not the JSON blob the .conf holds."""
+        rows = search(
+            self.splunk,
+            "| rest /services/data/models/NIFI | table title, acceleration",
+        )
+        self.assertTrue(rows, "the NIFI datamodel is not present")
+        self.assertIn(
+            str(rows[0]["acceleration"]).lower(), ("1", "true"),
+            "acceleration reads %r" % rows[0]["acceleration"],
+        )
+
+    def test_the_macro_is_visible_outside_the_app(self):
+        """The datamodel is exported to system and every constraint goes
+        through index_nifi, so the macro has to be exported too. These
+        searches run with no app context, which is exactly the case that
+        breaks when it is not."""
+        rows = search(
+            self.splunk,
+            "| rest /services/admin/macros | search title=index_nifi "
+            "| table title, definition",
+        )
+        self.assertTrue(rows, "index_nifi is not visible outside nifi_monitoring")
+
+    def test_the_datamodel_returns_rows_through_tstats(self):
+        """What every dashboard panel does."""
+        rows = wait_for_events(
+            self.splunk,
+            "| tstats count from datamodel=NIFI.Flow_Status",
+            minimum=1,
+        )
+        self.assertTrue(rows)
+        self.assertGreater(int(rows[0].get("count", 0)), 0,
+                           "the datamodel returns no rows via tstats")
 
 
 if __name__ == "__main__":

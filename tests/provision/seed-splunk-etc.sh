@@ -43,7 +43,7 @@ port = 8088
 [http://nifi]
 disabled = 0
 token = 00000000-0000-0000-0000-0000000000ab
-index = main
+index = nifi
 EOF
 
 # The input has to match the auth mode of the NiFi that is coming up: the

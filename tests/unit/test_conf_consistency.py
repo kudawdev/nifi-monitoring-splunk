@@ -269,5 +269,60 @@ class RemovedEndpointTest(unittest.TestCase):
         self.assertIn("endpoint_site_to_site was removed", source)
 
 
+class IndexConfigurationTest(unittest.TestCase):
+    """The index_nifi macro is the single point of control for where the app
+    looks. It used to be `index=*`, which made every panel and every
+    datamodel acceleration scan every event index on the instance."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.macros = conf(os.path.join(APP, "default", "macros.conf"))
+        cls.indexes = conf(os.path.join(APP, "default", "indexes.conf"))
+        cls.datamodels = conf(os.path.join(APP, "default", "datamodels.conf"))
+
+    def test_the_macro_names_a_single_index(self):
+        definition = self.macros["index_nifi"]["definition"]
+        self.assertNotIn("*", definition, "the macro is back to scanning every index")
+        self.assertRegex(definition, r"^index=\S+$")
+
+    def test_the_app_ships_the_index_it_points_at(self):
+        """Otherwise a fresh install has nowhere to put data and every panel
+        is empty with no explanation."""
+        index = self.macros["index_nifi"]["definition"].split("=", 1)[1].strip()
+        self.assertIn(index, self.indexes.sections())
+
+    def test_the_harness_input_writes_to_that_index(self):
+        """So the integration profiles exercise the recommended layout rather
+        than an exception to it."""
+        index = self.macros["index_nifi"]["definition"].split("=", 1)[1].strip()
+        for mode in ("none", "singleuser"):
+            with self.subTest(auth=mode):
+                text = open(os.path.join(
+                    REPO, "tests", "provision", "splunk", "inputs.conf.%s" % mode
+                )).read()
+                self.assertIn("index = %s" % index, text)
+
+    def test_only_the_diagnostic_panel_may_scan_every_index(self):
+        """index=* is defensible exactly once: the panel whose job is to find
+        out where the data landed."""
+        views = os.path.join(APP, "default", "data", "ui", "views")
+        for name in os.listdir(views):
+            if not name.endswith(".xml"):
+                continue
+            text = open(os.path.join(views, name)).read()
+            with self.subTest(view=name):
+                if "index=*" in text:
+                    self.assertEqual(
+                        name, "nifi_internal_monitoring.xml",
+                        "%s scans every index" % name,
+                    )
+
+    def test_acceleration_matches_what_the_panels_assume(self):
+        """The dashboards use `tstats ... from datamodel=`, which needs an
+        accelerated model to perform as intended."""
+        self.assertEqual(self.datamodels["NIFI"]["acceleration"], "true")
+        self.assertIn("acceleration.earliest_time", self.datamodels["NIFI"])
+
+
 if __name__ == "__main__":
     unittest.main()

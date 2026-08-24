@@ -19,7 +19,7 @@ Extender las dos apps para monitorear instancias de **Apache NiFi 2.x** sin perd
 
 - Soporte simultáneo de NiFi 1.16+ y 2.x en un único código.
 - Revisión y consolidación del método de recolección.
-- Corrección de los 24 defectos catalogados en §7.
+- Corrección de los 25 defectos catalogados en §7.
 - Rediseño de `tests/` como matriz parametrizable NiFi × Splunk con verificación automatizada.
 - Actualización de la documentación pública bilingüe en `doc/`.
 
@@ -317,8 +317,8 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 
 | # | Cambio |
 |---|---|
-| APP-1 | Reemplazar `index_nifi = index=*` por un macro con índice configurable vía lookup o argumento (B-6). |
-| APP-2 | Decidir aceleración del datamodel `NIFI`: activarla, o dejar de consultarlo con `tstats` (B-7). |
+| APP-1 ✅ | **Hecho.** `index_nifi` pasa de `index=*` a `index=nifi`, la app trae su `indexes.conf`, y el panel de Internal Monitoring gana un diagnóstico que dice cuántos eventos ve el macro y **en qué índices hay datos de NiFi realmente** — para que un override no requiera adivinar. Ese panel es el único lugar donde `index=*` queda justificado, y un test verifica que ningún otro dashboard lo use. |
+| APP-2 ✅ | **Hecho (D-4 = activarla).** Los paneles ya usaban `tstats … from datamodel=`, así que el diseño la suponía. `acceleration.earliest_time = -7d` con el costo documentado al lado. Verificado contra Splunk real: el modelo reporta acelerado y devuelve filas por `tstats`. |
 | APP-3 | Nuevos objetos de datamodel para `nifi:api:flow_metrics` y `nifi:api:bulletin_board`. |
 | APP-4 | Eliminar los `join` de `nifi_overview.xml` (B-8). |
 | APP-5 | Verificar los nombres de campo de `System_Diagnostics` en `nifi_overview.xml` — referencian `freeSpace`/`usedSpace`/`utilization` sin prefijo de objeto, y el datamodel solo declara las variantes `*Bytes` (B-19). |
@@ -361,8 +361,8 @@ Catalogados durante la lectura del repositorio del 2026-08-24. Severidad: **A** 
 | B-3 | **A** | `.github/workflows/testing.yml` | Usa `::set-output`, deshabilitado por GitHub en 2023 → `APP_VERSION` vacío → `slim validate` falla. El workflow está roto de punta a punta. |
 | B-4 | **A** | `bin/nifi.py:validate_input` | Stub (`a=1; b=2; if a>=b: raise`) con `use_external_validation = True`. No valida nada: URL inválida o credenciales vacías se aceptan. |
 | B-5 | **A** | `bin/nifi.py:__get_request` | En el reintento tras 401 se construye `headers` con el token nuevo pero **nunca se asigna a `req_args`**: el reintento reenvía el token viejo. La recuperación de sesión expirada no funciona. |
-| B-6 | **A** | `nifi_monitoring/default/macros.conf` | `index_nifi = index=*` — base de todos los dashboards y de las constraints del datamodel. Busca en todos los índices, incluidos los internos. |
-| B-7 | **B** | `datamodels.conf` + dashboards | `acceleration = false` mientras 6 paneles usan `tstats … from datamodel=NIFI.*`. Sin aceleración degrada a búsqueda cruda. |
+| B-6 ✅ | **A** | `nifi_monitoring/default/macros.conf` | `index_nifi = index=*` — base de todos los dashboards y de las constraints del datamodel. Busca en todos los índices, incluidos los internos. |
+| B-7 ✅ | **B** | `datamodels.conf` + dashboards | `acceleration = false` mientras 6 paneles usan `tstats … from datamodel=NIFI.*`. Sin aceleración degrada a búsqueda cruda. |
 | B-8 | **B** | `nifi_overview.xml` | Dos `join type=left` en la query principal. |
 | B-9 ✅ | **B** | TA + app | `controller_cluster` retirado; `site_to_site` pendiente de D-2. | `nifi:api:site_to_site` se recolecta (habilitado por defecto) y **ningún** dashboard ni objeto de datamodel lo consume. `nifi:api:controller_cluster` tiene `props.conf` y no lo produce nadie. |
 | B-10 | **A** | `mkdocs.yml` | No declara `docs_dir`; tras el rename `docs/` → `doc/` apunta a un directorio vacío. `docs.yml` publicaría un sitio vacío. |
@@ -379,6 +379,7 @@ Catalogados durante la lectura del repositorio del 2026-08-24. Severidad: **A** 
 | B-21 ✅ | C | `nifi_TA_monitoring/default/inputs.conf` | Los monitor inputs apuntan a `/opt/nifi/logs/nifi-*.log`, pero en la imagen oficial de NiFi los logs están en `/opt/nifi/nifi-current/logs/`. La ruta por defecto no sirve para el despliegue más común. |
 | B-22 ✅ | C | TA | `nifi-deprecation.log` y `nifi-request.log` existen en 1.x y 2.x y **no se recolectan**. El primero es el log que dice qué componentes deprecados está usando el cliente: el insumo natural de un panel de apoyo a la migración a 2.x. |
 | B-23 | **A** ✅ | `bin/nifi.py` | **Resuelto.** Todas las llamadas a NiFi usaban `verify = False` (y se silencian los warnings de urllib3 con `disable_warnings`). Contra un NiFi con HTTPS eso acepta cualquier certificado: un atacante en la red puede interceptar la sesión y quedarse con el usuario, la contraseña y el JWT. En NiFi 2.x esto importa más que antes, porque HTTPS es el default y el modo sin auth dejó de ser práctico. Ahora es opcional (`verify_tls`, checkbox "Verify TLS certificate") con un `ca_bundle` opcional, y la verificación queda **activada** por defecto — incluido para los inputs guardados antes de que la opción existiera. Los warnings de urllib3 solo se silencian cuando el usuario apagó la verificación, y un fallo de certificado ahora dice qué hacer en lugar de mostrar solo el error de `requests`. Ver R-7 (breaking change) y R-8 (el harness cubre el camino sin verificar, no el default). |
+| B-25 ✅ | **A** | `nifi_monitoring/metadata/default.meta` | **Resuelto.** El datamodel `NIFI` se exportaba a `system` pero el macro `index_nifi` que usan sus **6 constraints** no tenía stanza de export. Fuera del contexto de la app el modelo no resolvía a nada — justo lo que se busca al exportarlo — y las búsquedas de aceleración tampoco podían resolver el macro. Apareció al activar la aceleración y correr las assertions sin app context. |
 | B-24 | C | `nifi_TA_monitoring/lib/splunklib` | `splunklib/results.py` hace `import deprecation`, un paquete de terceros que **no está vendorizado** junto a él, así que ese módulo lanza `ModuleNotFoundError` si alguien lo importa. Apareció al upgradear splunklib a 2.1.1 (`51f3ae6`). Hoy no rompe nada porque `bin/nifi.py` solo usa `splunklib.client` y `splunklib.modularinput`, que importan bien; queda como trampa para el próximo que necesite leer resultados de búsqueda. Vendorizar `deprecation` o retirar `results.py` del paquete. |
 
 ---
@@ -559,7 +560,7 @@ El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el c
 | **D-1** ✅ | Bulletins individuales | **Decidido (c): ambas, con polling por defecto** (Anibal Vasquez, 2026-08-24). Implementado en TA-5. |
 | **D-2** ✅ | `nifi:api:site_to_site` | **Decidido (a): retirado** (Anibal Vasquez, 2026-08-24). Se recolectaba en cada ciclo y ningún panel ni objeto del datamodel lo leía. Un input viejo que todavía traiga `endpoint_site_to_site` recibe un WARN diciendo que se ignora, en lugar de que desaparezca en silencio. |
 | **D-3** | Piso de NiFi soportado | (a) 1.16 (donde aparece `producer=json`); (b) 1.23 (lo que hoy se prueba); (c) solo 2.x + una 1.x de cortesía. **Recomendación: (a)**, con CI en 1.23.2 y 1.28.1. |
-| **D-4** | Aceleración del datamodel | (a) activarla y asumir el costo de almacenamiento; (b) sacar `tstats` de los dashboards. **Recomendación: (a)**, es lo que los paneles ya suponen. |
+| **D-4** ✅ | Aceleración del datamodel | **Resuelto (a): activada.** Es lo que los paneles ya suponían. `earliest_time` en 7 días; bajarlo o desactivarla es una línea, con el costo documentado en `datamodels.conf`. |
 | **D-5** | ¿1.2.4 de saneamiento antes de 2.0.0? | **Recomendación: sí.** F1 arregla un secreto expuesto y un gate de release roto; no debería esperar al resto del plan. |
 
 ---

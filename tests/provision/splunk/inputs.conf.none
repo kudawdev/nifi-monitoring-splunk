@@ -10,5 +10,5 @@ endpoint_system_diagnostics = 1
 endpoint_flow_metrics = 1
 metrics_strategy = ALL_COMPONENTS
 host = nifi
-index = main
+index = nifi
 interval = 60
