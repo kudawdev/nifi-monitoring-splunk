@@ -108,7 +108,7 @@ En cualquiera de los dos casos, los ajustes son los mismos:
     pantallas se ven distintas. Recapturarlas para 2.x está pendiente.
 
 
-Posterior a la configuración de las variables es necesario crear los siguientes componentes. Para configurar accede a Nifi Settings desde el menú > controller Settings
+Con los ajustes del flow ya cargados (el parameter context en 2.x, las variables en 1.x), es necesario crear los siguientes componentes. Para configurar accede a Nifi Settings desde el menú > controller Settings
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/controller_settings.png)
 
