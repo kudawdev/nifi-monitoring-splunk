@@ -77,18 +77,65 @@ class IngestTest(IntegrationTestCase):
         self.assertTrue(rows)
         self.assertTrue(rows[0].get("cluster"), "cluster was not looked up from host")
 
-    def test_the_input_reports_no_errors(self):
-        """The modular input logs its own failures through EventWriter, which
-        land in splunkd.log prefixed with 'Nifi Log pid='."""
+    def test_the_input_logs_no_errors_other_than_the_bootstrap_401(self):
+        """One 401 per cold start is by design: with no cached token the first
+        request is unauthorized, and the input then fetches one and retries.
+        Anything else is a real failure."""
         rows = search(
             self.splunk,
             'index=_internal sourcetype=splunkd log_level=ERROR "Nifi Log pid=" '
-            "| stats count by _raw",
+            '| rex "status_code: (?<code>\\d+)" '
+            "| stats count by code",
             earliest="-1h",
         )
+        unexpected = [row for row in rows if row.get("code") != "401"]
         self.assertEqual(
-            rows, [], "the NiFi input logged errors: %s" % [r.get("_raw") for r in rows]
+            unexpected, [], "the input logged errors other than a 401: %s" % unexpected
         )
+
+    def test_the_input_recovers_from_the_bootstrap_401(self):
+        """The regression guard for the token-refresh bug: before it was fixed
+        the retry re-sent the expired token, so the input never got past the
+        401 and nothing was ever indexed. Events dated after the last error
+        prove the renewal worked."""
+        last_error = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd log_level=ERROR "Nifi Log pid=" '
+            "| stats max(_time) as last_error",
+            earliest="-1h",
+        )
+        if not last_error or not last_error[0].get("last_error"):
+            self.skipTest("the input logged no errors at all; nothing to recover from")
+
+        last_event = search(
+            self.splunk,
+            'index=main sourcetype="nifi:api:*" | stats max(_time) as last_event',
+            earliest="-1h",
+        )
+        self.assertTrue(last_event and last_event[0].get("last_event"))
+        self.assertGreater(
+            float(last_event[0]["last_event"]),
+            float(last_error[0]["last_error"]),
+            "no events arrived after the last error: the input did not recover",
+        )
+
+    def test_the_401_is_not_paid_on_every_cycle(self):
+        """A 401 per poll would mean the token is not being cached at all."""
+        errors = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd log_level=ERROR "Nifi Log pid=" '
+            "| stats count",
+            earliest="-1h",
+        )
+        events = search(
+            self.splunk,
+            'index=main sourcetype="nifi:api:flow_status" | stats count',
+            earliest="-1h",
+        )
+        error_count = int(errors[0]["count"]) if errors else 0
+        event_count = int(events[0]["count"]) if events else 0
+        self.assertGreater(event_count, error_count,
+                           "as many errors as successful polls: the token is not cached")
 
 
 class VersionDetectionTest(IntegrationTestCase):

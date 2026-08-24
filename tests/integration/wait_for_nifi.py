@@ -44,8 +44,10 @@ def base_url():
     return "http://localhost:%s/nifi-api" % env("NIFI_HTTP_PORT", "38080")
 
 
-def request(url, data=None, token=None, form=False):
-    headers = {"Accept": "application/json"}
+def request(url, data=None, token=None, form=False, accept="application/json"):
+    # /access/token answers text/plain (the raw JWT), so asking only for JSON
+    # gets a 406 Not Acceptable from NiFi.
+    headers = {"Accept": accept}
     if token:
         headers["Authorization"] = "Bearer " + token
     body = None
@@ -72,6 +74,7 @@ def get_token():
             ),
         },
         form=True,
+        accept="*/*",
     ).strip()
 
 
@@ -103,7 +106,9 @@ def describe(token):
 def main():
     deadline = time.time() + TIMEOUT_SECONDS
     last_error = None
+    attempt = 0
     while time.time() < deadline:
+        attempt += 1
         try:
             token = get_token() if env("NIFI_AUTH") == "singleuser" else None
             print("    %s at %s" % (describe(token), base_url()))
@@ -111,6 +116,8 @@ def main():
         except (urllib.error.URLError, urllib.error.HTTPError, OSError, KeyError,
                 ValueError) as error:
             last_error = error
+            if attempt == 1 or attempt % 6 == 0:
+                print("    still waiting: %s: %s" % (type(error).__name__, error))
             time.sleep(5)
     print(
         "NiFi did not become usable within %ds: %s" % (TIMEOUT_SECONDS, last_error),
