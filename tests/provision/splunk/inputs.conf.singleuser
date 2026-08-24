@@ -18,6 +18,11 @@ verify_tls = 0
 endpoint_flow_status = 1
 endpoint_system_diagnostics = 1
 endpoint_site_to_site = 1
+
+# Exercised by the harness so the flattening runs against a real payload.
+# Off by default in the shipped app: see the volume note in inputs.conf.spec.
+endpoint_flow_metrics = 1
+metrics_strategy = ALL_COMPONENTS
 host = nifi
 index = main
 interval = 60

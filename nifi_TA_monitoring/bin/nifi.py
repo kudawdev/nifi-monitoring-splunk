@@ -8,6 +8,7 @@ import dotenv
 import uuid
 import unicodedata
 import json
+from urllib.parse import quote
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))
 import splunklib.client as client
@@ -29,7 +30,10 @@ class NiFiScript(Script):
             {"name":"endpoint_site_to_site", "sourcetype":"nifi:api:site_to_site", "path":"/site-to-site"},
             {"name":"endpoint_processors_history", "sourcetype":"nifi:api:processors_history", "path":"/flow/processors/{id}/status/history"},
             {"name":"endpoint_process_groups_history", "sourcetype":"nifi:api:process_groups_history", "path":"/flow/process-groups/{id}/status/history"},
-            {"name":"endpoint_bulletin_board", "sourcetype":"nifi:api:bulletin_board", "path":"/flow/bulletin-board"}
+            {"name":"endpoint_bulletin_board", "sourcetype":"nifi:api:bulletin_board", "path":"/flow/bulletin-board"},
+            # The json producer of the metrics endpoint appears in NiFi 1.16;
+            # 1.15 and older only have the prometheus text format.
+            {"name":"endpoint_flow_metrics", "sourcetype":"nifi:api:flow_metrics", "path":"/flow/metrics/json", "min_version":(1, 16, 0)}
         ]
     pid = 'Nifi Log pid="{}"'.format(uuid.uuid4())
     tls_verify = True
@@ -154,6 +158,75 @@ class NiFiScript(Script):
                     ids.append(candidate)
                     break
         return max(ids) if ids else None
+
+    # Flow metrics. GET /flow/metrics/json returns Prometheus' data model
+    # serialised to JSON: labelNames and labelValues are *parallel arrays*, so
+    # INDEXED_EXTRACTIONS would index them as two unrelated multivalue fields.
+    # The TA zips them into one flat event per sample instead.
+    #
+    # Volume is the reason this endpoint is off by default: an idle NiFi
+    # already emits 60 samples (~14 KB) per poll, and ALL_COMPONENTS scales
+    # that with every processor in the flow.
+    metrics_registries_all = ('NIFI', 'JVM', 'BULLETIN', 'CONNECTION', 'CLUSTER')
+    metrics_registries_2x = ('VERSION_INFO',)
+    metrics_strategies = ('ALL_COMPONENTS', 'ALL_PROCESS_GROUPS')
+    metrics_default_strategy = 'ALL_PROCESS_GROUPS'
+
+    @classmethod
+    def known_registries(cls, version=None):
+        """Registries this NiFi accepts. VERSION_INFO 404s before 2.0."""
+        registries = list(cls.metrics_registries_all)
+        if version is None or version >= (2, 0, 0):
+            registries += list(cls.metrics_registries_2x)
+        return tuple(registries)
+
+    def metrics_query(self, input_item):
+        """Build the query string for /flow/metrics/json from the input."""
+        params = []
+
+        requested = self._split_ids(input_item.get('metrics_registries') or '')
+        allowed = self.known_registries(self.nifi_version)
+        for registry in requested:
+            name = registry.strip().upper()
+            if name in allowed:
+                params.append(('includedRegistries', name))
+
+        strategy = (input_item.get('metrics_strategy') or '').strip().upper()
+        if strategy not in self.metrics_strategies:
+            strategy = self.metrics_default_strategy
+        params.append(('flowMetricsReportingStrategy', strategy))
+
+        sample_filter = (input_item.get('metrics_sample_filter') or '').strip()
+        if sample_filter:
+            params.append(('sampleName', sample_filter))
+
+        return '&'.join('{}={}'.format(key, quote(value, safe='')) for key, value in params)
+
+    @staticmethod
+    def flatten_samples(payload):
+        """Zip each sample's parallel label arrays into one flat dict.
+
+        Empty label values are dropped: parent_id alone is empty on most
+        samples, and an empty string reads no differently from an absent
+        field in Splunk while costing bytes on every event.
+        """
+        try:
+            samples = json.loads(payload)['samples']
+        except (TypeError, ValueError, KeyError):
+            return None
+        if samples is None:
+            return []
+
+        flattened = []
+        for sample in samples:
+            names = sample.get('labelNames') or []
+            values = sample.get('labelValues') or []
+            flat = {'metric_name': sample.get('name'), 'metric_value': sample.get('value')}
+            for name, value in zip(names, values):
+                if value not in (None, ''):
+                    flat[name] = value
+            flattened.append(flat)
+        return flattened
 
     def __supported(self, endpoint, ew):
         """Whether this NiFi is new enough for the endpoint.
@@ -284,6 +357,46 @@ class NiFiScript(Script):
         )
         scheme.add_argument(endpoint_bulletin_board_argument)
 
+        endpoint_flow_metrics_argument = Argument(
+            name="endpoint_flow_metrics",
+            description="Collect flow metrics from /flow/metrics/json (NiFi 1.16 and later). Disabled by default: an idle instance emits around 60 samples per poll and ALL_COMPONENTS scales that with every processor in the flow, so review the volume before enabling.",
+            title="Flow Metrics",
+            data_type=Argument.data_type_boolean,
+            required_on_edit=False,
+            required_on_create=False
+        )
+        scheme.add_argument(endpoint_flow_metrics_argument)
+
+        metrics_registries_argument = Argument(
+            name="metrics_registries",
+            description="Which metric registries to collect, comma separated: NIFI, JVM, BULLETIN, CONNECTION, CLUSTER, and VERSION_INFO on NiFi 2.x. Empty collects all of them.",
+            title="Metric registries",
+            data_type=Argument.data_type_string,
+            required_on_edit=False,
+            required_on_create=False
+        )
+        scheme.add_argument(metrics_registries_argument)
+
+        metrics_strategy_argument = Argument(
+            name="metrics_strategy",
+            description="ALL_PROCESS_GROUPS (default) reports per process group; ALL_COMPONENTS reports per component, which is far more detailed and far larger.",
+            title="Metric reporting strategy",
+            data_type=Argument.data_type_string,
+            required_on_edit=False,
+            required_on_create=False
+        )
+        scheme.add_argument(metrics_strategy_argument)
+
+        metrics_sample_filter_argument = Argument(
+            name="metrics_sample_filter",
+            description="Regular expression matched against the metric name, to collect only part of what NiFi exposes. e.g. nifi_jvm.*",
+            title="Metric name filter",
+            data_type=Argument.data_type_string,
+            required_on_edit=False,
+            required_on_create=False
+        )
+        scheme.add_argument(metrics_sample_filter_argument)
+
         auth_type_argument = Argument(
             name="auth_type",
             description="Auth Type",
@@ -360,6 +473,27 @@ class NiFiScript(Script):
         # Splunk also accepts a cron expression here; only check plain numbers.
         if interval and interval.isdigit() and int(interval) <= 0:
             raise ValueError("Interval must be greater than 0 seconds")
+
+        strategy = (params.get("metrics_strategy") or "").strip().upper()
+        if strategy and strategy not in self.metrics_strategies:
+            raise ValueError(
+                "Metric reporting strategy must be one of: {}".format(
+                    ", ".join(self.metrics_strategies))
+            )
+
+        for registry in self._split_ids(params.get("metrics_registries") or ""):
+            if registry.strip().upper() not in self.known_registries():
+                raise ValueError(
+                    "Unknown metric registry '{}'; known: {}".format(
+                        registry, ", ".join(self.known_registries()))
+                )
+
+        sample_filter = (params.get("metrics_sample_filter") or "").strip()
+        if sample_filter:
+            try:
+                re.compile(sample_filter)
+            except re.error as error:
+                raise ValueError("Metric name filter is not a valid regular expression: {}".format(error))
 
         ca_bundle = (params.get("ca_bundle") or "").strip()
         if ca_bundle and not os.path.isfile(ca_bundle):
@@ -442,6 +576,13 @@ class NiFiScript(Script):
             sourcetype = ep.get("sourcetype")
             EventWriter.log(ew, EventWriter.INFO, '{} Request endpoint: {}'.format(self.pid, ep))
             
+            if ep.get('name') == 'endpoint_flow_metrics':
+                if not self._is_enabled(input_item.get('endpoint_flow_metrics'), default=False):
+                    continue
+                self.__collect_flow_metrics(ew, base_url, path, sourcetype, auth_type,
+                                            username, iname, session_key, input_name, input_item)
+                continue
+
             if ep.get('name') == 'endpoint_bulletin_board':
                 if input_item.get('endpoint_bulletin_board') not in ('1', None, ''):
                     continue
@@ -517,6 +658,35 @@ class NiFiScript(Script):
             else:
                 EventWriter.log(ew, EventWriter.INFO, 'there wasnt an endpoint detected: ')
                 pass
+
+    def __collect_flow_metrics(self, ew, base_url, path, sourcetype, auth_type,
+                               username, iname, session_key, input_name, input_item):
+        """Poll /flow/metrics/json, emitting one flat event per sample."""
+        query = self.metrics_query(input_item)
+        request_path = '{}?{}'.format(path, query) if query else path
+
+        try:
+            payload = self.__get_request(ew, base_url, request_path, auth_type, username, iname, session_key)
+        except Exception as error:
+            EventWriter.log(ew, EventWriter.ERROR, '{} Error requesting flow metrics: {}'.format(self.pid, error))
+            return
+
+        samples = self.flatten_samples(payload)
+        if samples is None:
+            EventWriter.log(ew, EventWriter.ERROR, '{} Could not read the flow metrics response'.format(self.pid))
+            return
+
+        for sample in samples:
+            ew.write_event(Event(
+                sourcetype=sourcetype,
+                stanza=input_name,
+                data=json.dumps(sample),
+                host=input_item.get("host")
+            ))
+
+        EventWriter.log(ew, EventWriter.INFO, '{} Flow metrics collected: {} samples ({})'.format(
+            self.pid, len(samples), request_path))
+
 
     def __collect_bulletins(self, ew, base_url, path, sourcetype, auth_type,
                             username, iname, session_key, input_name, input_item):

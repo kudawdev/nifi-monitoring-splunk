@@ -241,5 +241,67 @@ class BulletinPollingTest(IntegrationTestCase):
                 self.assertIn(field, rows[0])
 
 
+class FlowMetricsTest(IntegrationTestCase):
+    """The flattening has to survive a real payload (TA-2).
+
+    /flow/metrics/json returns Prometheus' model with parallel label arrays;
+    the TA zips them into one flat event per sample. The harness enables the
+    endpoint, which the shipped app does not, because of its volume.
+    """
+
+    def test_samples_are_indexed_as_individual_events(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=main sourcetype="nifi:api:flow_metrics" | stats count',
+            minimum=1,
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertGreater(count, 1, "flow metrics produced no individual events")
+
+    def test_the_labels_became_searchable_fields(self):
+        """The point of the flattening: labelNames/labelValues would arrive as
+        two uncorrelated multivalue fields without it."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=main sourcetype="nifi:api:flow_metrics" metric_name=nifi_jvm_heap_used '
+            "| head 1 | table metric_name, metric_value, instance",
+            minimum=1,
+        )
+        self.assertTrue(rows, "no nifi_jvm_heap_used sample was indexed")
+        self.assertEqual(rows[0]["metric_name"], "nifi_jvm_heap_used")
+        self.assertTrue(rows[0].get("metric_value"))
+        self.assertTrue(rows[0].get("instance"))
+
+    def test_the_parallel_arrays_are_gone(self):
+        rows = search(
+            self.splunk,
+            'index=main sourcetype="nifi:api:flow_metrics" '
+            "| head 1 | table labelNames, labelValues",
+        )
+        if rows:
+            self.assertFalse(rows[0].get("labelNames"), "labelNames reached the index raw")
+            self.assertFalse(rows[0].get("labelValues"), "labelValues reached the index raw")
+
+    def test_component_labels_are_present_on_component_metrics(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=main sourcetype="nifi:api:flow_metrics" component_type=* '
+            "| head 1 | table metric_name, component_type, component_name",
+            minimum=1,
+        )
+        self.assertTrue(rows, "no component-scoped metric was indexed")
+        self.assertTrue(rows[0].get("component_type"))
+
+    def test_metrics_collection_reports_no_errors(self):
+        rows = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" '
+            '"flow metrics" log_level=ERROR | stats count',
+            earliest="-1h",
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertEqual(count, 0, "flow metrics collection logged errors")
+
+
 if __name__ == "__main__":
     unittest.main()
