@@ -483,7 +483,7 @@ Los skips son correctos: `VERSION_INFO` no existe en 1.x, la recolección de `/f
 
 #### 9.1 Qué reveló la primera ejecución real
 
-El harness no funcionó de entrada. Cinco defectos, ninguno visible leyendo el código:
+El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el código:
 
 | # | Defecto | Por qué importa |
 |---|---|---|
@@ -494,6 +494,7 @@ El harness no funcionó de entrada. Cinco defectos, ninguno visible leyendo el c
 | 5 | La assertion "sin errores" trataba el 401 de bootstrap como fallo | Falso positivo sobre un comportamiento que es de diseño |
 | 6 | `run.sh` sembraba el KV store en cuanto Splunk estaba *healthy*, pero el KV store sigue inicializando → `HTTP 503 KV Store is initializing` | Solo aparece cuando los pasos corren seguidos, que es justo lo que hace el CI. Resuelto con un gate sobre `/services/kvstore/status` |
 | 7 | La assertion comparaba errores totales contra eventos totales: lo primero es un one-off del arranque, lo segundo crece con el uptime | Test flaky por construcción: el mismo stack sano pasaba si las assertions corrían tarde y fallaba si corrían temprano |
+| 9 | `run.sh` no partía de un estado limpio: correr perfiles en secuencia fallaba en `up --wait` porque el stack anterior todavía se estaba yendo mientras el siguiente reclamaba los mismos puertos publicados | Cada perfil pasaba aislado, lo que lo hacía confuso. Correr la matriz en secuencia es la forma normal de verificarla localmente |
 | 8 | **En el TA:** `__get_request` leía la credencial almacenada antes de ramificar por `auth_type`, así que el modo sin auth hacía una llamada inútil a `storage/passwords` por endpoint y por ciclo — y al hacer hablar a `__get_password`, un ERROR por request | 6 errores contra 2 eventos en `nifi1-legacy`. **Los unit tests no podían verlo porque mockean `__get_password`**: es el argumento más claro a favor de tener las dos capas |
 
 **Lo que el run sí demostró**, y era el objetivo:
