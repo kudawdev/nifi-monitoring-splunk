@@ -50,7 +50,11 @@ services:
       - splunk_var:/opt/splunk/var
       - ..:/src:ro
     healthcheck:
-      test: ["CMD", "curl", "-sfk", "https://localhost:8089/services/server/info"]
+      # No --fail: splunkd answers 401 until credentials are presented, and
+      # `curl -f` turns that into exit 22, so the check could never pass.
+      # Without -f, curl exits 0 on any HTTP response and non-zero when
+      # nothing is listening, which is what "healthy" should mean here.
+      test: ["CMD", "curl", "-sk", "--max-time", "5", "https://localhost:8089/services/server/info"]
       interval: 15s
       timeout: 10s
       retries: 60
@@ -73,7 +77,9 @@ services:
     healthcheck:
       # /access/config answers before authentication is configured, so it
       # works for both the unsecured and the single-user profile.
-      test: ["CMD-SHELL", "curl -sfk http://localhost:8080/nifi-api/access/config || curl -sfk https://localhost:8443/nifi-api/access/config"]
+      # Same reason as Splunk: a secured NiFi answers 401 here, and that
+      # still proves the API is up.
+      test: ["CMD-SHELL", "curl -sk --max-time 5 http://localhost:8080/nifi-api/access/config || curl -sk --max-time 5 https://localhost:8443/nifi-api/access/config"]
       interval: 10s
       timeout: 5s
       retries: 60
