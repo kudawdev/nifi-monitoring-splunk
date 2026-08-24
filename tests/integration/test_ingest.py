@@ -151,20 +151,48 @@ class IngestTest(IntegrationTestCase):
 
 
 class VersionDetectionTest(IntegrationTestCase):
+    """The TA detects which NiFi it is talking to and records it.
 
-    def test_version_info_is_available_on_nifi_2(self):
-        """VERSION_INFO exists from 2.0; on 1.x the endpoint answers 404, which
-        is why the TA must not request it blindly."""
-        if self.nifi_major != "2":
-            self.skipTest("VERSION_INFO is a NiFi 2.x registry")
+    Detection reads versionInfo.niFiVersion from /system-diagnostics, which
+    exists on both the 1.x and 2.x lines, so this must work on every profile.
+    """
+
+    def test_the_detected_version_is_indexed(self):
         rows = wait_for_events(
             self.splunk,
-            'index=main sourcetype="nifi:api:*" nifi_version_info | head 1',
+            'index=main sourcetype="nifi:api:version_info" '
+            "| head 1 | table niFiVersion, javaVersion",
             minimum=1,
-            timeout=120,
         )
-        if not rows:
-            self.skipTest("flow metrics collection not implemented yet (plan TA-2)")
+        self.assertTrue(rows, "no nifi:api:version_info event was indexed")
+        self.assertEqual(rows[0].get("niFiVersion"), self.nifi_version)
+
+    def test_the_detected_version_matches_the_profile(self):
+        """A mismatch means the harness and the TA disagree about what is
+        running, which would make every other assertion suspect."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=main sourcetype="nifi:api:version_info" '
+            "| stats values(niFiVersion) as versions",
+            minimum=1,
+        )
+        self.assertTrue(rows)
+        versions = rows[0]["versions"]
+        if isinstance(versions, str):
+            versions = [versions]
+        self.assertEqual(list(versions), [self.nifi_version])
+
+    def test_system_diagnostics_is_not_fetched_twice(self):
+        """Version detection reuses the diagnostics response, so enabling the
+        endpoint must not double the events."""
+        rows = search(
+            self.splunk,
+            'index=main sourcetype="nifi:api:system_diagnostics" '
+            '| bin _time span=1s | stats count by _time | where count > 1',
+        )
+        self.assertEqual(
+            rows, [], "system_diagnostics arrived more than once per cycle: %s" % rows
+        )
 
 
 if __name__ == "__main__":

@@ -32,6 +32,7 @@ class NiFiScript(Script):
         ]
     pid = 'Nifi Log pid="{}"'.format(uuid.uuid4())
     tls_verify = True
+    nifi_version = None
 
     # NiFi component identifiers are UUIDs; a mistyped or truncated id is the
     # most common configuration error and otherwise only shows up as a 404
@@ -73,6 +74,58 @@ class NiFiScript(Script):
                     'at a bundle that trusts it, or uncheck "Verify TLS certificate" if you '
                     'accept an unverified connection.')
         return ''
+
+    # Version detection. /system-diagnostics carries versionInfo.niFiVersion on
+    # both the 1.x and 2.x lines, so one code path covers every supported
+    # release. The metrics endpoint's VERSION_INFO registry would only work on
+    # 2.x -- it answers 404 before 2.0 -- so it is not used for this.
+    version_pattern = re.compile(r'^(\d+)\.(\d+)(?:\.(\d+))?')
+
+    @classmethod
+    def parse_version(cls, raw):
+        """'2.11.0' -> (2, 11, 0). Returns None when it cannot be read."""
+        match = cls.version_pattern.match((raw or '').strip())
+        if not match:
+            return None
+        return tuple(int(part) if part else 0 for part in match.groups())
+
+    @staticmethod
+    def version_info_of(diagnostics_json):
+        """Pull versionInfo out of a /system-diagnostics payload."""
+        try:
+            return json.loads(diagnostics_json)['systemDiagnostics']['aggregateSnapshot']['versionInfo']
+        except (TypeError, ValueError, KeyError):
+            return None
+
+    def __supported(self, endpoint, ew):
+        """Whether this NiFi is new enough for the endpoint.
+
+        Endpoints without a min_version are assumed to exist everywhere. When
+        the version could not be detected, only those are collected: guessing
+        would mean logging a 404 as an error on every cycle.
+        """
+        minimum = endpoint.get('min_version')
+        if minimum is None:
+            return True
+        if self.nifi_version is None:
+            return False
+        if self.nifi_version >= minimum:
+            return True
+        EventWriter.log(ew, EventWriter.INFO, '{} Skipping {}: requires NiFi {} and this instance is older'.format(
+            self.pid, endpoint.get('name'), '.'.join(str(part) for part in minimum)))
+        return False
+
+    @classmethod
+    def __safe_item(cls, input_item):
+        """A copy of the input settings with the credential redacted.
+
+        The raw dict carries the cleartext password on the first run, before
+        it is moved into storage/passwords and masked.
+        """
+        return {
+            key: (cls.__redact(value) if key == 'password' else value)
+            for key, value in sorted(input_item.items())
+        }
 
     def _tls_verify(self, input_item):
         """The value to hand requests' `verify`: a CA bundle, True, or False."""
@@ -281,7 +334,7 @@ class NiFiScript(Script):
 
         kind, iname = input_name.split("://")
 
-        EventWriter.log(ew, EventWriter.INFO, "{} Started Nifi Get Data for input: input_name:{}, input_item:{}".format(self.pid, input_name, input_item))
+        EventWriter.log(ew, EventWriter.INFO, "{} Started Nifi Get Data for input: input_name:{}, input_item:{}".format(self.pid, input_name, self.__safe_item(input_item)))
 
         if auth_type == 'basic':
             try:
@@ -295,14 +348,38 @@ class NiFiScript(Script):
                 EventWriter.log(ew, EventWriter.ERROR,'{} There was an error when encrypting/masking the password: {}'.format(self.pid, e))
             
         
+        # Detect the NiFi version before deciding what to collect. The response
+        # is kept so the system_diagnostics endpoint, when enabled, does not
+        # have to be fetched twice.
+        diagnostics = self.__get_request(ew, base_url, "/system-diagnostics", auth_type, username, iname, session_key)
+        version_info = self.version_info_of(diagnostics)
+        self.nifi_version = self.parse_version((version_info or {}).get('niFiVersion'))
+
+        if self.nifi_version:
+            EventWriter.log(ew, EventWriter.INFO, '{} Detected NiFi {} (Java {})'.format(
+                self.pid, version_info.get('niFiVersion'), version_info.get('javaVersion')))
+            ew.write_event(Event(
+                sourcetype="nifi:api:version_info",
+                stanza=input_name,
+                data=json.dumps(version_info),
+                host=input_item.get("host")
+            ))
+        else:
+            EventWriter.log(ew, EventWriter.WARN, '{} Could not detect the NiFi version from /system-diagnostics; version-dependent endpoints will be skipped'.format(self.pid))
+
         for ep in self.endpoints:
+            if not self.__supported(ep, ew):
+                continue
             path = ep.get("path")
             sourcetype = ep.get("sourcetype")
             EventWriter.log(ew, EventWriter.INFO, '{} Request endpoint: {}'.format(self.pid, ep))
             
             if input_item.get(ep.get('name')) == '1':
                 try:
-                    response = self.__get_request(ew, base_url, path, auth_type, username, iname, session_key)
+                    if path == "/system-diagnostics":
+                        response = diagnostics   # already fetched for version detection
+                    else:
+                        response = self.__get_request(ew, base_url, path, auth_type, username, iname, session_key)
                     EventWriter.log(ew, EventWriter.DEBUG, '{} Response: {}'.format(self.pid, response))
                     event = Event(
                         sourcetype=sourcetype,
