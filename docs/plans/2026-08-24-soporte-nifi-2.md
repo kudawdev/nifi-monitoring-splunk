@@ -80,15 +80,16 @@ Inventario real del flujo de `flow_definition/NiFiMonitoring.json` (39 procesado
 | `GetHTTP` | **3×** (flow_status, system_diagnostics, site_to_site) | **REMOVIDO** | `InvokeHTTP` con method GET |
 | Variable Registry (`variables` del PG) | **6 variables** | **REMOVIDO** | Parameter Context |
 | Template XML (`NifiMonitoringTemplate.xml`) | artefacto distribuido | **REMOVIDO** | flow definition JSON |
-| `InvokeHTTP` | 3× | vigente | — |
+| `InvokeHTTP` | 3× | vigente, **pero renombró ~25 propiedades** (`Remote URL` → `HTTP URL`, `Read Timeout` → `Socket Read Timeout`, …). No hace falta tocarlas: **NiFi 2.x las migra solo al importar**, verificado en 2.11.0 | — |
 | `UpdateAttribute` | 10× | vigente | — |
 | `LogMessage` | 6× | vigente | — |
-| `TailFile`, `SplitText`, `ExtractText`, `EvaluateJsonPath`, `RouteText`, `RouteOnAttribute`, `JoltTransformJSON`, `ReplaceText`, `GenerateFlowFile`, `RetryFlowFile` | 1–2× cada uno | vigentes | — |
+| `JoltTransformJSON` | 2× | **RELOCALIZADO**: `processors.standard` → `processors.jolt`, bundle `nifi-standard-nar` → `nifi-jolt-nar`, y renombró sus propiedades. El procesador existe, por eso un chequeo de "¿sigue estando el archivo?" no lo detecta, pero un flow que nombre el tipo viejo importa INVÁLIDO | cambiar tipo, bundle y propiedades |
+| `TailFile`, `SplitText`, `ExtractText`, `EvaluateJsonPath`, `RouteText`, `RouteOnAttribute`, `ReplaceText`, `GenerateFlowFile`, `RetryFlowFile` | 1–2× cada uno | vigentes | — |
 | `SiteToSiteMetricsReportingTask` | requerida por la doc | **vigente** | — |
 | `SiteToSiteBulletinReportingTask` | requerida por la doc | **vigente** | — |
 | `MonitorDiskUsage` | requerida por la doc | **vigente** | — |
 
-**Conclusión:** el daño está acotado. De los 14 tipos de procesador que usa el flow, **solo `GetHTTP` desapareció**. Las tres Reporting Tasks sobreviven intactas. Los bloqueantes reales son tres: `GetHTTP` ×3, el bloque `variables`, y el template XML.
+**Conclusión (corregida tras importar el flow en un NiFi 2.11.0 real):** el daño es mayor que "solo `GetHTTP`". Ver §3.7 — el import deja **5 procesadores inválidos** (3 `GetHTTP` + 2 `JoltTransformJSON` relocalizados) y, peor, hace desaparecer las 6 variables **sin que nada lo reporte**.
 
 Además, el flow embarca `"flowEncodingVersion": "1.0"` y **cero** `parameterContexts`, así que tal como está no es importable en 2.x con su configuración.
 
@@ -123,6 +124,25 @@ Esto invierte la intuición: **el camino que envejece bien es el pull (el TA); e
 | `sampleLabelValue` | regex | filtra por valor de etiqueta |
 | `rootFieldName` | string | solo producer `json` |
 | `flowMetricsReportingStrategy` | `ALL_COMPONENTS` (default) \| `ALL_PROCESS_GROUPS` | control de cardinalidad |
+
+### 3.7 Lo que reveló importar el flow en un NiFi 2.11.0 real
+
+`GetHTTP` era lo único que la documentación señalaba. Importar el flow y leer el estado de validación mostró tres cosas más:
+
+| Hallazgo | Detalle |
+|---|---|
+| **`JoltTransformJSON` fue relocalizado, no removido** | `org.apache.nifi.processors.standard` → `org.apache.nifi.processors.jolt`, y el bundle de `nifi-standard-nar` a `nifi-jolt-nar`. Además renombró sus propiedades (`jolt-spec` → `Jolt Specification`, …). **Mi método de verificación no podía detectarlo**: comprobaba que el archivo del procesador siguiera existiendo en el repo de NiFi, y sigue existiendo — en otro paquete. Existir y ser el mismo tipo no son lo mismo. |
+| **La pérdida de las variables es silenciosa** | Las 6 variables desaparecen, ningún componente reporta error, y `Send2Splunk-HEC` importa **VÁLIDO** con `HTTP URL = ${splunk_hec}/…` — una referencia que ya no resuelve a nada. Falla en runtime sin ninguna señal al importar. Es el peor de los modos de falla: el operador ve 5 procesadores en rojo, los arregla, y el envío al HEC sigue roto. |
+| **`InvokeHTTP` sí migra solo** | Renombró ~25 propiedades, pero NiFi 2.x aplica la migración al importar: `Remote URL` → `HTTP URL` con el valor intacto, y el procesador queda válido. No hay que tocarlas. |
+
+Y cuatro detalles que solo aparecieron al iterar el script contra el NiFi real:
+
+1. **Un process group hijo no hereda el parameter context del padre.** Poniéndolo solo en el raíz, todos los procesadores de los subgrupos quedaban inválidos.
+2. **Los booleanos de `InvokeHTTP` en 2.x solo aceptan `True`/`False`.** El `false` en minúscula que escribía `GetHTTP` se rechaza por estar fuera del conjunto permitido.
+3. **`InvokeHTTP` no tiene relación `success`.** Las conexiones que salían de los `GetHTTP` había que repuntarlas a `Response`, y auto-terminar las otras cuatro.
+4. **Una propiedad no sensible no puede referenciar un parámetro sensible.** El header `Authorization` debe declararse como propiedad dinámica sensible — lo que además mantiene el token fuera de un flow exportado, que es exactamente cómo se filtró el original.
+
+**Resultado verificado:** 39 procesadores, **37 válidos** tal como se distribuye y **39 de 39** en cuanto el operador da valor a `processors_list` y `process_groups_list`. Esos dos vienen vacíos a propósito: NiFi se niega a arrancar un procesador con una propiedad requerida vacía, que es mejor que arrancarlo apuntando a los IDs de otra instalación.
 
 ### 3.5 Lo que el spike encontró (medido, no supuesto)
 
@@ -329,12 +349,12 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 
 | # | Cambio |
 |---|---|
-| FLOW-1 | Estructurar en `flow_definition/nifi-1.x/` y `flow_definition/nifi-2.x/`. |
-| FLOW-2 | Reconstruir para 2.x: `GetHTTP` → `InvokeHTTP`, `variables` → Parameter Context. |
+| FLOW-1 ✅ | **Hecho.** Más `flow_definition/README.md` con la tabla de qué importar según versión y qué hace la migración. |
+| FLOW-2 ✅ | **Hecho** vía `migrate_to_nifi2.py`, un script versionado en lugar de una edición a mano de 6467 líneas. Un test verifica que el archivo distribuido coincida con una corrida limpia del script, así que no puede desincronizarse. |
 | FLOW-3 | **Purgar el token HEC y la IP del JSON** y reemplazarlos por placeholders (B-1). |
-| FLOW-4 | Retirar `NifiMonitoringTemplate.xml` (formato removido en 2.x); dejar nota de migración. |
+| FLOW-4 ✅ | **Hecho.** Movido a `nifi-1.x/`, que es donde sigue sirviendo; NiFi 2.x eliminó el soporte de templates. |
 | FLOW-5 | **Conservar** la rama de logs (`TailFile`) — no se rompe en 2.x (§4.3); solo mover `nifi_path` al Parameter Context. Cambia la recomendación de la doc a UF por defecto, no el artefacto. |
-| FLOW-6 | Validar que 2.x importa el flow con el `flowEncodingVersion` que exportemos. |
+| FLOW-6 ✅ | **Hecho, y fue la fuente de todo lo demás.** Importado en NiFi 2.11.0 real: **39 de 39 procesadores válidos** una vez que el operador da valor a `processors_list` y `process_groups_list`; 37 de 39 tal como se distribuye, porque esos dos parámetros vienen vacíos a propósito. Ver §3.7. |
 
 ### 6.4 `doc/` (pública, bilingüe)
 
