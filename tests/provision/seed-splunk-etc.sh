@@ -46,12 +46,18 @@ token = 00000000-0000-0000-0000-0000000000ab
 index = main
 EOF
 
-echo "seed: configuring the TA input"
-mkdir -p "$SEED/apps/nifi_TA_monitoring/local"
-if [ -f "$SRC/tests/provision/splunk/inputs.conf" ]; then
-    cp "$SRC/tests/provision/splunk/inputs.conf" \
-       "$SEED/apps/nifi_TA_monitoring/local/inputs.conf"
+# The input has to match the auth mode of the NiFi that is coming up: the
+# unsecured profile talks plain HTTP on 8080, the single-user profile needs
+# HTTPS on 8443 plus credentials. NIFI_AUTH comes from the compose file.
+AUTH="${NIFI_AUTH:-none}"
+echo "seed: configuring the TA input for auth=$AUTH"
+INPUT_SRC="$SRC/tests/provision/splunk/inputs.conf.$AUTH"
+if [ ! -f "$INPUT_SRC" ]; then
+    echo "seed: FATAL no input template for auth mode '$AUTH'" >&2
+    exit 1
 fi
+mkdir -p "$SEED/apps/nifi_TA_monitoring/local"
+cp "$INPUT_SRC" "$SEED/apps/nifi_TA_monitoring/local/inputs.conf"
 
 echo "seed: seeding the instance lookup"
 mkdir -p "$SEED/apps/nifi_monitoring/lookups"

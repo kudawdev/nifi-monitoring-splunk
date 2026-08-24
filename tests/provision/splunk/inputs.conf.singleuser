@@ -1,0 +1,17 @@
+# TA input for the single-user NiFi profile.
+#
+# The password is stored in cleartext here only so the input can bootstrap:
+# on its first run nifi.py moves it into storage/passwords and rewrites this
+# value to the mask. That first-run behaviour is itself part of what the
+# integration assertions cover.
+[nifi://nifi]
+api_url = https://nifi:8443/nifi-api/
+auth_type = basic
+username = admin
+password = ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB
+endpoint_flow_status = 1
+endpoint_system_diagnostics = 1
+endpoint_site_to_site = 1
+host = nifi
+index = main
+interval = 60

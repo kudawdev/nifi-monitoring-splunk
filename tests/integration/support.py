@@ -36,13 +36,13 @@ def env(name, default=None):
     return os.environ.get(name, default)
 
 
-def connect():
+def connect(app=None, owner=None):
     # verify=False is confined to this harness: the Splunk container generates
     # a self-signed certificate for a hostname that only exists inside the
     # compose network, and the endpoint is a throwaway container on localhost.
     # Production code must not do this -- see the plan's defect B-23 about the
     # TA disabling verification against real NiFi instances.
-    return client.connect(
+    kwargs = dict(
         host=env("SPLUNK_HOST", "localhost"),
         port=int(env("SPLUNK_MGMT_PORT", "38089")),
         username="admin",
@@ -50,6 +50,11 @@ def connect():
         scheme="https",
         verify=False,
     )
+    if app:
+        kwargs["app"] = app
+    if owner:
+        kwargs["owner"] = owner
+    return client.connect(**kwargs)
 
 
 def search(service, query, earliest="-1h", timeout=180):

@@ -68,7 +68,8 @@ There is no manual setup step. The `provision` service seeds
 `/opt/splunk/etc` before `splunkd` first starts (the Splunk image extracts
 its own `etc/` additively, so seeded files survive), which installs both
 apps plus the two bundled third-party visualizations, enables the HEC
-without SSL, and loads the `instance` lookup.
+without SSL, loads the `instance` lookup, and installs the TA input
+matching the profile's auth mode (`provision/splunk/inputs.conf.<mode>`).
 
 This replaces the old procedure of `docker exec`-ing into the container,
 running `init_splunk_nologin.sh` by hand, and then turning off SSL on the

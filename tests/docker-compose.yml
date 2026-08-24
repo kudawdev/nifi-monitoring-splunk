@@ -17,7 +17,10 @@ services:
   # first is safe and removes the manual "docker exec + copy the apps" step
   # the old harness needed.
   provision:
-    image: busybox:1.36
+    image: busybox:1.37
+    environment:
+      # Selects which inputs.conf template to install.
+      NIFI_AUTH: ${NIFI_AUTH:-none}
     volumes:
       - splunk_etc:/etc-seed
       - ..:/src:ro

@@ -57,5 +57,8 @@ docker compose up -d --wait
 echo "==> waiting for NiFi to answer"
 python3 integration/wait_for_nifi.py
 
+echo "==> loading the instance kvstore collection"
+python3 integration/seed_kvstore.py
+
 echo "==> running assertions"
 (cd integration && python3 -m unittest discover -v)

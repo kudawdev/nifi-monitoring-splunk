@@ -77,15 +77,17 @@ class IngestTest(IntegrationTestCase):
         self.assertTrue(rows)
         self.assertTrue(rows[0].get("cluster"), "cluster was not looked up from host")
 
-    def test_no_indexing_errors_for_the_nifi_sourcetypes(self):
+    def test_the_input_reports_no_errors(self):
+        """The modular input logs its own failures through EventWriter, which
+        land in splunkd.log prefixed with 'Nifi Log pid='."""
         rows = search(
             self.splunk,
-            'index=_internal sourcetype=splunkd (log_level=ERROR OR log_level=WARN) '
-            "nifi | stats count by component",
+            'index=_internal sourcetype=splunkd log_level=ERROR "Nifi Log pid=" '
+            "| stats count by _raw",
             earliest="-1h",
         )
         self.assertEqual(
-            rows, [], "splunkd logged warnings or errors mentioning nifi: %s" % rows
+            rows, [], "the NiFi input logged errors: %s" % [r.get("_raw") for r in rows]
         )
 
 

@@ -120,5 +120,63 @@ class SingleUserCredentialsTest(unittest.TestCase):
         self.assertNotIn("<", content.split("NIFI_WEB_PROXY_HOST=")[1].split("\n")[0])
 
 
+class ProvisioningTest(unittest.TestCase):
+    """Every auth mode needs a TA input template that matches it.
+
+    Without this, the harness seeded the unsecured input (plain HTTP on
+    8080, auth_type=none) even for the single-user profile, so the TA polled
+    a port nothing was listening on and no events ever arrived.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.data = matrix.load()
+
+    def auth_modes(self):
+        return {p["nifi_auth"] for p in self.data["profiles"].values()}
+
+    def test_each_auth_mode_has_an_input_template(self):
+        for mode in self.auth_modes():
+            with self.subTest(auth=mode):
+                path = os.path.join(
+                    TESTS_DIR, "provision", "splunk", "inputs.conf.%s" % mode
+                )
+                self.assertTrue(os.path.isfile(path), "missing %s" % path)
+
+    def test_input_template_matches_its_auth_mode(self):
+        expected = {
+            "none": ("auth_type = none", "http://nifi:8080"),
+            "singleuser": ("auth_type = basic", "https://nifi:8443"),
+        }
+        for mode in self.auth_modes():
+            with self.subTest(auth=mode):
+                content = open(
+                    os.path.join(
+                        TESTS_DIR, "provision", "splunk", "inputs.conf.%s" % mode
+                    )
+                ).read()
+                for fragment in expected[mode]:
+                    self.assertIn(fragment, content)
+
+    def test_single_user_input_uses_the_profile_password(self):
+        """The input and the NiFi container must agree on the credentials."""
+        env_values = dict(
+            line.split("=", 1)
+            for line in open(
+                os.path.join(TESTS_DIR, "env", "nifi-singleuser.env")
+            ).read().splitlines()
+            if line and not line.startswith("#") and "=" in line
+        )
+        content = open(
+            os.path.join(TESTS_DIR, "provision", "splunk", "inputs.conf.singleuser")
+        ).read()
+        self.assertIn(
+            "username = %s" % env_values["SINGLE_USER_CREDENTIALS_USERNAME"], content
+        )
+        self.assertIn(
+            "password = %s" % env_values["SINGLE_USER_CREDENTIALS_PASSWORD"], content
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
