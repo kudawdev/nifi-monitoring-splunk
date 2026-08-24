@@ -267,11 +267,12 @@ class NiFiScript(Script):
             response = requests.post(url, **req_args)
             if response.status_code >= 400:
                 EventWriter.log(ew, EventWriter.ERROR, '{} get_token - Error HTTP token request - status_code: {}, reason: {}, url: {}'.format(self.pid, response.status_code, response.reason, url))
-            else:
-                EventWriter.log(ew, EventWriter.INFO, '{} get_token - OK - status_code: {}, response_elapsed: {}, url: {}'.format(self.pid, response.status_code, response.elapsed.total_seconds(), url))
+                return None
+            EventWriter.log(ew, EventWriter.INFO, '{} get_token - OK - status_code: {}, response_elapsed: {}, url: {}'.format(self.pid, response.status_code, response.elapsed.total_seconds(), url))
             return response.text
         except Exception as error:
             EventWriter.log(ew, EventWriter.ERROR, '{} Error token request - {}'.format(self.pid, error))
+            return None
 
 
     def __get_request(self, ew, base_url, path, auth_type, username, input_name, session_key):
@@ -312,8 +313,11 @@ class NiFiScript(Script):
                 if response.status_code == 401:
                     EventWriter.log(ew, EventWriter.ERROR, '{} Error HTTP request - status_code: {}, reason: {}, url: {}'.format(self.pid, response.status_code, response.reason, url))
                     token = self.__get_token(ew, base_url, username, password)
+                    if not token:
+                        EventWriter.log(ew, EventWriter.ERROR, '{} Token renewal failed, aborting request - url: {}'.format(self.pid, url))
+                        return None
                     dotenv.set_key(dotenv_file, unicodedata.normalize('NFKD',input_name).replace(' ',''), token)
-                    headers = {'Content-Type': 'application/json', 'Accept':'application/json', 'Authorization': 'Bearer {}'.format(token)}
+                    req_args["headers"] = {'Content-Type': 'application/json', 'Accept':'application/json', 'Authorization': 'Bearer {}'.format(token)}
                     response = requests.get(url, **req_args)
                     if response.status_code >= 400:
                         EventWriter.log(ew, EventWriter.ERROR, '{} Error HTTP request - status_code: {}, reason: {}, url: {}'.format(self.pid, response.status_code, response.reason, url))

@@ -73,5 +73,7 @@ jobs:
     container: kudaw/appinspect:latest
     steps:
       - uses: actions/checkout@v4
-      - run: echo "TODO"
+      - name: Run unit tests
+        working-directory: tests/unit
+        run: python3 -m unittest discover -v
       
