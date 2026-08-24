@@ -435,5 +435,60 @@ class DashboardPanelTest(IntegrationTestCase):
         self.assertIn("REST pull", str(rows[0].get("paths")))
 
 
+class DatamodelObjectTest(IntegrationTestCase):
+    """The objects added for the new sourcetypes have to actually return rows
+    through the model, not just exist in NIFI.json (APP-3)."""
+
+    def rows_from(self, obj):
+        return search(self.splunk, "| tstats count from datamodel=NIFI.%s" % obj)
+
+    def count_from(self, obj):
+        rows = self.rows_from(obj)
+        return int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+
+    def test_the_model_knows_the_new_objects(self):
+        """Query each object rather than reading the model's REST
+        representation: an object Splunk has not registered makes tstats
+        fail, which is the behaviour that matters, and it does not depend on
+        how the REST endpoint happens to name its fields."""
+        for obj in ("Flow_Metrics", "Bulletin_Board", "Version_Info", "Request_Log"):
+            with self.subTest(obj=obj):
+                rows = search(
+                    self.splunk, "| tstats count from datamodel=NIFI.%s" % obj
+                )
+                # An unknown object errors out and yields no rows at all; a
+                # known object with no data still returns a count row.
+                self.assertTrue(rows, "datamodel=NIFI.%s is not queryable" % obj)
+
+    def test_flow_metrics_returns_rows(self):
+        wait_for_events(self.splunk, "| tstats count from datamodel=NIFI.Flow_Metrics",
+                        minimum=1)
+        self.assertGreater(self.count_from("Flow_Metrics"), 0)
+
+    def test_version_info_returns_rows(self):
+        wait_for_events(self.splunk, "| tstats count from datamodel=NIFI.Version_Info",
+                        minimum=1)
+        self.assertGreater(self.count_from("Version_Info"), 0)
+
+    def test_flow_metrics_fields_are_queryable_through_the_model(self):
+        rows = wait_for_events(
+            self.splunk,
+            "| tstats count from datamodel=NIFI.Flow_Metrics "
+            "where Flow_Metrics.metric_name=nifi_jvm_heap_used by Flow_Metrics.instance",
+            minimum=1,
+        )
+        self.assertTrue(rows, "metric_name is not queryable through the model")
+
+    def test_the_request_log_stays_out_of_the_generic_logs_object(self):
+        """Logs excludes it, so a request event must not appear there."""
+        rows = search(
+            self.splunk,
+            "| tstats count from datamodel=NIFI.Logs "
+            'where Logs.sourcetype="nifi:log:request"',
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertEqual(count, 0, "the request log leaked into the Logs object")
+
+
 if __name__ == "__main__":
     unittest.main()

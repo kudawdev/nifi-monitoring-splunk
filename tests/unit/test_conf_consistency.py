@@ -7,6 +7,7 @@ check any of them, and a person reviewing a diff rarely does either.
 """
 
 import configparser
+import json
 import os
 import re
 import unittest
@@ -357,6 +358,74 @@ class DashboardQueryTest(unittest.TestCase):
         for match in re.findall(r"latest\((\S+?)\) as", text):
             if match.startswith("systemDiagnostics") or match.startswith("controllerStatus"):
                 self.fail("%s is not object-qualified" % match)
+
+
+class DatamodelCoverageTest(unittest.TestCase):
+    """Every sourcetype the TA produces should reach the datamodel, or it is
+    indexed and then invisible to the model the dashboards query."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(os.path.join(APP, "default", "data", "models", "NIFI.json")) as handle:
+            cls.model = json.load(handle)
+        cls.ta_props = conf(os.path.join(TA, "default", "props.conf"))
+
+    def constraints(self):
+        return " ".join(
+            c["search"] for o in self.model["objects"] for c in o["constraints"]
+        )
+
+    def test_every_sourcetype_is_covered_by_some_object(self):
+        constraints = self.constraints()
+        for sourcetype in self.ta_props.sections():
+            with self.subTest(sourcetype=sourcetype):
+                covered = sourcetype in constraints
+                if not covered:
+                    # a wildcard constraint counts, e.g. nifi:log:* or
+                    # nifi:api:process*
+                    prefix = sourcetype
+                    while ":" in prefix or prefix:
+                        prefix = prefix[:-1]
+                        if not prefix:
+                            break
+                        if prefix + "*" in constraints:
+                            covered = True
+                            break
+                self.assertTrue(covered, "%s is in no datamodel object" % sourcetype)
+
+    def test_the_object_name_list_matches_the_objects(self):
+        self.assertEqual(
+            self.model["objectNameList"],
+            [o["objectName"] for o in self.model["objects"]],
+        )
+
+    def test_every_object_constrains_the_index(self):
+        """A root object without the macro would search every index, which is
+        the problem the macro exists to solve."""
+        for obj in self.model["objects"]:
+            if obj["parentName"] != "BaseEvent":
+                continue  # child objects inherit the parent's constraint
+            with self.subTest(obj=obj["objectName"]):
+                self.assertIn("`index_nifi`", obj["constraints"][0]["search"])
+
+    def test_the_request_log_is_not_swept_into_the_generic_logs_object(self):
+        """It is NCSA combined, so it has none of the logback fields."""
+        logs = [o for o in self.model["objects"] if o["objectName"] == "Logs"][0]
+        self.assertIn("NOT sourcetype=\"nifi:log:request\"", logs["constraints"][0]["search"])
+
+    def test_bulletin_field_names_agree_across_both_collection_paths(self):
+        """Reporting_Bulletin and Bulletin_Board must use the same field names,
+        or a dashboard has to know which path produced the event."""
+        def fields(name):
+            obj = [o for o in self.model["objects"] if o["objectName"] == name][0]
+            return {f["fieldName"] for f in obj["fields"] if f["fieldName"].startswith("bulletin")}
+
+        board = fields("Bulletin_Board")
+        task = fields("Reporting_Bulletin")
+        shared = board & task
+        self.assertTrue(shared, "the two bulletin objects share no field names")
+        # the two the board genuinely cannot provide
+        self.assertEqual(task - board, {"bulletinGroupName", "bulletinGroupPath"})
 
 
 if __name__ == "__main__":

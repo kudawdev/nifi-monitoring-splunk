@@ -319,11 +319,11 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 |---|---|
 | APP-1 ✅ | **Hecho.** `index_nifi` pasa de `index=*` a `index=nifi`, la app trae su `indexes.conf`, y el panel de Internal Monitoring gana un diagnóstico que dice cuántos eventos ve el macro y **en qué índices hay datos de NiFi realmente** — para que un override no requiera adivinar. Ese panel es el único lugar donde `index=*` queda justificado, y un test verifica que ningún otro dashboard lo use. |
 | APP-2 ✅ | **Hecho (D-4 = activarla).** Los paneles ya usaban `tstats … from datamodel=`, así que el diseño la suponía. `acceleration.earliest_time = -7d` con el costo documentado al lado. Verificado contra Splunk real: el modelo reporta acelerado y devuelve filas por `tstats`. |
-| APP-3 | Nuevos objetos de datamodel para `nifi:api:flow_metrics` y `nifi:api:bulletin_board`. |
+| APP-3 ✅ | **Hecho.** Cuatro objetos nuevos: `Flow_Metrics`, `Bulletin_Board`, `Version_Info` y `Request_Log`. `Bulletin_Board` reutiliza los nombres de campo de `Reporting_Bulletin` para que una búsqueda no tenga que saber por qué vía llegó el bulletin, con un test que verifica que la única diferencia sean los dos campos que el board no puede dar. `Request_Log` va aparte y queda **excluido** del objeto `Logs`: matchea `nifi:log:*` pero es NCSA combined, sin ninguno de los campos de logback. |
 | APP-4 ✅ | **Hecho.** Los tres `join type=left` de la app eliminados (dos en `nifi_overview`, uno en el panel de inventario nuevo), reemplazados por `append` + `stats`. Justificación estructural, no medida: un join corre su lado derecho como subsearch, con tope de 50k filas y 60 s por defecto, y trunca en silencio al pasarlo. Con una sola instancia en el harness no hay diferencia observable. Un test impide que vuelva cualquier join. |
 | APP-5 ✅ | **Panel reescrito por conveniencia, no por corrección.** Ahora usa los campos `*Bytes` del modelo con columnas en GB y porcentajes numéricos, en lugar de las cadenas legibles (`"847.61 GB"`, `"16.0%"`) que no se pueden ordenar ni promediar. **No estaba roto:** Ver la entrada retirada de B-19 en §7. Queda como mejora opcional pasar el panel a los campos `*Bytes` y a las calculations del modelo, por conveniencia de agregación, no por corrección. |
 | APP-6 | Agregar stanza `[id]` en `app.conf` (B-17). |
-| APP-7 | Panel de inventario que muestre versión de NiFi y método de recolección por instancia. |
+| APP-7 ✅ | **Hecho.** En Internal Monitoring: versión de NiFi y de Java por instancia, camino de recolección deducido del sourcetype (pull REST / push HEC / archivo de log) y último dato visto. |
 
 ### 6.3 `flow_definition`
 
