@@ -468,8 +468,18 @@ Todo esto se puede mergear ya y liberar como **1.2.4**, sin esperar el resto.
 
 - T-1 … T-8 y la matriz de §8.4.
 - **Aceptación:** `run.sh` levanta los 4 perfiles y las assertions pasan contra la app 1.2.4 tal cual; el job `unittest` del CI ejecuta la matriz y falla si un perfil falla.
-- **Estado 2026-08-24:** implementado y **ejecutado** contra el perfil `nifi2-current` (NiFi 2.11.0 + Splunk 10.4): las 8 assertions de integración pasan y la suite unit tiene 44 tests. Lo que el run probó y lo que costó está en §9.1.
-- **Pendiente:** los otros tres perfiles (`nifi1-legacy`, `nifi1-last`, `nifi2-first`) y conectar `run.sh` al CI como job aparte del `unittest`.
+- **Estado 2026-08-24: F2 completa.** Los **cuatro perfiles** de la matriz corren de punta a punta en verde, `run.sh` devuelve exit 0 con teardown limpio, y el CI ejecuta la matriz (`integration` como job aparte, con `publish` dependiendo de él). Suite unit: 49 tests.
+
+| Perfil | NiFi | Java | Splunk | Resultado |
+|---|---|---|---|---|
+| `nifi1-legacy` | 1.23.2 | 11.0.20 | 9.4 | 6 ok · 2 skip |
+| `nifi1-last` | 1.28.1 | 11.0.25 | 10.4 | 7 ok · 1 skip |
+| `nifi2-first` | 2.0.0 | 21.0.5 | 10.4 | 7 ok · 1 skip |
+| `nifi2-current` | 2.11.0 | 21.0.12 | 10.4 | 7 ok · 1 skip |
+
+Los skips son correctos: `VERSION_INFO` no existe en 1.x, la recolección de `/flow/metrics` todavía no está implementada (TA-2), y en `nifi1-legacy` no hubo errores de los que recuperarse porque el modo sin auth no paga el 401 de bootstrap.
+
+**El resultado que importa: el TA actual, sin una línea de cambio en su lógica de recolección, indexa correctamente desde NiFi 1.23.2, 1.28.1, 2.0.0 y 2.11.0.** Es la confirmación empírica de la decisión de §4.2.
 
 #### 9.1 Qué reveló la primera ejecución real
 
@@ -482,6 +492,9 @@ El harness no funcionó de entrada. Cinco defectos, ninguno visible leyendo el c
 | 3 | Los healthchecks usaban `curl -sfk`: Splunk y NiFi responden **401** en los endpoints sondeados, y `--fail` convierte eso en exit 22 | Los checks no podían pasar nunca; `up --wait` habría abandonado un stack que funcionaba |
 | 4 | `wait_for_nifi.py` mandaba `Accept: application/json`, pero `/access/token` devuelve `text/plain` → **406 Not Acceptable** | El script reintentaba hasta agotar el timeout. `curl` no lo mostró porque no restringe `Accept` |
 | 5 | La assertion "sin errores" trataba el 401 de bootstrap como fallo | Falso positivo sobre un comportamiento que es de diseño |
+| 6 | `run.sh` sembraba el KV store en cuanto Splunk estaba *healthy*, pero el KV store sigue inicializando → `HTTP 503 KV Store is initializing` | Solo aparece cuando los pasos corren seguidos, que es justo lo que hace el CI. Resuelto con un gate sobre `/services/kvstore/status` |
+| 7 | La assertion comparaba errores totales contra eventos totales: lo primero es un one-off del arranque, lo segundo crece con el uptime | Test flaky por construcción: el mismo stack sano pasaba si las assertions corrían tarde y fallaba si corrían temprano |
+| 8 | **En el TA:** `__get_request` leía la credencial almacenada antes de ramificar por `auth_type`, así que el modo sin auth hacía una llamada inútil a `storage/passwords` por endpoint y por ciclo — y al hacer hablar a `__get_password`, un ERROR por request | 6 errores contra 2 eventos en `nifi1-legacy`. **Los unit tests no podían verlo porque mockean `__get_password`**: es el argumento más claro a favor de tener las dos capas |
 
 **Lo que el run sí demostró**, y era el objetivo:
 
