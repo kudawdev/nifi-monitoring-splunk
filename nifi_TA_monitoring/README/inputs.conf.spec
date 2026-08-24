@@ -33,3 +33,9 @@ interval = <value>
 
 host = <value>
 *Hostname NiFi instance
+
+verify_tls = <value>
+*Verify the NiFi TLS certificate [0 | 1]. Defaults to 1 (verify).
+
+ca_bundle = <value>
+*Path to a CA bundle used to verify the NiFi certificate. Empty uses the system trust store.

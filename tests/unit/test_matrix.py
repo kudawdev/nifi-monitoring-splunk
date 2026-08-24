@@ -158,6 +158,15 @@ class ProvisioningTest(unittest.TestCase):
                 for fragment in expected[mode]:
                     self.assertIn(fragment, content)
 
+    def test_single_user_input_states_its_tls_decision(self):
+        """TLS verification defaults to on, and the containers use self-signed
+        certificates, so the harness has to opt out deliberately rather than
+        fail on every request."""
+        content = open(
+            os.path.join(TESTS_DIR, "provision", "splunk", "inputs.conf.singleuser")
+        ).read()
+        self.assertIn("verify_tls = 0", content)
+
     def test_single_user_input_uses_the_profile_password(self):
         """The input and the NiFi container must agree on the credentials."""
         env_values = dict(

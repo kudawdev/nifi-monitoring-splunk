@@ -12,7 +12,6 @@ import json
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))
 import splunklib.client as client
 from splunklib.modularinput import EventWriter, Argument, Scheme, Event, Script
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 if dotenv.find_dotenv() == '':
     with open(os.path.join(os.path.dirname(__file__), ".env"), 'w'):
@@ -32,6 +31,7 @@ class NiFiScript(Script):
             {"name":"endpoint_process_groups_history", "sourcetype":"nifi:api:process_groups_history", "path":"/flow/process-groups/{id}/status/history"}
         ]
     pid = 'Nifi Log pid="{}"'.format(uuid.uuid4())
+    tls_verify = True
 
     # NiFi component identifiers are UUIDs; a mistyped or truncated id is the
     # most common configuration error and otherwise only shows up as a 404
@@ -51,6 +51,35 @@ class NiFiScript(Script):
         if len(secret) < 16:
             return '<redacted, len {}>'.format(len(secret))
         return '...{} <len {}>'.format(secret[-4:], len(secret))
+
+    # TLS verification is on unless the input turns it off. Historically every
+    # request passed verify=False, which accepts any certificate: against a
+    # NiFi served over HTTPS that lets anyone on the path read the credentials
+    # and the bearer token. NiFi 2.x defaults to HTTPS, so this matters more
+    # than it did.
+    @staticmethod
+    def _is_enabled(value, default=False):
+        """Read a modular-input boolean, which arrives as 0/1 or true/false."""
+        if value is None or value == '':
+            return default
+        return str(value).strip().lower() in ('1', 'true', 'yes', 'on')
+
+    @staticmethod
+    def __tls_hint(error):
+        """Turn a certificate failure into an actionable message."""
+        text = str(error).lower()
+        if 'certificate' in text or 'sslerror' in text or 'ssl:' in text:
+            return (' -- the NiFi certificate could not be verified. Point "CA bundle path" '
+                    'at a bundle that trusts it, or uncheck "Verify TLS certificate" if you '
+                    'accept an unverified connection.')
+        return ''
+
+    def _tls_verify(self, input_item):
+        """The value to hand requests' `verify`: a CA bundle, True, or False."""
+        if not self._is_enabled(input_item.get('verify_tls'), default=True):
+            return False
+        ca_bundle = (input_item.get('ca_bundle') or '').strip()
+        return ca_bundle or True
 
     @staticmethod
     def _split_ids(raw):
@@ -164,6 +193,26 @@ class NiFiScript(Script):
         )
         scheme.add_argument(password_argument)
 
+        verify_tls_argument = Argument(
+            name="verify_tls",
+            description="Verify the NiFi TLS certificate. Leave enabled unless the instance uses a self-signed certificate that cannot be trusted through a CA bundle.",
+            title="Verify TLS certificate",
+            data_type=Argument.data_type_boolean,
+            required_on_edit=False,
+            required_on_create=False
+        )
+        scheme.add_argument(verify_tls_argument)
+
+        ca_bundle_argument = Argument(
+            name="ca_bundle",
+            description="Path to a CA bundle used to verify the NiFi certificate. Leave empty to use the system trust store.",
+            title="CA bundle path",
+            data_type=Argument.data_type_string,
+            required_on_edit=False,
+            required_on_create=False
+        )
+        scheme.add_argument(ca_bundle_argument)
+
         return scheme
 
 
@@ -191,6 +240,15 @@ class NiFiScript(Script):
         if interval and interval.isdigit() and int(interval) <= 0:
             raise ValueError("Interval must be greater than 0 seconds")
 
+        ca_bundle = (params.get("ca_bundle") or "").strip()
+        if ca_bundle and not os.path.isfile(ca_bundle):
+            raise ValueError("CA bundle not found: {}".format(ca_bundle))
+        if ca_bundle and not self._is_enabled(params.get("verify_tls"), default=True):
+            raise ValueError(
+                "A CA bundle was given but TLS verification is disabled; "
+                "enable verification or clear the CA bundle"
+            )
+
         for field, label in (("endpoint_processors_history", "processor"),
                              ("endpoint_process_groups_history", "process group")):
             for component_id in self._split_ids(params.get(field) or ""):
@@ -214,6 +272,12 @@ class NiFiScript(Script):
         password   = input_item.get("password", None)
         processors = input_item.get("endpoint_processors_history", None)
         process_groups = input_item.get("endpoint_process_groups_history", None)
+
+        self.tls_verify = self._tls_verify(input_item)
+        if self.tls_verify is False:
+            # Only silence the warning the user has explicitly accepted.
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            EventWriter.log(ew, EventWriter.WARN, '{} TLS certificate verification is DISABLED for this input: credentials and the bearer token can be read by anyone able to intercept the connection'.format(self.pid))
 
         kind, iname = input_name.split("://")
 
@@ -311,7 +375,7 @@ class NiFiScript(Script):
         req_args = {}
         req_args["headers"] = {'Content-Type': 'application/x-www-form-urlencoded', "charset": "UTF-8"}
         req_args["data"] = {'username': user, 'password': password}
-        req_args["verify"] = False
+        req_args["verify"] = self.tls_verify
 
         url = self.__urljoin(base_url, "/access/token")
         EventWriter.log(ew, EventWriter.INFO, '{} get_token - url: {}'.format(self.pid, url))
@@ -323,7 +387,7 @@ class NiFiScript(Script):
             EventWriter.log(ew, EventWriter.INFO, '{} get_token - OK - status_code: {}, response_elapsed: {}, url: {}'.format(self.pid, response.status_code, response.elapsed.total_seconds(), url))
             return response.text
         except Exception as error:
-            EventWriter.log(ew, EventWriter.ERROR, '{} Error token request - {}'.format(self.pid, error))
+            EventWriter.log(ew, EventWriter.ERROR, '{} Error token request - {}{}'.format(self.pid, error, self.__tls_hint(error)))
             return None
 
 
@@ -335,7 +399,7 @@ class NiFiScript(Script):
             req_args = {}
             req_args["headers"] = {'Content-Type': 'application/json', 'Accept':'application/json'}
             req_args["timeout"] = 30
-            req_args["verify"] = False
+            req_args["verify"] = self.tls_verify
 
             try:
                 response = requests.get(url, **req_args)
@@ -345,7 +409,7 @@ class NiFiScript(Script):
                     EventWriter.log(ew, EventWriter.INFO, '{} Get OK - status_code: {}, response_elapsed: {}, url: {}'.format(self.pid, response.status_code, response.elapsed.total_seconds(), url))
                 return response.text
             except Exception as error:
-                EventWriter.log(ew, EventWriter.ERROR, '{} Error request - {}'.format(self.pid, error))
+                EventWriter.log(ew, EventWriter.ERROR, '{} Error request - {}{}'.format(self.pid, error, self.__tls_hint(error)))
         else:
             # Only the authenticated path needs the stored password, and only to
             # renew the token. Fetching it unconditionally meant one wasted
@@ -361,7 +425,7 @@ class NiFiScript(Script):
             req_args = {}
             req_args["headers"] = {'Content-Type': 'application/json', 'Accept':'application/json', 'Authorization': 'Bearer {}'.format(token)}
             req_args["timeout"] = 30
-            req_args["verify"] = False
+            req_args["verify"] = self.tls_verify
 
             try:
                 response = requests.get(url, **req_args)
@@ -385,7 +449,7 @@ class NiFiScript(Script):
                     EventWriter.log(ew, EventWriter.INFO, '{} Get OK - status_code: {}, response_elapsed: {}, url: {}'.format(self.pid, response.status_code, response.elapsed.total_seconds(), url))
                 return response.text
             except Exception as error:
-                EventWriter.log(ew, EventWriter.ERROR, '{} Error request - {}'.format(self.pid, error))
+                EventWriter.log(ew, EventWriter.ERROR, '{} Error request - {}{}'.format(self.pid, error, self.__tls_hint(error)))
 
 
     def __encrypt_password(self, ew, username, password, session_key):

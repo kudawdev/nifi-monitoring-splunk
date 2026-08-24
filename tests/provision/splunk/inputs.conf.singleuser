@@ -9,6 +9,12 @@ api_url = https://nifi:8443/nifi-api/
 auth_type = basic
 username = admin
 password = ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB
+# The NiFi container generates a self-signed certificate for a hostname that
+# only exists inside the compose network, so there is nothing to verify it
+# against. Real deployments should leave verify_tls at its default of 1 and
+# point ca_bundle at a bundle that trusts the instance.
+verify_tls = 0
+
 endpoint_flow_status = 1
 endpoint_system_diagnostics = 1
 endpoint_site_to_site = 1
