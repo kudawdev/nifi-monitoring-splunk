@@ -6445,10 +6445,10 @@
     ],
     "controllerServices": [],
     "variables": {
-      "splunk_hec_token": "c91b35d5-285b-4dd6-952c-2fa8f48a1786",
-      "processors_list": "c45766f3-018e-1000-d4c4-8bc3e0de9c9e\nc4577522-018e-1000-7363-2bbfae760791",
-      "splunk_hec": "http://20.81.194.76:8088",
-      "process_groups_list": "c4574f03-018e-1000-c4c6-bf343a1a92ea",
+      "splunk_hec_token": "<SPLUNK_HEC_TOKEN>",
+      "processors_list": "",
+      "splunk_hec": "http://<SPLUNK_HOST>:8088",
+      "process_groups_list": "",
       "nifi_path": "/opt/nifi/nifi-current/",
       "nifi_api_url": "http://localhost:8080/nifi-api"
     },

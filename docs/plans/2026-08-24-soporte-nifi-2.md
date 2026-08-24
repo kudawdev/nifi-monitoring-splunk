@@ -52,7 +52,7 @@ NiFi con basic  →  bin/nifi.py pollea la REST API                        →  
 | `nifi:reporting:bulletin` | SiteToSiteBulletinReportingTask | — | sí |
 | `nifi:log:{app,user,bootstrap}` | TailFile | — | sí |
 
-El costo estructural de este diseño: **la lógica de recolección está duplicada** y el camino push obliga al cliente a mantener un flujo NiFi de 38 procesadores dentro de su propio NiFi, más tres Reporting Tasks y dos input ports Site-to-Site.
+El costo estructural de este diseño: **la lógica de recolección está duplicada** y el camino push obliga al cliente a mantener un flujo NiFi de 39 procesadores dentro de su propio NiFi, más tres Reporting Tasks y dos input ports Site-to-Site.
 
 ---
 
@@ -73,7 +73,7 @@ NiFi 1.x lleva **20 meses sin soporte**. Toda corrección de seguridad aterriza 
 
 ### 3.2 Lo que se rompe: el camino push
 
-Inventario real del flujo de `flow_definition/NiFiMonitoring.json` (38 procesadores) contra la rama `main` de `apache/nifi`:
+Inventario real del flujo de `flow_definition/NiFiMonitoring.json` (39 procesadores) contra la rama `main` de `apache/nifi`:
 
 | Componente | Uso en el flow | Estado en 2.x | Reemplazo |
 |---|---|---|---|
@@ -191,7 +191,7 @@ El endpoint de métricas es un **complemento de alto valor**, no un sustituto:
 |---|---|---|---|---|
 | Sobrevive NiFi 2.x | ❌ requiere reconstruir el flow | ✅ **medido: los 5 endpoints y el token dan 200 en 2.11** | ✅ | ✅ |
 | Un solo código para 1.x y 2.x | ❌ dos flows | ✅ | ✅ (1.x ⊂ 2.x en métricas) | ✅ |
-| Artefacto a mantener dentro de NiFi | 38 procesadores + 3 tasks + 2 puertos S2S | **ninguno** | **ninguno** | ninguno |
+| Artefacto a mantener dentro de NiFi | 39 procesadores + 3 tasks + 2 puertos S2S | **ninguno** | **ninguno** | ninguno |
 | Esfuerzo de configuración del cliente | alto (flow + tasks + variables) | bajo (un data input) | **muy bajo** | medio (otro stack) |
 | Requiere que Splunk alcance a NiFi | no | **sí** | **sí** | sí |
 | Cobertura de logs de NiFi | sí (TailFile) | no | no | no |
@@ -351,7 +351,7 @@ Catalogados durante la lectura del repositorio del 2026-08-24. Severidad: **A** 
 
 | ID | Sev | Componente | Defecto |
 |---|:---:|---|---|
-| B-1 | **A** | `flow_definition/NiFiMonitoring.json` | Token HEC real (`c91b35d5-…`) e IP pública (`20.81.194.76:8088`) hardcodeados en `flowContents.variables`, en repo público y en el historial. **Rotar el token, no solo borrarlo.** |
+| B-1 | **A** | `flow_definition/NiFiMonitoring.json` | Token HEC real e IP pública de un ambiente de desarrollo, hardcodeados en `flowContents.variables`, en repo público y en el historial. **Rotar el token, no solo borrarlo.** |
 | B-2 | **A** | `.github/workflows/main.yml`, `testing.yml` | `check-apps-version` globea `ls -d allkun*` (heredado de otro repo). Sin coincidencias el gate pasa vacuamente: se puede publicar un release con las dos apps desalineadas. `dev.yml` está correcto (`nifi*`). |
 | B-3 | **A** | `.github/workflows/testing.yml` | Usa `::set-output`, deshabilitado por GitHub en 2023 → `APP_VERSION` vacío → `slim validate` falla. El workflow está roto de punta a punta. |
 | B-4 | **A** | `bin/nifi.py:validate_input` | Stub (`a=1; b=2; if a>=b: raise`) con `use_external_validation = True`. No valida nada: URL inválida o credenciales vacías se aceptan. |
@@ -546,7 +546,7 @@ Todo esto se puede mergear ya y liberar como **1.2.4**, sin esperar el resto.
 | Java 21 en 2.x | `pom.xml@main` + README | `maven.compiler.release=21` |
 | Endpoints del TA vigentes en 2.11.0 | doc oficial REST API 2.11.0 | los 6 presentes |
 | Releases y tags disponibles | `gh api repos/apache/nifi/releases`, Docker Hub API | 2.11.0 (2026-08-03) es la última; 1.28.1 la última 1.x |
-| Inventario del flow actual | parseo de `flow_definition/NiFiMonitoring.json` | 38 procesadores, 14 tipos, 6 variables legacy, 0 parameter contexts |
+| Inventario del flow actual | parseo de `flow_definition/NiFiMonitoring.json` | 39 procesadores, 14 tipos, 6 variables legacy, 0 parameter contexts |
 
 ### Contra instancias reales (spike del 2026-08-24)
 
