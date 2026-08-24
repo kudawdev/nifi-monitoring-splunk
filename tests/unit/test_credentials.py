@@ -114,5 +114,45 @@ class GetPasswordTest(NiFiScriptTestCase):
         self.assertEqual(result, "secret")
 
 
+class UnauthenticatedModeTest(NiFiScriptTestCase):
+    """auth_type=none must not touch storage/passwords at all.
+
+    __get_request used to read the stored password before branching on
+    auth_type, so an unsecured input made one pointless storage/passwords
+    call per endpoint per cycle -- and once __get_password started logging a
+    missing credential, that turned into an ERROR per request for a
+    credential that mode never stores. The mocked unit tests could not see
+    this; the integration run against NiFi 1.23.2 surfaced it as six errors
+    against two indexed events.
+    """
+
+    def test_no_credential_lookup_when_auth_is_none(self):
+        self.http.get.side_effect = [response(200, "payload")]
+        lookup = mock.patch.object(
+            self.nifi.NiFiScript, "_NiFiScript__get_password", return_value="pw"
+        )
+        self._stop_password_patcher()
+        spy = lookup.start()
+        self.addCleanup(lookup.stop)
+
+        result = self.get_request("ignored", auth_type="none")
+
+        self.assertEqual(result, "payload")
+        spy.assert_not_called()
+
+    def test_credential_is_looked_up_when_auth_is_basic(self):
+        self.http.get.side_effect = [response(200, "payload")]
+        lookup = mock.patch.object(
+            self.nifi.NiFiScript, "_NiFiScript__get_password", return_value="pw"
+        )
+        self._stop_password_patcher()
+        spy = lookup.start()
+        self.addCleanup(lookup.stop)
+
+        self.get_request("TOKEN", auth_type="basic")
+
+        spy.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()

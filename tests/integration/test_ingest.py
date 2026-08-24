@@ -104,7 +104,7 @@ class IngestTest(IntegrationTestCase):
             "| stats max(_time) as last_error",
             earliest="-1h",
         )
-        if not last_error or not last_error[0].get("last_error"):
+        if not last_error or not str(last_error[0].get("last_error", "")).strip():
             self.skipTest("the input logged no errors at all; nothing to recover from")
 
         last_event = search(
@@ -119,8 +119,13 @@ class IngestTest(IntegrationTestCase):
             "no events arrived after the last error: the input did not recover",
         )
 
-    def test_the_401_is_not_paid_on_every_cycle(self):
-        """A 401 per poll would mean the token is not being cached at all."""
+    def test_successful_polls_outnumber_errors(self):
+        """Errors should be the exception, not one per poll.
+
+        This is what caught the credential lookup running in auth_type=none:
+        six errors against two indexed events on the NiFi 1.23.2 profile.
+        Naming it after the 401 was too narrow -- any per-request error trips
+        it, which is the point."""
         errors = search(
             self.splunk,
             'index=_internal sourcetype=splunkd log_level=ERROR "Nifi Log pid=" '
@@ -134,8 +139,12 @@ class IngestTest(IntegrationTestCase):
         )
         error_count = int(errors[0]["count"]) if errors else 0
         event_count = int(events[0]["count"]) if events else 0
-        self.assertGreater(event_count, error_count,
-                           "as many errors as successful polls: the token is not cached")
+        self.assertGreater(
+            event_count,
+            error_count,
+            "%d errors against %d successful polls: the input is erroring on "
+            "every request" % (error_count, event_count),
+        )
 
 
 class VersionDetectionTest(IntegrationTestCase):

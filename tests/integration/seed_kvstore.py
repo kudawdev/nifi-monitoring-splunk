@@ -11,8 +11,10 @@ Run by run.sh after the stack is up. Idempotent.
 """
 
 import csv
+import json
 import os
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -24,9 +26,36 @@ APP = "nifi_monitoring"
 SOURCE = os.path.join(TESTS_DIR, "provision", "splunk", "instance.csv")
 
 
+def wait_for_kvstore(service, timeout=300, interval=5):
+    """Block until the KV store reports ready.
+
+    splunkd answers its healthcheck before the KV store finishes coming up,
+    so writing straight away gets 'HTTP 503 KV Store is initializing'. Only
+    shows up when the steps run back to back, which is exactly what CI does.
+    """
+    deadline = time.time() + timeout
+    last = None
+    while time.time() < deadline:
+        try:
+            body = service.get("/services/kvstore/status", output_mode="json").body
+            status = json.loads(body.read().decode())["entry"][0]["content"]
+            last = status.get("current", {}).get("status", status)
+            if last == "ready":
+                return True
+        except Exception as error:  # noqa: BLE001 - keep polling through hiccups
+            last = error
+        time.sleep(interval)
+    print("kvstore did not become ready within %ds (last: %s)" % (timeout, last),
+          file=sys.stderr)
+    return False
+
+
 def main():
     # The collection lives in the app's namespace, so connect scoped to it.
     service = connect(app=APP, owner="nobody")
+
+    if not wait_for_kvstore(service):
+        return 1
 
     try:
         collection = service.kvstore[COLLECTION]

@@ -328,8 +328,6 @@ class NiFiScript(Script):
 
 
     def __get_request(self, ew, base_url, path, auth_type, username, input_name, session_key):
-        password = self.__get_password(ew, session_key, username)
-
         EventWriter.log(ew, EventWriter.INFO, '{} Resquest base_url:{} path:{}, auth_type:{}, input_name:{}'.format(self.pid, base_url, path, auth_type, input_name))
         if auth_type == "none":
             url = self.__urljoin(base_url, path)
@@ -349,6 +347,11 @@ class NiFiScript(Script):
             except Exception as error:
                 EventWriter.log(ew, EventWriter.ERROR, '{} Error request - {}'.format(self.pid, error))
         else:
+            # Only the authenticated path needs the stored password, and only to
+            # renew the token. Fetching it unconditionally meant one wasted
+            # storage/passwords call per endpoint per cycle in auth_type=none,
+            # and an error logged for a credential that mode never stores.
+            password = self.__get_password(ew, session_key, username)
             dotenv.load_dotenv(dotenv_file)
             token = os.environ.get(unicodedata.normalize('NFKD',input_name).replace(' ',''), "unknown")
             EventWriter.log(ew, EventWriter.INFO, '{} Request base_url:{} path:{}, auth_type:{}, username:{}, input_name:{}, token:{}'.format(self.pid, base_url, path, auth_type, username, input_name, self.__redact(token)))
