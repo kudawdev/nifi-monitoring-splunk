@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 import requests
 import urllib3
 import dotenv
@@ -31,6 +32,17 @@ class NiFiScript(Script):
             {"name":"endpoint_process_groups_history", "sourcetype":"nifi:api:process_groups_history", "path":"/flow/process-groups/{id}/status/history"}
         ]
     pid = 'Nifi Log pid="{}"'.format(uuid.uuid4())
+
+    # NiFi component identifiers are UUIDs; a mistyped or truncated id is the
+    # most common configuration error and otherwise only shows up as a 404
+    # buried in splunkd.log.
+    component_id_pattern = re.compile(r'^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$')
+
+    @staticmethod
+    def _split_ids(raw):
+        """Split a comma/newline separated id list, dropping empty entries."""
+        return [part.strip() for part in raw.replace('\n', ',').split(',') if part.strip()]
+
 
     def get_scheme(self):
         scheme = Scheme("NiFi")
@@ -142,10 +154,36 @@ class NiFiScript(Script):
 
 
     def validate_input(self, validation_definition):
-        a = 1
-        b = 2
-        if a >= b:
-            raise ValueError("a >= b")
+        params = validation_definition.parameters
+
+        api_url = (params.get("api_url") or "").strip()
+        if not api_url:
+            raise ValueError("NiFi API URL is required")
+        if not api_url.startswith(("http://", "https://")):
+            raise ValueError("NiFi API URL must start with http:// or https://")
+
+        auth_type = (params.get("auth_type") or "").strip()
+        if auth_type not in ("none", "basic"):
+            raise ValueError("Auth type must be either 'none' or 'basic'")
+
+        if auth_type == "basic":
+            if not (params.get("username") or "").strip():
+                raise ValueError("Username is required when auth type is 'basic'")
+            if not (params.get("password") or "").strip():
+                raise ValueError("Password is required when auth type is 'basic'")
+
+        interval = (params.get("interval") or "").strip()
+        # Splunk also accepts a cron expression here; only check plain numbers.
+        if interval and interval.isdigit() and int(interval) <= 0:
+            raise ValueError("Interval must be greater than 0 seconds")
+
+        for field, label in (("endpoint_processors_history", "processor"),
+                             ("endpoint_process_groups_history", "process group")):
+            for component_id in self._split_ids(params.get(field) or ""):
+                if not self.component_id_pattern.match(component_id):
+                    raise ValueError(
+                        "Invalid {} id '{}': expected a UUID".format(label, component_id)
+                    )
     
 
     def stream_events(self, inputs, ew):
@@ -199,10 +237,10 @@ class NiFiScript(Script):
                     EventWriter.log(ew, EventWriter.ERROR, '{} There was an error when request: {}'.format(self.pid, e))
             
             elif (ep.get('name') == 'endpoint_processors_history') and (processors):
-                plist = list(map(lambda v: v.replace('\n',''), filter(lambda u: u != '', processors.replace('\n', ',').split(','))))
+                plist = self._split_ids(processors)
                 EventWriter.log(ew, EventWriter.INFO, '{} list of plist: {}'.format(self.pid, plist))
                 for p in plist:
-                    new_path = path.format(id=p.strip())
+                    new_path = path.format(id=p)
                     EventWriter.log(ew, EventWriter.INFO, '{} endpoint_processors_history: {}'.format(self.pid, p))
                     try:
                         response = self.__get_request(ew, base_url, new_path, auth_type, username, iname, session_key)
@@ -223,10 +261,10 @@ class NiFiScript(Script):
                         EventWriter.log(ew, EventWriter.ERROR, '{} There was an error when request: {}'.format(self.pid, e))
 
             elif (ep.get('name') == 'endpoint_process_groups_history') and (process_groups):
-                plist = list(map(lambda v: v.replace('\n',''), filter(lambda u: u != '', process_groups.replace('\n', ',').split(','))))
+                plist = self._split_ids(process_groups)
                 EventWriter.log(ew, EventWriter.INFO, '{} list of plist: {}'.format(self.pid, plist))
                 for p in plist:
-                    new_path = path.format(id=p.strip())
+                    new_path = path.format(id=p)
                     EventWriter.log(ew, EventWriter.INFO, '{} endpoint_process_groups_history: {}'.format(self.pid, p))
                     try:
                         response = self.__get_request(ew, base_url, new_path, auth_type, username, iname, session_key)
