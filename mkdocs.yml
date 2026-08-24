@@ -11,6 +11,9 @@ copyright: Copyright &copy; 2021 Kudaw S.A. All Rights Reserved
 repo_url: https://github.com/kudawdev/nifi-monitoring-splunk
 repo_name: NIFI Monitoring Splunk
 
+# Source directory (doc/ = public docs; docs/ = internal dev docs)
+docs_dir: doc
+
 # Navigation
 nav:
   - Introduction: index.md
@@ -48,7 +51,7 @@ extra:
       link: https://hub.docker.com/r/kudaw
     - icon: fontawesome/brands/github
       link: https://github.com/kudawdev
-  current_version: 1.0
+  current_version: 2.0
   alternate:
     # Switch to English
     - name: English
