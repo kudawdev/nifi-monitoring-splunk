@@ -217,7 +217,11 @@ El endpoint de métricas es un **complemento de alto valor**, no un sustituto:
    - polling de `GET /flow/bulletin-board` — simple, pero puede perder bulletins si el intervalo del input supera la retención del bulletin board (5 min por defecto en NiFi);
    - `SiteToSiteBulletinReportingTask` → HEC — no pierde eventos, pero reintroduce configuración dentro de NiFi.
 
-   **Propuesta:** implementar el polling de `/flow/bulletin-board` en el TA con intervalo por defecto de 60 s y documentar el límite; ofrecer la Reporting Task como opción para quien necesite garantía de no pérdida. **Requiere decisión del equipo (§10, D-1).**
+   **Decidido (D-1, 2026-08-24): ambas, con el polling por defecto.** Implementado en TA-5, con tres cosas que la implementación aclaró:
+
+   - `/flow/bulletin-board` acepta **`?after=<id>` en 1.x y en 2.x**, así que cada poll pide solo lo que no vio: no hay duplicados. El cursor vive en el `checkpoint_dir` de Splunk, que sobrevive reinicios — no en el `.env` (ver TA-7).
+   - Lo que el `after` **no** puede hacer es recuperar un bulletin que NiFi ya descartó del board. Cuando una página vuelve llena, el input emite un WARN diciendo que pudo haber pérdida y qué hacer.
+   - **El board da menos campos que la Reporting Task:** `bulletinGroupName` y `bulletinGroupPath` no existen ahí (el board lleva el id del grupo, nunca resuelve su nombre). `sourceType` y `stackTrace` existen solo desde NiFi 2.0. Eso es una razón adicional para conservar las dos vías.
 
 ### 4.3 Los logs de NiFi: análisis aparte
 
@@ -294,12 +298,12 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 | TA-1 | Reescribir `NiFiScript.endpoints` como tabla declarativa con `min_version` / `max_version` por endpoint, en lugar de la lista plana actual. |
 | TA-2 | Agregar `/flow/metrics/json` con `includedRegistries`, `flowMetricsReportingStrategy` y `sampleName` expuestos como parámetros del input. **No es pass-through:** implementar el zip de `labelNames`/`labelValues` y emitir un evento plano por muestra (`{name, value, <labels…>}`). Ver §3.5(a). |
 | TA-2b | `includedRegistries=VERSION_INFO` responde **404 en 1.x**: pedirlo solo cuando la versión detectada sea ≥2.0, o tratar el 404 como "no soportado" sin marcarlo como error. |
-| TA-3 | Autodetección de versión: `VERSION_INFO` (2.x) o `/system-diagnostics` → `versionInfo` (1.x) al arrancar; cachear y emitir `nifi:api:version_info`. |
+| TA-3 ✅ | **Hecho.** Autodetección de versión leyendo `versionInfo.niFiVersion` de `/system-diagnostics`, que existe en **todas** las versiones soportadas — un solo camino, no la bifurcación que preveía este plan. `VERSION_INFO` del endpoint de métricas quedó descartado para esto: responde 404 antes de 2.0, así que no sirve para averiguar con qué versión se está hablando. La respuesta se reutiliza para el endpoint `system_diagnostics` (una sola llamada por ciclo) y la versión se emite como `nifi:api:version_info`. |
 | TA-4 | Nuevo sourcetype `nifi:api:flow_metrics` con su `props.conf` (`INDEXED_EXTRACTIONS = json`, **`TRUNCATE = 0`**, `SHOULD_LINEMERGE = false`, `LINE_BREAKER = ([\r\n]+)`) — un evento por línea. |
 | TA-4b | En NiFi ≥2.0 los repositorios llegan por métricas (`nifi_*_repo_*_space_bytes`): hacer `/system-diagnostics` opcional o de intervalo mayor, sin romper 1.x. |
-| TA-5 | Polling de `/flow/bulletin-board` → `nifi:api:bulletin_board` (sujeto a D-1). |
+| TA-5 ✅ | **Hecho.** Polling de `/flow/bulletin-board` → `nifi:api:bulletin_board`, habilitado por defecto, con `?after=<id>` y cursor en el `checkpoint_dir`. `props.conf` mapea la forma del board a los nombres que ya usa el datamodel, para que ambas fuentes alimenten los mismos paneles. |
 | TA-6 | Retirar `nifi:api:controller_cluster` (huérfano) y decidir sobre `nifi:api:site_to_site` (B-9). |
-| TA-7 | Sustituir el estado en `.env` por el KV store de Splunk o `storage/passwords` (B-14). **Medido en el run del 2026-08-24:** el `.env` vive dentro del directorio de la app, así que se pierde al reinstalarla o recrear el contenedor, y cada arranque en frío paga un 401 evitable. Al no haber token cacheado, pedirlo proactivamente antes de la primera request en lugar de provocar el 401. |
+| TA-7 ◐ | **Parcial:** el cursor de bulletins ya usa el `checkpoint_dir` de Splunk. Falta mover el token. Sustituir el estado en `.env` por el KV store de Splunk o `storage/passwords` (B-14). **Medido en el run del 2026-08-24:** el `.env` vive dentro del directorio de la app, así que se pierde al reinstalarla o recrear el contenedor, y cada arranque en frío paga un 401 evitable. Al no haber token cacheado, pedirlo proactivamente antes de la primera request en lugar de provocar el 401. |
 | TA-8 | Corregir B-4, B-5, B-15, B-16. |
 | TA-9 | Extender `nifi_manager.xml` y `inputs.conf.spec` con los parámetros nuevos. |
 | TA-10 | Agregar `python.required` además de `python.version` en `inputs.conf`. |
@@ -549,7 +553,7 @@ El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el c
 
 | # | Decisión | Opciones |
 |---|---|---|
-| **D-1** | Bulletins individuales | (a) polling de `/flow/bulletin-board` con riesgo de pérdida documentado; (b) exigir `SiteToSiteBulletinReportingTask` → HEC; (c) ambas, configurable. **Recomendación: (c) con (a) por defecto.** |
+| **D-1** ✅ | Bulletins individuales | **Decidido (c): ambas, con polling por defecto** (Anibal Vasquez, 2026-08-24). Implementado en TA-5. |
 | **D-2** | `nifi:api:site_to_site` | (a) retirarlo; (b) construir el panel que hoy falta. **Recomendación: (a)** — se paga ingesta por dato que nadie mira. |
 | **D-3** | Piso de NiFi soportado | (a) 1.16 (donde aparece `producer=json`); (b) 1.23 (lo que hoy se prueba); (c) solo 2.x + una 1.x de cortesía. **Recomendación: (a)**, con CI en 1.23.2 y 1.28.1. |
 | **D-4** | Aceleración del datamodel | (a) activarla y asumir el costo de almacenamiento; (b) sacar `tstats` de los dashboards. **Recomendación: (a)**, es lo que los paneles ya suponen. |

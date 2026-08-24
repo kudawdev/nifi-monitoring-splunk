@@ -28,7 +28,8 @@ class NiFiScript(Script):
             {"name":"endpoint_system_diagnostics", "sourcetype":"nifi:api:system_diagnostics", "path":"/system-diagnostics"},
             {"name":"endpoint_site_to_site", "sourcetype":"nifi:api:site_to_site", "path":"/site-to-site"},
             {"name":"endpoint_processors_history", "sourcetype":"nifi:api:processors_history", "path":"/flow/processors/{id}/status/history"},
-            {"name":"endpoint_process_groups_history", "sourcetype":"nifi:api:process_groups_history", "path":"/flow/process-groups/{id}/status/history"}
+            {"name":"endpoint_process_groups_history", "sourcetype":"nifi:api:process_groups_history", "path":"/flow/process-groups/{id}/status/history"},
+            {"name":"endpoint_bulletin_board", "sourcetype":"nifi:api:bulletin_board", "path":"/flow/bulletin-board"}
         ]
     pid = 'Nifi Log pid="{}"'.format(uuid.uuid4())
     tls_verify = True
@@ -96,6 +97,63 @@ class NiFiScript(Script):
             return json.loads(diagnostics_json)['systemDiagnostics']['aggregateSnapshot']['versionInfo']
         except (TypeError, ValueError, KeyError):
             return None
+
+    # Bulletins. /flow/bulletin-board accepts ?after=<id> on both the 1.x and
+    # 2.x lines, so each poll asks only for what it has not seen. That removes
+    # duplicates, but it cannot recover a bulletin that NiFi already dropped
+    # from the board: the board holds a limited window (5 minutes by default),
+    # so an interval longer than that window loses events. Clients that cannot
+    # afford any loss should keep using SiteToSiteBulletinReportingTask, which
+    # pushes instead of being polled.
+    bulletin_page_limit = 1000
+
+    def __checkpoint_path(self, input_name, name):
+        """A file under Splunk's checkpoint dir, which survives restarts."""
+        directory = (self._input_definition.metadata or {}).get('checkpoint_dir')
+        if not directory:
+            return None
+        safe = re.sub(r'[^A-Za-z0-9_.-]', '_', input_name)
+        return os.path.join(directory, '{}.{}'.format(safe, name))
+
+    def __read_checkpoint(self, ew, input_name, name):
+        path = self.__checkpoint_path(input_name, name)
+        if not path or not os.path.isfile(path):
+            return None
+        try:
+            with open(path) as handle:
+                return handle.read().strip() or None
+        except Exception as error:
+            EventWriter.log(ew, EventWriter.WARN, '{} Could not read checkpoint {}: {}'.format(self.pid, name, error))
+            return None
+
+    def __write_checkpoint(self, ew, input_name, name, value):
+        path = self.__checkpoint_path(input_name, name)
+        if not path:
+            return
+        try:
+            with open(path, 'w') as handle:
+                handle.write(str(value))
+        except Exception as error:
+            EventWriter.log(ew, EventWriter.WARN, '{} Could not write checkpoint {}: {}'.format(self.pid, name, error))
+
+    @staticmethod
+    def bulletins_of(payload):
+        """The bulletin entries out of a /flow/bulletin-board response."""
+        try:
+            return json.loads(payload)['bulletinBoard']['bulletins'] or []
+        except (TypeError, ValueError, KeyError):
+            return None
+
+    @staticmethod
+    def highest_bulletin_id(bulletins):
+        """The largest entry id, to resume from on the next poll."""
+        ids = []
+        for entry in bulletins:
+            for candidate in (entry.get('id'), (entry.get('bulletin') or {}).get('id')):
+                if isinstance(candidate, int):
+                    ids.append(candidate)
+                    break
+        return max(ids) if ids else None
 
     def __supported(self, endpoint, ew):
         """Whether this NiFi is new enough for the endpoint.
@@ -216,6 +274,16 @@ class NiFiScript(Script):
         )
         scheme.add_argument(endpoint_process_groups_history_argument)
         
+        endpoint_bulletin_board_argument = Argument(
+            name="endpoint_bulletin_board",
+            description="Poll the bulletin board for individual bulletins. Enabled by default. The board only keeps a short window, so an interval longer than that window can miss bulletins; use SiteToSiteBulletinReportingTask instead when no loss is acceptable.",
+            title="Bulletin Board",
+            data_type=Argument.data_type_boolean,
+            required_on_edit=False,
+            required_on_create=False
+        )
+        scheme.add_argument(endpoint_bulletin_board_argument)
+
         auth_type_argument = Argument(
             name="auth_type",
             description="Auth Type",
@@ -374,6 +442,13 @@ class NiFiScript(Script):
             sourcetype = ep.get("sourcetype")
             EventWriter.log(ew, EventWriter.INFO, '{} Request endpoint: {}'.format(self.pid, ep))
             
+            if ep.get('name') == 'endpoint_bulletin_board':
+                if input_item.get('endpoint_bulletin_board') not in ('1', None, ''):
+                    continue
+                self.__collect_bulletins(ew, base_url, path, sourcetype, auth_type,
+                                         username, iname, session_key, input_name, input_item)
+                continue
+
             if input_item.get(ep.get('name')) == '1':
                 try:
                     if path == "/system-diagnostics":
@@ -442,6 +517,48 @@ class NiFiScript(Script):
             else:
                 EventWriter.log(ew, EventWriter.INFO, 'there wasnt an endpoint detected: ')
                 pass
+
+    def __collect_bulletins(self, ew, base_url, path, sourcetype, auth_type,
+                            username, iname, session_key, input_name, input_item):
+        """Poll the bulletin board, emitting one event per bulletin.
+
+        Resumes from the highest id seen, so a bulletin is not indexed twice.
+        """
+        after = self.__read_checkpoint(ew, input_name, 'bulletin_after')
+        request_path = '{}?limit={}'.format(path, self.bulletin_page_limit)
+        if after:
+            request_path += '&after={}'.format(after)
+
+        try:
+            payload = self.__get_request(ew, base_url, request_path, auth_type, username, iname, session_key)
+        except Exception as error:
+            EventWriter.log(ew, EventWriter.ERROR, '{} Error requesting the bulletin board: {}'.format(self.pid, error))
+            return
+
+        bulletins = self.bulletins_of(payload)
+        if bulletins is None:
+            EventWriter.log(ew, EventWriter.ERROR, '{} Could not read the bulletin board response'.format(self.pid))
+            return
+
+        for entry in bulletins:
+            ew.write_event(Event(
+                sourcetype=sourcetype,
+                stanza=input_name,
+                data=json.dumps(entry),
+                host=input_item.get("host")
+            ))
+
+        highest = self.highest_bulletin_id(bulletins)
+        if highest is not None:
+            self.__write_checkpoint(ew, input_name, 'bulletin_after', highest)
+
+        EventWriter.log(ew, EventWriter.INFO, '{} Bulletins collected: {} (resuming after id {})'.format(
+            self.pid, len(bulletins), highest if highest is not None else after))
+
+        if len(bulletins) >= self.bulletin_page_limit:
+            EventWriter.log(ew, EventWriter.WARN, '{} The bulletin board returned a full page ({}): bulletins may have been dropped before this poll. Shorten the input interval, or use SiteToSiteBulletinReportingTask for guaranteed delivery'.format(
+                self.pid, self.bulletin_page_limit))
+
 
     def __urljoin(self, *args):
         trailing_slash = '/' if args[-1].endswith('/') else ''

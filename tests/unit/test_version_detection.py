@@ -167,8 +167,11 @@ class DiagnosticsReuseTest(NiFiScriptTestCase):
         with mock.patch.object(self.nifi, "EventWriter", mock.MagicMock()):
             self.script.stream_events(inputs, writer)
 
+        # Other endpoints (the bulletin board) fetch their own URLs; what
+        # matters is that /system-diagnostics is fetched exactly once.
         requested = [call.args[0] for call in self.http.get.call_args_list]
-        self.assertEqual(len(requested), 1, "fetched %s" % requested)
+        diagnostics = [url for url in requested if url.endswith("/system-diagnostics")]
+        self.assertEqual(len(diagnostics), 1, "fetched %s" % requested)
 
         sourcetypes = [
             call.args[0].sourceType for call in writer.write_event.call_args_list

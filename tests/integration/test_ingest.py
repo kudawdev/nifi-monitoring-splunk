@@ -195,5 +195,51 @@ class VersionDetectionTest(IntegrationTestCase):
         )
 
 
+class BulletinPollingTest(IntegrationTestCase):
+    """Bulletins now reach Splunk by polling /flow/bulletin-board, with no
+    reporting task configured inside NiFi (TA-5).
+
+    A NiFi with no flow produces no bulletins, so the assertions here check
+    that the polling runs cleanly rather than that bulletins exist. Proving
+    the payload shape needs a flow that actually fails, which is future work
+    (see the plan).
+    """
+
+    def test_the_bulletin_poll_reports_no_errors(self):
+        rows = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" '
+            '"bulletin board" log_level=ERROR | stats count',
+            earliest="-1h",
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertEqual(count, 0, "the bulletin board poll logged errors")
+
+    def test_the_poll_runs_and_reports_its_count(self):
+        """The input logs a line per poll; its absence means the endpoint was
+        never reached."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" "Bulletins collected" '
+            "| stats count",
+            minimum=1,
+            timeout=180,
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertGreater(count, 0, "the bulletin board was never polled")
+
+    def test_any_bulletin_indexed_carries_the_datamodel_fields(self):
+        rows = search(
+            self.splunk,
+            'index=main sourcetype="nifi:api:bulletin_board" '
+            "| head 1 | table bulletinLevel, bulletinCategory, bulletinSourceName",
+        )
+        if not rows:
+            self.skipTest("no bulletins were produced by this NiFi")
+        for field in ("bulletinLevel", "bulletinCategory", "bulletinSourceName"):
+            with self.subTest(field=field):
+                self.assertIn(field, rows[0])
+
+
 if __name__ == "__main__":
     unittest.main()

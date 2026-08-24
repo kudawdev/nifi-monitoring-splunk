@@ -19,6 +19,9 @@ endpoint_processors_history = <value>
 endpoint_process_groups_history = <value>
 *Enable Enpoint for processor history
 
+endpoint_bulletin_board = <value>
+*Poll the bulletin board for individual bulletins [0 | 1]. Defaults to 1.
+
 auth_type = <value>
 *Authentication type [none | basic ]
 
