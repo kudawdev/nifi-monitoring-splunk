@@ -19,7 +19,7 @@ Extender las dos apps para monitorear instancias de **Apache NiFi 2.x** sin perd
 
 - Soporte simultáneo de NiFi 1.16+ y 2.x en un único código.
 - Revisión y consolidación del método de recolección.
-- Corrección de los 22 defectos catalogados en §7.
+- Corrección de los 24 defectos catalogados en §7.
 - Rediseño de `tests/` como matriz parametrizable NiFi × Splunk con verificación automatizada.
 - Actualización de la documentación pública bilingüe en `doc/`.
 
@@ -373,6 +373,8 @@ Catalogados durante la lectura del repositorio del 2026-08-24. Severidad: **A** 
 | B-20 | **B** | `nifi_TA_monitoring/default/props.conf` | El corte de eventos de los logs es inconsistente y fragmenta los stack traces. `nifi:log:app` **no declara `SHOULD_LINEMERGE`** (queda al default `true`) mientras `nifi:log:user` y `nifi:log:bootstrap` sí lo ponen en `false`; con `LINE_BREAKER = ([\r\n]+)` cada línea de un stack trace se convierte en un evento suelto, sin timestamp ni `level`. **Medido: 77% de las líneas de `nifi-app.log` en un arranque limpio de NiFi 2.11 son continuaciones sin timestamp** (1014 de 1311). Ninguna stanza declara `TRUNCATE`, así que aplica el default de 10.000 bytes, que además de mutilar el evento grande se lleva el siguiente. |
 | B-21 | C | `nifi_TA_monitoring/default/inputs.conf` | Los monitor inputs apuntan a `/opt/nifi/logs/nifi-*.log`, pero en la imagen oficial de NiFi los logs están en `/opt/nifi/nifi-current/logs/`. La ruta por defecto no sirve para el despliegue más común. |
 | B-22 | C | TA | `nifi-deprecation.log` y `nifi-request.log` existen en 1.x y 2.x y **no se recolectan**. El primero es el log que dice qué componentes deprecados está usando el cliente: el insumo natural de un panel de apoyo a la migración a 2.x. |
+| B-23 | **A** | `bin/nifi.py` | Todas las llamadas a NiFi usan `verify = False` (y se silencian los warnings de urllib3 con `disable_warnings`). Contra un NiFi con HTTPS eso acepta cualquier certificado: un atacante en la red puede interceptar la sesión y quedarse con el usuario, la contraseña y el JWT. En NiFi 2.x esto importa más que antes, porque HTTPS es el default y el modo sin auth dejó de ser práctico. Debe pasar a ser opcional (checkbox "Verify TLS certificate" + ruta opcional a un CA bundle), con verificación **activada** por defecto. |
+| B-24 | C | `nifi_TA_monitoring/lib/splunklib` | `splunklib/results.py` hace `import deprecation`, un paquete de terceros que **no está vendorizado** junto a él, así que ese módulo lanza `ModuleNotFoundError` si alguien lo importa. Apareció al upgradear splunklib a 2.1.1 (`51f3ae6`). Hoy no rompe nada porque `bin/nifi.py` solo usa `splunklib.client` y `splunklib.modularinput`, que importan bien; queda como trampa para el próximo que necesite leer resultados de búsqueda. Vendorizar `deprecation` o retirar `results.py` del paquete. |
 
 ---
 
@@ -466,6 +468,7 @@ Todo esto se puede mergear ya y liberar como **1.2.4**, sin esperar el resto.
 
 - T-1 … T-8 y la matriz de §8.4.
 - **Aceptación:** `run.sh` levanta los 4 perfiles y las assertions pasan contra la app 1.2.4 tal cual; el job `unittest` del CI ejecuta la matriz y falla si un perfil falla.
+- **Estado 2026-08-24:** estructura implementada (compose parametrizado, `matrix.yml` + `matrix.py`, provisioning por init container, `run.sh`, perfiles de auth) y suite unit de 41 tests corriendo en CI. **Pendiente:** ejecutar los 4 perfiles de punta a punta — las assertions de integración están escritas pero todavía no se corrieron contra un stack real, y hasta que eso pase no se puede afirmar que el harness funciona.
 
 ### F3 — TA multi-versión
 

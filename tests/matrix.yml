@@ -1,0 +1,52 @@
+# Supported NiFi x Splunk combinations, and which ones CI runs.
+#
+# This file is the single source of truth for the test matrix. run.sh reads a
+# profile from here by name; the CI workflows read the `ci` lists.
+#
+# Adding a version means adding a profile here, not copying a compose file.
+
+profiles:
+
+  nifi1-legacy:
+    description: >
+      Oldest NiFi the harness still covers, unsecured HTTP. Regression
+      guard for the 1.x pull path.
+    nifi_version: "1.23.2"
+    splunk_version: "9.4"
+    nifi_auth: none
+
+  nifi1-last:
+    description: >
+      Final 1.x release (EOL 2024-12-08), single-user auth. Exercises the
+      token path against the 1.x API.
+    nifi_version: "1.28.1"
+    splunk_version: "10.4"
+    nifi_auth: singleuser
+
+  nifi2-current:
+    description: >
+      Current 2.x release with single-user auth. The combination most
+      clients will land on.
+    nifi_version: "2.11.0"
+    splunk_version: "10.4"
+    nifi_auth: singleuser
+
+  nifi2-first:
+    description: >
+      First 2.x release, to catch anything that depends on a feature added
+      after 2.0.0. VERSION_INFO and the repo metrics exist here.
+    nifi_version: "2.0.0"
+    splunk_version: "10.4"
+    nifi_auth: singleuser
+
+ci:
+  # Runs on every pull request: one profile per NiFi major.
+  pull_request:
+    - nifi1-legacy
+    - nifi2-current
+  # Runs before a release.
+  release:
+    - nifi1-legacy
+    - nifi1-last
+    - nifi2-first
+    - nifi2-current

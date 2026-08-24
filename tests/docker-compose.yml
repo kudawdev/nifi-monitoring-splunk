@@ -1,0 +1,102 @@
+# Integration environment for the NiFi Monitoring apps.
+#
+# One compose file for every combination in matrix.yml. Pick a combination
+# with environment variables rather than by copying this file:
+#
+#   NIFI_VERSION=2.11.0 SPLUNK_VERSION=10.4 NIFI_AUTH=singleuser ./run.sh
+#
+# See README.md. Defaults come from .env, which run.sh writes from the
+# selected profile.
+
+name: nifi-monitoring-test
+
+services:
+
+  # Pre-populate /opt/splunk/etc before splunkd starts. The Splunk image
+  # extracts its own etc/ additively on first boot, so seeding the volume
+  # first is safe and removes the manual "docker exec + copy the apps" step
+  # the old harness needed.
+  provision:
+    image: busybox:1.36
+    volumes:
+      - splunk_etc:/etc-seed
+      - ..:/src:ro
+      - ./provision:/provision:ro
+    command: sh /provision/seed-splunk-etc.sh
+    restart: "no"
+
+  splunk:
+    image: splunk/splunk:${SPLUNK_VERSION:-9.4}
+    hostname: splunk
+    depends_on:
+      provision:
+        condition: service_completed_successfully
+    environment:
+      SPLUNK_START_ARGS: --accept-license
+      # Splunk 10 refuses to start without this; harmless on 9.x.
+      SPLUNK_GENERAL_TERMS: --accept-sgt-current-at-splunk-com
+      SPLUNK_PASSWORD: ${SPLUNK_PASSWORD:-Password123}
+      SPLUNK_HEC_TOKEN: ${SPLUNK_HEC_TOKEN:-00000000-0000-0000-0000-0000000000ab}
+      SPLUNK_ROLE: splunk_standalone
+    ports:
+      - "${SPLUNK_WEB_PORT:-38000}:8000"
+      - "${SPLUNK_MGMT_PORT:-38089}:8089"
+      - "${SPLUNK_HEC_PORT:-38088}:8088"
+    volumes:
+      - splunk_etc:/opt/splunk/etc
+      - splunk_var:/opt/splunk/var
+      - ..:/src:ro
+    healthcheck:
+      test: ["CMD", "curl", "-sfk", "https://localhost:8089/services/server/info"]
+      interval: 15s
+      timeout: 10s
+      retries: 60
+      # Splunk 10 cold-starts slowly; 180s is not enough and `up --wait`
+      # gives up before splunkd is listening.
+      start_period: 900s
+
+  nifi:
+    image: apache/nifi:${NIFI_VERSION:-2.11.0}
+    hostname: nifi
+    env_file:
+      - ${NIFI_ENV_FILE:-./env/nifi-singleuser.env}
+    ports:
+      - "${NIFI_HTTP_PORT:-38080}:8080"
+      - "${NIFI_HTTPS_PORT:-38443}:8443"
+    volumes:
+      - nifi_logs:/opt/nifi/nifi-current/logs
+      - nifi_conf:/opt/nifi/nifi-current/conf
+      - nifi_state:/opt/nifi/nifi-current/state
+    healthcheck:
+      # /access/config answers before authentication is configured, so it
+      # works for both the unsecured and the single-user profile.
+      test: ["CMD-SHELL", "curl -sfk http://localhost:8080/nifi-api/access/config || curl -sfk https://localhost:8443/nifi-api/access/config"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 180s
+
+  # Ships NiFi's log files to Splunk. This is the recommended path for logs
+  # (see the plan's section on logs); enable with `--profile forwarder`.
+  forwarder:
+    profiles: ["forwarder"]
+    image: splunk/universalforwarder:${SPLUNK_VERSION:-9.4}
+    hostname: forwarder
+    depends_on:
+      splunk:
+        condition: service_healthy
+    environment:
+      SPLUNK_START_ARGS: --accept-license
+      SPLUNK_GENERAL_TERMS: --accept-sgt-current-at-splunk-com
+      SPLUNK_PASSWORD: ${SPLUNK_PASSWORD:-Password123}
+      SPLUNK_STANDALONE_URL: splunk
+    volumes:
+      - nifi_logs:/opt/nifi/nifi-current/logs:ro
+      - ..:/src:ro
+
+volumes:
+  splunk_etc:
+  splunk_var:
+  nifi_logs:
+  nifi_conf:
+  nifi_state:

@@ -3,3 +3,5 @@ Thumbs.db
 *.py[co]
 .idea
 .dccache
+__pycache__/
+tests/.env
