@@ -18,9 +18,11 @@ docs_dir: doc
 nav:
   - Introduction: index.md
   - Overview: overview.md
+  - Compatibility and collection paths: compatibility.md
   - Install and configure NIFI Monitoring on Splunk: installation.md
   - NIFI Configuration: configuration.md
   - Data Reference: references.md
+  - Upgrading to 2.0.0: upgrading.md
   - Contribute: contributing.md
 
 # Configuration
@@ -86,7 +88,9 @@ plugins:
         es:
           Introduction: Introducción
           Overview: Vista General
+          Compatibility and collection paths: Compatibilidad y métodos de recolección
           Install and configure NIFI Monitoring on Splunk: Instalación y configuración de NIFI Monitoring en Splunk
           NIFI Configuration: Configuración de NIFI
           Data Reference: Referencia de Datos
+          Upgrading to 2.0.0: Actualizar a 2.0.0
           Contribute: Contribuya

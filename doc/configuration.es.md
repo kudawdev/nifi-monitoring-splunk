@@ -38,52 +38,75 @@ Proceso de configuración:
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/add_hec_3.png)
 
-### 2. Importar Flow Definition en NIFI
+### 2. Importar el Flow Definition en NiFi
 
-Descarga y utiliza el Flow Definition proporciado para la configuración de NiFi Monitoring a través de este link [NifiMonitoring](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/template/NifiMonitoring.json). También podrás encontrar este archivo dentro de la carpeta **flow_definition** del proyecto.
+Elige el archivo que corresponde a tu versión de NiFi. No son intercambiables:
 
-El archivo Flow Definition es la estructura de un grupo de procesos encargado de recolectar y ejecutar el envío de datos de NIFI al Splunk. Está en formato JSON el cual puede ser directamente importado. 
+| Tu NiFi | Importa |
+|---|---|
+| 1.16 – 1.28 | [`flow_definition/nifi-1.x/NiFiMonitoring.json`](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/flow_definition/nifi-1.x/NiFiMonitoring.json) |
+| 2.0 en adelante | [`flow_definition/nifi-2.x/NiFiMonitoring.json`](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/flow_definition/nifi-2.x/NiFiMonitoring.json) |
 
-Para importar el Flow Definition, arrastra una caja de *process group* al lienzo de nifi
+!!! warning "No importes el flow de 1.x en NiFi 2.x"
+    Carga, y ahí está la trampa. Cinco procesadores quedan inválidos, y las
+    seis variables de las que depende el flow desaparecen sin un solo error:
+    hay procesadores que validan sin problema mientras sostienen referencias
+    `${splunk_hec}` que ya no resuelven a nada, y que fallan recién en
+    tiempo de ejecución.
 
-![image](/nifi-monitoring-splunk/assets/images/nifi/1_add_process_group.png)
+El Flow Definition es un grupo de procesos que recolecta los datos de NiFi y
+los envía a Splunk. Para importarlo, arrastra una caja de *process group* al
+lienzo, selecciona el ícono de importación en la ventana emergente y elige el
+archivo.
 
-En la ventana emergente, selecciona el ícono de importación, busca en tu equipo y selecciona el flow definition NiFiMonitoring.json para importar.
-
-![image](/nifi-monitoring-splunk/assets/images/nifi/2_import_flow_definition.png)
-
-Una vez importado, haz clic en "add" para finalizar la importación del flow definition.
-
-![image](/nifi-monitoring-splunk/assets/images/nifi/3_load_flow_definition.png)
-
-Finalmente, verás el grupo de procesadores y en su interior contiene la siguiente estructura:
+Una vez importado verás el grupo de procesos, que contiene:
 
 -   Monitoring API
 -   Monitoring Logs
 -   Monitoring ReportingTask
 -   SendHEC
 
-![image](/nifi-monitoring-splunk/assets/images/nifi/4_flow_definition_loaded.png)
+### 3. Configurar los ajustes del flow
 
-### 3. Configuración de variables globales
+El mecanismo cambia según la versión de NiFi, porque NiFi 2.0 eliminó el
+Variable Registry.
 
-Configura las variables globales ya que son indispensable para su funcionamiento. Para configurar los parámetros haz clic derecho sobre la caja NiFIMonitoring > Variables.
+#### NiFi 2.x — parameter context
 
-![image](/nifi-monitoring-splunk/assets/images/nifi/set_variable.png)
+Al importar el flow de 2.x se crea un parameter context llamado **NiFi
+Monitoring** y queda asignado al grupo de procesos. Ábrelo con clic
+derecho sobre el grupo > *Parameters*, o desde el menú superior derecho >
+*Parameter Contexts*.
 
-Se desplegará una ventana emergente donde tendrás que configurar los siguientes parámetros:
+Dos de sus parámetros se distribuyen vacíos a propósito, y hasta que
+tengan valor los dos procesadores `GenerateFlowFile` quedan inválidos.
+Es intencional: que NiFi se niegue a arrancar un procesador con una
+propiedad requerida vacía es mejor que arrancarlo apuntando a los ids de
+componentes de otra instalación.
 
-- nifi_api_url: Corresponde a la ruta del API Rest de NIFI, (Ej: http://127.0.0.1:8080/nifi-api/)
-- nifi_path: Corresponde a la ruta de instalación en el servidor nifi (en caso de cluster debe estar instalado en la misma ruta en cada nodo). (Ej: /home/nifi/nifi-1.10.0/)
-- process_groups_list: Listado de **ID de grupos de procesos** que se necesitan monitorear, separados por salto de linea.
-- processors_list: Listado de **ID de procesadores** que se necesitan monitorear, separados por salto de linea.
-- splunk_hec: Es la dirección del servidor splunk donde se configuró el data input HTTP Event Collector. (Ej: http://<host>:8088/)
-- splunk_hec_token: Token obtenido al configurar [HTTP Event Collector](/nifi-monitoring-splunk/es/installation/#configuracion-de-http-event-collector-hec).
+#### NiFi 1.x — variables
 
-![image](/nifi-monitoring-splunk/assets/images/nifi/set_variable_2.png)
+Clic derecho sobre la caja NiFiMonitoring > *Variables*.
 
+En cualquiera de los dos casos, los ajustes son los mismos:
+
+| Ajuste | Qué es |
+|---|---|
+| `nifi_api_url` | La API REST de esta instancia, ej. `http://127.0.0.1:8080/nifi-api/` |
+| `nifi_path` | Directorio de instalación de NiFi, para leer sus logs. En cluster, la misma ruta en cada nodo |
+| `process_groups_list` | Ids de los grupos de procesos a monitorear, uno por línea |
+| `processors_list` | Ids de los procesadores a monitorear, uno por línea |
+| `splunk_hec` | El servidor Splunk con el input HEC, ej. `http://<host>:8088/` |
+| `splunk_hec_token` | El token de [configurar el HEC](#1-configuracion-de-http-event-collector-hec-en-splunk). En 2.x es un parámetro **sensible**, así que NiFi nunca lo escribe en un flow exportado |
 
 ### 4. Configuración de componentes
+
+!!! note "Las capturas de abajo son de NiFi 1.x"
+    NiFi 2.x rehizo su interfaz, así que estas imágenes ya no coinciden con lo
+    que vas a ver. Los pasos en sí no cambian — el mismo controller service y
+    las mismas tres reporting tasks, desde los mismos menús — pero las
+    pantallas se ven distintas. Recapturarlas para 2.x está pendiente.
+
 
 Posterior a la configuración de las variables es necesario crear los siguientes componentes. Para configurar accede a Nifi Settings desde el menú > controller Settings
 

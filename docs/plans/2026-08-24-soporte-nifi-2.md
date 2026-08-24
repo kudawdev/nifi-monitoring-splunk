@@ -360,13 +360,13 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 
 | # | Cambio |
 |---|---|
-| DOC-1 | `mkdocs.yml`: agregar `docs_dir: doc` tras el rename `docs/` → `doc/`, o `docs.yml` publica un sitio vacío (B-10). |
-| DOC-2 | Reescribir §3 de `configuration.md` — "Global variables configuration" describe una UI que **no existe en NiFi 2.x**. |
-| DOC-3 | Recapturar los screenshots: la UI de NiFi 2.x es un rediseño completo (Angular). ~25 imágenes en `doc/assets/images/nifi/`. |
-| DOC-4 | Nueva página: matriz de compatibilidad y elección de método de recolección. |
-| DOC-5 | Corregir el link roto a `template/NifiMonitoring.json` (la carpeta es `flow_definition/`). |
-| DOC-6 | `mkdocs.yml`: `current_version: 1.0` → 2.0 (B-12). |
-| DOC-7 | Actualizar los pares `*.es.md` de todo lo anterior. |
+| DOC-1 ✅ | **Hecho.** `mkdocs.yml`: agregar `docs_dir: doc` tras el rename `docs/` → `doc/`, o `docs.yml` publica un sitio vacío (B-10). |
+| DOC-2 ✅ | **Hecho** en ambos idiomas. §2 ahora indica qué archivo importar según versión y advierte del modo de falla silencioso; §3 cubre parameter context (2.x) y variables (1.x) con una tabla común de ajustes. |
+| DOC-3 ❌ | **No hecho, y no lo voy a hacer.** Requiere navegar la UI de NiFi 2.x paso a paso y recortar capturas; es trabajo visual que no puedo ejecutar con confianza. **Alcance real medido:** al reescribir §2 y §3 quedaron 5 imágenes sin referencia (`set_variable`, `set_variable_2`, `1_add_process_group`, `2_import_flow_definition`, `3_load_flow_definition`) y **12 siguen referenciadas** desde §4, todas de la UI 1.x: `add_controller_service`, `bulletin_reporting_task`, `controller_settings`, `enable_sending_1`, `enable_sending_2`, `metrics_reporting_task`, `monitor_disk_usage`, `nifi_settings`, `nifi_settings_2`, `nifi_settings_3`, `nifi_settings_4`, `reporting_task`. La doc ahora advierte que son de 1.x, en lugar de mostrarlas como si fueran actuales. |
+| DOC-4 ✅ | **Hecho:** `doc/compatibility.md` con versiones soportadas, comparación de los dos caminos, qué da cada uno, y por qué los logs van por Universal Forwarder. |
+| DOC-5 ✅ | **Hecho.** Reemplazado por los links por versión, con un test que impide que vuelva un link a `template/`. |
+| DOC-6 ✅ | **Hecho.** `current_version: 1.0` → 2.0 (B-12). |
+| DOC-7 ✅ | **Hecho.** 8 pares en/es, con tests que verifican la paridad, que el nav liste todas las páginas y que `docs_dir` siga apuntando a `doc/`. |
 
 ---
 
@@ -547,6 +547,8 @@ El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el c
 - **Aceptación:** el flow de `nifi-2.x/` importa y corre en 2.11.0 sin componentes inválidos, y el perfil `nifi2-hec` de la matriz pasa.
 
 ### F6 — Documentación y release 2.0.0
+
+**Estado 2026-08-24: hecha salvo DOC-3.** Ambas apps en **2.0.0**, dos páginas nuevas bilingües (compatibilidad y notas de migración), §2 y §3 de configuración reescritas para cubrir las dos líneas de NiFi, y tests que sostienen la paridad en/es, el nav y el `docs_dir`. **DOC-3 (recapturar screenshots) no se hizo** — ver su fila.
 
 - DOC-1 … DOC-7.
 - Bump coordinado a **2.0.0** en los dos `app.conf`.

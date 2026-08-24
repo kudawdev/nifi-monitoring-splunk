@@ -428,5 +428,71 @@ class DatamodelCoverageTest(unittest.TestCase):
         self.assertEqual(task - board, {"bulletinGroupName", "bulletinGroupPath"})
 
 
+class DocumentationTest(unittest.TestCase):
+    """The public docs are bilingual and the nav lists both. A page added in
+    one language and not the other ships a half-translated site."""
+
+    DOC = os.path.join(REPO, "doc")
+
+    def pages(self):
+        return sorted(
+            f[:-3] for f in os.listdir(self.DOC)
+            if f.endswith(".md") and not f.endswith(".es.md")
+        )
+
+    def test_every_page_has_a_spanish_counterpart(self):
+        for page in self.pages():
+            with self.subTest(page=page):
+                self.assertTrue(
+                    os.path.isfile(os.path.join(self.DOC, page + ".es.md")),
+                    "%s.es.md is missing" % page,
+                )
+
+    def test_no_orphan_spanish_page(self):
+        for name in os.listdir(self.DOC):
+            if name.endswith(".es.md"):
+                with self.subTest(page=name):
+                    self.assertTrue(
+                        os.path.isfile(os.path.join(self.DOC, name[:-6] + ".md")),
+                        "%s has no English original" % name,
+                    )
+
+    def test_the_nav_lists_every_page(self):
+        try:
+            import yaml
+        except ImportError:
+            self.skipTest("PyYAML not installed")
+        config = yaml.safe_load(open(os.path.join(REPO, "mkdocs.yml")))
+        listed = {list(entry.values())[0].replace(".md", "") for entry in config["nav"]}
+        self.assertEqual(set(self.pages()), listed)
+
+    def test_mkdocs_points_at_the_public_docs(self):
+        """doc/ is published; docs/ holds internal planning and must not be."""
+        try:
+            import yaml
+        except ImportError:
+            self.skipTest("PyYAML not installed")
+        config = yaml.safe_load(open(os.path.join(REPO, "mkdocs.yml")))
+        self.assertEqual(config["docs_dir"], "doc")
+
+    def test_the_docs_do_not_link_to_the_removed_template_folder(self):
+        for name in os.listdir(self.DOC):
+            if not name.endswith(".md"):
+                continue
+            with self.subTest(page=name):
+                self.assertNotIn(
+                    "blob/main/template/", open(os.path.join(self.DOC, name)).read()
+                )
+
+    def test_the_upgrade_notes_cover_every_breaking_change(self):
+        """Each of these changes an existing installation's behaviour, so it
+        has to be findable by someone reading the release notes."""
+        notes = open(os.path.join(self.DOC, "upgrading.md")).read().lower()
+        for topic in ("index_nifi", "verif", "site_to_site", "acceleration",
+                      "flow_definition"):
+            with self.subTest(topic=topic):
+                self.assertIn(topic, notes)
+
+
 if __name__ == "__main__":
     unittest.main()
