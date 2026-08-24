@@ -182,10 +182,29 @@ def variables_to_parameters(root, report):
     # token from being committed again.
     sensitive = re.compile(r"token|password|secret|credential", re.I)
 
+    # NiFi shows a parameter's description in the UI, so this is where an
+    # operator finds out what to put in each box. Defaults point at the local
+    # test stack from tests/, which is a working example rather than a
+    # placeholder to decode.
+    DESCRIPTIONS = {
+        "splunk_hec": "Splunk HEC endpoint, e.g. http://splunk:8088 "
+                      "(the hostname the test compose uses).",
+        "splunk_hec_token": "HEC token from Splunk. Sensitive: NiFi keeps it out "
+                            "of an exported flow.",
+        "nifi_api_url": "This NiFi's REST API, e.g. http://localhost:8080/nifi-api",
+        "nifi_path": "NiFi's install directory, used to tail its logs. The "
+                     "official container uses /opt/nifi/nifi-current/",
+        "processors_list": "REQUIRED. Ids of the processors to monitor, one per "
+                           "line. Empty by design, so no installation ships "
+                           "another one's component ids.",
+        "process_groups_list": "REQUIRED. Ids of the process groups to monitor, "
+                               "one per line. Empty by design.",
+    }
+
     parameters = []
     for name in sorted(variables):
-        entry = {"name": name, "description": "", "sensitive": bool(sensitive.search(name)),
-                 "provided": False}
+        entry = {"name": name, "description": DESCRIPTIONS.get(name, ""),
+                 "sensitive": bool(sensitive.search(name)), "provided": False}
         if not entry["sensitive"]:
             entry["value"] = variables[name]
         parameters.append(entry)

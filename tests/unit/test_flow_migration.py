@@ -170,5 +170,43 @@ class RegenerationTest(unittest.TestCase):
                          "nifi-2.x/NiFiMonitoring.json is out of date; re-run the script")
 
 
+class OperatorGuidanceTest(unittest.TestCase):
+    """The flow is something a person edits after importing, so every setting
+    has to say what it is and what a working value looks like."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(SHIPPED) as handle:
+            cls.flow = json.load(handle)
+        cls.parameters = {
+            p["name"]: p
+            for c in cls.flow["parameterContexts"].values()
+            for p in c["parameters"]
+        }
+
+    def test_every_parameter_has_a_description(self):
+        """NiFi shows it in the UI; an empty one leaves an unlabelled box."""
+        for name, parameter in self.parameters.items():
+            with self.subTest(parameter=name):
+                self.assertTrue(parameter.get("description", "").strip(),
+                                "%s has no description" % name)
+
+    def test_the_two_required_ones_say_so(self):
+        for name in ("processors_list", "process_groups_list"):
+            with self.subTest(parameter=name):
+                self.assertIn("REQUIRED", self.parameters[name]["description"])
+                self.assertEqual(self.parameters[name].get("value", ""), "")
+
+    def test_the_defaults_point_at_the_local_test_stack(self):
+        """A working example beats a placeholder to decode: these are the
+        hostnames tests/docker-compose.yml uses."""
+        self.assertEqual(self.parameters["splunk_hec"]["value"], "http://splunk:8088")
+
+    def test_the_hec_endpoint_matches_the_harness(self):
+        compose = open(os.path.join(REPO, "tests", "docker-compose.yml")).read()
+        host = self.parameters["splunk_hec"]["value"].split("//")[1].split(":")[0]
+        self.assertRegex(compose, r"hostname:\s*%s\b" % host)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -6445,9 +6445,9 @@
     ],
     "controllerServices": [],
     "variables": {
-      "splunk_hec_token": "<SPLUNK_HEC_TOKEN>",
+      "splunk_hec_token": "",
       "processors_list": "",
-      "splunk_hec": "http://<SPLUNK_HOST>:8088",
+      "splunk_hec": "http://splunk:8088",
       "process_groups_list": "",
       "nifi_path": "/opt/nifi/nifi-current/",
       "nifi_api_url": "http://localhost:8080/nifi-api"

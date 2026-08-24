@@ -6454,42 +6454,42 @@
       "parameters": [
         {
           "name": "nifi_api_url",
-          "description": "",
+          "description": "This NiFi's REST API, e.g. http://localhost:8080/nifi-api",
           "sensitive": false,
           "provided": false,
           "value": "http://localhost:8080/nifi-api"
         },
         {
           "name": "nifi_path",
-          "description": "",
+          "description": "NiFi's install directory, used to tail its logs. The official container uses /opt/nifi/nifi-current/",
           "sensitive": false,
           "provided": false,
           "value": "/opt/nifi/nifi-current/"
         },
         {
           "name": "process_groups_list",
-          "description": "",
+          "description": "REQUIRED. Ids of the process groups to monitor, one per line. Empty by design.",
           "sensitive": false,
           "provided": false,
           "value": ""
         },
         {
           "name": "processors_list",
-          "description": "",
+          "description": "REQUIRED. Ids of the processors to monitor, one per line. Empty by design, so no installation ships another one's component ids.",
           "sensitive": false,
           "provided": false,
           "value": ""
         },
         {
           "name": "splunk_hec",
-          "description": "",
+          "description": "Splunk HEC endpoint, e.g. http://splunk:8088 (the hostname the test compose uses).",
           "sensitive": false,
           "provided": false,
-          "value": "http://<SPLUNK_HOST>:8088"
+          "value": "http://splunk:8088"
         },
         {
           "name": "splunk_hec_token",
-          "description": "",
+          "description": "HEC token from Splunk. Sensitive: NiFi keeps it out of an exported flow.",
           "sensitive": true,
           "provided": false
         }

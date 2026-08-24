@@ -34,7 +34,7 @@ starting the flow:
 
 | 1.x variable / 2.x parameter | What it is |
 |---|---|
-| `splunk_hec` | `http://your-splunk:8088` |
+| `splunk_hec` | `http://your-splunk:8088`. Defaults to `http://splunk:8088`, the hostname `tests/docker-compose.yml` uses, so the flow works against the local test stack unchanged |
 | `splunk_hec_token` | the HEC token (a sensitive parameter in 2.x) |
 | `nifi_api_url` | this instance's API, e.g. `http://localhost:8080/nifi-api` |
 | `nifi_path` | NiFi's install directory, for the log tail |
@@ -42,7 +42,8 @@ starting the flow:
 | `process_groups_list` | ids of the process groups to track |
 
 On 2.x these live in the **NiFi Monitoring** parameter context, which the
-import creates. Two `GenerateFlowFile` processors stay invalid until
+import creates. Each one carries a description that NiFi shows in the UI, so
+what to fill in is visible where you fill it in rather than only here. Two `GenerateFlowFile` processors stay invalid until
 `processors_list` and `process_groups_list` have values — that is
 deliberate. NiFi refuses to start a processor with an empty required
 property, which is a better outcome than starting one pointed at ids from
