@@ -76,4 +76,18 @@ jobs:
       - name: Run unit tests
         working-directory: tests/unit
         run: python3 -m unittest discover -v
+
+  integration:
+    needs: appinspect
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Keep in step with the `ci.pull_request` list in tests/matrix.yml.
+        profile: [nifi1-legacy, nifi2-current]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the ${{ matrix.profile }} profile
+        working-directory: tests
+        run: ./run.sh ${{ matrix.profile }}
       

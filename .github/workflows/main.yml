@@ -78,8 +78,22 @@ jobs:
         working-directory: tests/unit
         run: python3 -m unittest discover -v
 
+  integration:
+    needs: appinspect
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Keep in step with the `ci.release` list in tests/matrix.yml.
+        profile: [nifi1-legacy, nifi1-last, nifi2-first, nifi2-current]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the ${{ matrix.profile }} profile
+        working-directory: tests
+        run: ./run.sh ${{ matrix.profile }}
+
   publish:
-    needs: [unittest, appinspect]
+    needs: [unittest, integration, appinspect]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

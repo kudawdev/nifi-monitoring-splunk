@@ -178,5 +178,50 @@ class ProvisioningTest(unittest.TestCase):
         )
 
 
+class WorkflowMatrixTest(unittest.TestCase):
+    """The workflows repeat the profile lists, so they can drift from
+    matrix.yml. This keeps them honest."""
+
+    WORKFLOWS = {
+        "dev.yml": "pull_request",
+        "testing.yml": "pull_request",
+        "main.yml": "release",
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        cls.data = matrix.load()
+        cls.workflow_dir = os.path.join(
+            os.path.dirname(TESTS_DIR), ".github", "workflows"
+        )
+
+    def workflow(self, name):
+        try:
+            import yaml
+        except ImportError:
+            self.skipTest("PyYAML not installed")
+        return yaml.safe_load(open(os.path.join(self.workflow_dir, name)))
+
+    def test_integration_matrix_matches_matrix_yml(self):
+        for name, stage in self.WORKFLOWS.items():
+            with self.subTest(workflow=name):
+                jobs = self.workflow(name)["jobs"]
+                self.assertIn("integration", jobs, "%s has no integration job" % name)
+                declared = jobs["integration"]["strategy"]["matrix"]["profile"]
+                self.assertEqual(declared, self.data["ci"][stage])
+
+    def test_release_does_not_publish_without_integration(self):
+        jobs = self.workflow("main.yml")["jobs"]
+        self.assertIn("integration", jobs["publish"]["needs"])
+
+    def test_unit_tests_run_in_every_workflow(self):
+        for name in self.WORKFLOWS:
+            with self.subTest(workflow=name):
+                steps = self.workflow(name)["jobs"]["unittest"]["steps"]
+                commands = " ".join(str(step.get("run", "")) for step in steps)
+                self.assertIn("unittest discover", commands)
+                self.assertNotIn("TODO", commands)
+
+
 if __name__ == "__main__":
     unittest.main()
