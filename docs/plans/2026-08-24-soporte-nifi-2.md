@@ -299,7 +299,7 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 | TA-4b | En NiFi ≥2.0 los repositorios llegan por métricas (`nifi_*_repo_*_space_bytes`): hacer `/system-diagnostics` opcional o de intervalo mayor, sin romper 1.x. |
 | TA-5 | Polling de `/flow/bulletin-board` → `nifi:api:bulletin_board` (sujeto a D-1). |
 | TA-6 | Retirar `nifi:api:controller_cluster` (huérfano) y decidir sobre `nifi:api:site_to_site` (B-9). |
-| TA-7 | Sustituir el estado en `.env` por el KV store de Splunk o `storage/passwords` (B-14). |
+| TA-7 | Sustituir el estado en `.env` por el KV store de Splunk o `storage/passwords` (B-14). **Medido en el run del 2026-08-24:** el `.env` vive dentro del directorio de la app, así que se pierde al reinstalarla o recrear el contenedor, y cada arranque en frío paga un 401 evitable. Al no haber token cacheado, pedirlo proactivamente antes de la primera request en lugar de provocar el 401. |
 | TA-8 | Corregir B-4, B-5, B-15, B-16. |
 | TA-9 | Extender `nifi_manager.xml` y `inputs.conf.spec` con los parámetros nuevos. |
 | TA-10 | Agregar `python.required` además de `python.version` en `inputs.conf`. |
@@ -468,7 +468,28 @@ Todo esto se puede mergear ya y liberar como **1.2.4**, sin esperar el resto.
 
 - T-1 … T-8 y la matriz de §8.4.
 - **Aceptación:** `run.sh` levanta los 4 perfiles y las assertions pasan contra la app 1.2.4 tal cual; el job `unittest` del CI ejecuta la matriz y falla si un perfil falla.
-- **Estado 2026-08-24:** estructura implementada (compose parametrizado, `matrix.yml` + `matrix.py`, provisioning por init container, `run.sh`, perfiles de auth) y suite unit de 41 tests corriendo en CI. **Pendiente:** ejecutar los 4 perfiles de punta a punta — las assertions de integración están escritas pero todavía no se corrieron contra un stack real, y hasta que eso pase no se puede afirmar que el harness funciona.
+- **Estado 2026-08-24:** implementado y **ejecutado** contra el perfil `nifi2-current` (NiFi 2.11.0 + Splunk 10.4): las 8 assertions de integración pasan y la suite unit tiene 44 tests. Lo que el run probó y lo que costó está en §9.1.
+- **Pendiente:** los otros tres perfiles (`nifi1-legacy`, `nifi1-last`, `nifi2-first`) y conectar `run.sh` al CI como job aparte del `unittest`.
+
+#### 9.1 Qué reveló la primera ejecución real
+
+El harness no funcionó de entrada. Cinco defectos, ninguno visible leyendo el código:
+
+| # | Defecto | Por qué importa |
+|---|---|---|
+| 1 | El seed instalaba siempre el `inputs.conf` sin auth (`http://nifi:8080`) incluso en un perfil `singleuser`, donde NiFi escucha HTTPS en 8443 | El TA habría consultado un puerto vacío: cero eventos, sin ningún error que lo explicara |
+| 2 | El lookup `instance` es una colección **KV store** (`external_type = kvstore`), así que sembrar un CSV en `lookups/` no cargaba nada | El `LOOKUP-instance` de `props.conf` no habría enriquecido, y el agrupamiento por cluster de la app queda vacío |
+| 3 | Los healthchecks usaban `curl -sfk`: Splunk y NiFi responden **401** en los endpoints sondeados, y `--fail` convierte eso en exit 22 | Los checks no podían pasar nunca; `up --wait` habría abandonado un stack que funcionaba |
+| 4 | `wait_for_nifi.py` mandaba `Accept: application/json`, pero `/access/token` devuelve `text/plain` → **406 Not Acceptable** | El script reintentaba hasta agotar el timeout. `curl` no lo mostró porque no restringe `Accept` |
+| 5 | La assertion "sin errores" trataba el 401 de bootstrap como fallo | Falso positivo sobre un comportamiento que es de diseño |
+
+**Lo que el run sí demostró**, y era el objetivo:
+
+- El TA **funciona sin cambios contra NiFi 2.11.0 con autenticación**: 28 eventos en `nifi:api:{flow_status,system_diagnostics,site_to_site}`.
+- `INDEXED_EXTRACTIONS` produce los campos que el datamodel declara (`controllerStatus.activeThreadCount`, `runningCount`, `flowFilesQueued`).
+- El `LOOKUP-instance` enriquece con `cluster` desde el KV store.
+- **El fix de B-5 quedó validado en producción real:** exactamente 2 errores, ambos 401 de arranque en frío, y el último evento 6 minutos posterior al último error. Sin ese fix el input se habría quedado atascado en 401 sin indexar nada.
+- La autodetección de versión vía `VERSION_INFO` devuelve `NiFi 2.11.0 on Java 21.0.12`.
 
 ### F3 — TA multi-versión
 
