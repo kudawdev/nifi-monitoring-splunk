@@ -324,5 +324,40 @@ class IndexConfigurationTest(unittest.TestCase):
         self.assertIn("acceleration.earliest_time", self.datamodels["NIFI"])
 
 
+class DashboardQueryTest(unittest.TestCase):
+    """Query-level rules for the shipped dashboards."""
+
+    VIEWS = os.path.join(APP, "default", "data", "ui", "views")
+
+    def views(self):
+        for name in sorted(os.listdir(self.VIEWS)):
+            if name.endswith(".xml"):
+                yield name, open(os.path.join(self.VIEWS, name)).read()
+
+    def test_no_dashboard_uses_a_join(self):
+        """A join runs its right side as a subsearch, which is capped (50k
+        rows, 60s by default) and truncates silently past the cap. append +
+        stats produces the same shape with no cap."""
+        for name, text in self.views():
+            with self.subTest(view=name):
+                self.assertNotIn("join type", text, "%s still joins" % name)
+
+    def test_the_disk_panel_reads_the_numeric_fields(self):
+        """It used to read the human-readable strings ("847.61 GB", "16.0%"),
+        which display fine but cannot be aggregated or thresholded."""
+        text = dict(self.views())["nifi_overview.xml"]
+        self.assertIn("usedSpaceBytes", text)
+        self.assertIn("totalSpaceBytes", text)
+        self.assertNotIn("{}.freeSpace", text)
+        self.assertNotIn("{}.utilization", text)
+
+    def test_datamodel_fields_are_object_qualified(self):
+        """tstats against a datamodel needs Object.field, not a bare field."""
+        text = dict(self.views())["nifi_overview.xml"]
+        for match in re.findall(r"latest\((\S+?)\) as", text):
+            if match.startswith("systemDiagnostics") or match.startswith("controllerStatus"):
+                self.fail("%s is not object-qualified" % match)
+
+
 if __name__ == "__main__":
     unittest.main()

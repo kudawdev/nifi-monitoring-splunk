@@ -6,15 +6,52 @@
       <table id="table_nifi_status">
         <title>Overall Status Nifi</title>
         <search>
-          <query>| inputlookup instance 
-| join type=left host 
-    [| tstats count, values(Flow_Status.cluster) as cluster last(Flow_Status.controllerStatus.activeThreadCount) as "Active Threads" last(Flow_Status.controllerStatus.bytesQueued) as "Bytes Queued" last(Flow_Status.controllerStatus.runningCount) as "Running Components" last(Flow_Status.controllerStatus.stoppedCount) as "Stopped Components" last(Flow_Status.controllerStatus.disabledCount) as "Disabled Components" last(Flow_Status.controllerStatus.flowFilesQueued) as "FlowFiles Queued" last(Flow_Status.controllerStatus.invalidCount) as "Invalid Components" last(Flow_Status.controllerStatus.locallyModifiedAndStaleCount) as "Locally Modified And Stale Versioned Process Group" last(Flow_Status.controllerStatus.locallyModifiedCount) as "Locally Modified Versioned Process Group" last(Flow_Status.controllerStatus.syncFailureCount) as "Sync Failure Versioned Process Group" last(Flow_Status.controllerStatus.upToDateCount) as "Up To Date Versioned Process Group" last(Flow_Status.controllerStatus.staleCount) as "Stale Versioned Process Group" last(Flow_Status.controllerStatus.activeRemotePortCount) as "Transmitting Remote Process Group" last(Flow_Status.controllerStatus.inactiveRemotePortCount) as "Not Transmitting Remote Process Group" from datamodel=NIFI.Flow_Status groupby host] 
-| eval "Total Queued Data" ='FlowFiles Queued'+"/"+'Bytes Queued' 
-| eval status=if(count&gt;0,"Up","Down") 
-| join type=left host 
-    [| tstats count as "Bulletin Errors" from datamodel=NIFI.Reporting_Bulletin by host ] 
-| sort + status,cluster,host   
-|table host cluster status "Active Threads" "Total Queued Data" "Transmitting Remote Process Group" "Not Transmitting Remote Process Group" "Running Components" "Stopped Components" "Invalid Components" "Disabled Components" "Up To Date Versioned Process Group" "Locally Modified Versioned Process Group" "Stale Versioned Process Group" "Locally Modified And Stale Versioned Process Group" "Sync Failure Versioned Process Group" "Bulletin Errors"</query>
+          <query><!-- No joins: a left join runs the right side as a subsearch, which is
+         capped (50k rows, 60s by default) and silently truncates past it.
+         append + stats gives the same shape with no cap. -->
+| tstats count as flow_events,
+    latest(Flow_Status.controllerStatus.activeThreadCount) as active_threads,
+    latest(Flow_Status.controllerStatus.bytesQueued) as bytes_queued,
+    latest(Flow_Status.controllerStatus.flowFilesQueued) as flowfiles_queued,
+    latest(Flow_Status.controllerStatus.runningCount) as running,
+    latest(Flow_Status.controllerStatus.stoppedCount) as stopped,
+    latest(Flow_Status.controllerStatus.disabledCount) as disabled,
+    latest(Flow_Status.controllerStatus.invalidCount) as invalid,
+    latest(Flow_Status.controllerStatus.upToDateCount) as up_to_date,
+    latest(Flow_Status.controllerStatus.locallyModifiedCount) as locally_modified,
+    latest(Flow_Status.controllerStatus.staleCount) as stale,
+    latest(Flow_Status.controllerStatus.locallyModifiedAndStaleCount) as modified_and_stale,
+    latest(Flow_Status.controllerStatus.syncFailureCount) as sync_failure,
+    latest(Flow_Status.controllerStatus.activeRemotePortCount) as transmitting,
+    latest(Flow_Status.controllerStatus.inactiveRemotePortCount) as not_transmitting
+  from datamodel=NIFI.Flow_Status by host
+| append
+    [| tstats count as bulletin_errors from datamodel=NIFI.Reporting_Bulletin by host]
+| append
+    [| inputlookup instance | fields host, cluster | eval configured = 1]
+| stats max(flow_events) as flow_events, max(active_threads) as active_threads,
+        max(bytes_queued) as bytes_queued, max(flowfiles_queued) as flowfiles_queued,
+        max(running) as running, max(stopped) as stopped, max(disabled) as disabled,
+        max(invalid) as invalid, max(up_to_date) as up_to_date,
+        max(locally_modified) as locally_modified, max(stale) as stale,
+        max(modified_and_stale) as modified_and_stale, max(sync_failure) as sync_failure,
+        max(transmitting) as transmitting, max(not_transmitting) as not_transmitting,
+        max(bulletin_errors) as bulletin_errors, values(cluster) as cluster,
+        max(configured) as configured
+  by host
+| eval status = if(flow_events > 0, "Up", "Down")
+| eval "Total Queued Data" = flowfiles_queued . " / " . bytes_queued . " bytes"
+| fillnull value=0 bulletin_errors
+| rename active_threads as "Active Threads", transmitting as "Transmitting Remote Process Group",
+    not_transmitting as "Not Transmitting Remote Process Group", running as "Running Components",
+    stopped as "Stopped Components", invalid as "Invalid Components",
+    disabled as "Disabled Components", up_to_date as "Up To Date Versioned Process Group",
+    locally_modified as "Locally Modified Versioned Process Group",
+    stale as "Stale Versioned Process Group",
+    modified_and_stale as "Locally Modified And Stale Versioned Process Group",
+    sync_failure as "Sync Failure Versioned Process Group", bulletin_errors as "Bulletin Errors"
+| sort + status, cluster, host
+| table host cluster status "Active Threads" "Total Queued Data" "Transmitting Remote Process Group" "Not Transmitting Remote Process Group" "Running Components" "Stopped Components" "Invalid Components" "Disabled Components" "Up To Date Versioned Process Group" "Locally Modified Versioned Process Group" "Stale Versioned Process Group" "Locally Modified And Stale Versioned Process Group" "Sync Failure Versioned Process Group" "Bulletin Errors"</query>
           <earliest>-5m</earliest>
           <latest>now</latest>
           <refresh>5m</refresh>
@@ -36,14 +73,37 @@
       <table id="table_disk_space_status">
         <title>Status Disk Space by Repository</title>
         <search>
-          <query>| inputlookup instance 
-| join type=left host 
-    [| tstats last(systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage{}.freeSpace) as contentFreeSpace last(systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage{}.usedSpace) as contentUsedSpace last(systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage{}.utilization) as contentUtilization last(systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.freeSpace) as flowFreeSpace last(systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.usedSpace) as flowUsedSpace last(systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.utilization) as flowUtilization last(systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage{}.freeSpace) as provenanceFreeSpace last(systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage{}.usedSpace) as provenanceUsedSpace last(systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage{}.utilization) as provenanceUtilization last(System_Diagnostics.cluster) as cluster from datamodel=NIFI.System_Diagnostics groupby host ] 
-| eval "Content (Used/Free)" = contentUsedSpace+" / "+contentFreeSpace 
-| eval "Flow (Used/Free)" = flowUsedSpace+" / "+flowFreeSpace 
-| eval "Provenance (Used/Free)" = provenanceUsedSpace+" / "+provenanceFreeSpace 
-| rename contentUtilization as "Content %", flowUtilization as "Flow %", provenanceUtilization as "Provenance %" 
-| table host cluster "Content (Used/Free)" "Content %" "Flow (Used/Free)" "Flow %" "Provenance (Used/Free)" "Provenance %"</query>
+          <query><!-- Uses the *Bytes fields the datamodel declares, so the numbers are
+         numbers: sortable, averageable, usable in a threshold. The previous
+         version read the human-readable strings ("847.61 GB", "16.0%"),
+         which display fine but cannot be aggregated. No join, for the same
+         reason as the panel above. -->
+| tstats
+    latest(System_Diagnostics.systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.usedSpaceBytes) as content_used,
+    latest(System_Diagnostics.systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.totalSpaceBytes) as content_total,
+    latest(System_Diagnostics.systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.usedSpaceBytes) as flow_used,
+    latest(System_Diagnostics.systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.totalSpaceBytes) as flow_total,
+    latest(System_Diagnostics.systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.usedSpaceBytes) as prov_used,
+    latest(System_Diagnostics.systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.totalSpaceBytes) as prov_total
+  from datamodel=NIFI.System_Diagnostics by host
+| append
+    [| inputlookup instance | fields host, cluster | eval configured = 1]
+| stats max(content_used) as content_used, max(content_total) as content_total,
+        max(flow_used) as flow_used, max(flow_total) as flow_total,
+        max(prov_used) as prov_used, max(prov_total) as prov_total,
+        values(cluster) as cluster, max(configured) as configured
+  by host
+| eval "Content Used GB" = round(content_used / 1073741824, 2),
+       "Content Total GB" = round(content_total / 1073741824, 2),
+       "Content %" = round(content_used / content_total * 100, 1),
+       "Flow Used GB" = round(flow_used / 1073741824, 2),
+       "Flow Total GB" = round(flow_total / 1073741824, 2),
+       "Flow %" = round(flow_used / flow_total * 100, 1),
+       "Provenance Used GB" = round(prov_used / 1073741824, 2),
+       "Provenance Total GB" = round(prov_total / 1073741824, 2),
+       "Provenance %" = round(prov_used / prov_total * 100, 1)
+| sort + cluster, host
+| table host cluster "Content Used GB" "Content Total GB" "Content %" "Flow Used GB" "Flow Total GB" "Flow %" "Provenance Used GB" "Provenance Total GB" "Provenance %"</query>
           <earliest>-5m</earliest>
           <latest>now</latest>
           <refresh>5m</refresh>

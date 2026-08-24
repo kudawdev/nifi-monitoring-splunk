@@ -320,8 +320,8 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 | APP-1 ✅ | **Hecho.** `index_nifi` pasa de `index=*` a `index=nifi`, la app trae su `indexes.conf`, y el panel de Internal Monitoring gana un diagnóstico que dice cuántos eventos ve el macro y **en qué índices hay datos de NiFi realmente** — para que un override no requiera adivinar. Ese panel es el único lugar donde `index=*` queda justificado, y un test verifica que ningún otro dashboard lo use. |
 | APP-2 ✅ | **Hecho (D-4 = activarla).** Los paneles ya usaban `tstats … from datamodel=`, así que el diseño la suponía. `acceleration.earliest_time = -7d` con el costo documentado al lado. Verificado contra Splunk real: el modelo reporta acelerado y devuelve filas por `tstats`. |
 | APP-3 | Nuevos objetos de datamodel para `nifi:api:flow_metrics` y `nifi:api:bulletin_board`. |
-| APP-4 | Eliminar los `join` de `nifi_overview.xml` (B-8). |
-| APP-5 ✅ | **Verificado: no había nada que arreglar.** Ver la entrada retirada de B-19 en §7. Queda como mejora opcional pasar el panel a los campos `*Bytes` y a las calculations del modelo, por conveniencia de agregación, no por corrección. |
+| APP-4 ✅ | **Hecho.** Los tres `join type=left` de la app eliminados (dos en `nifi_overview`, uno en el panel de inventario nuevo), reemplazados por `append` + `stats`. Justificación estructural, no medida: un join corre su lado derecho como subsearch, con tope de 50k filas y 60 s por defecto, y trunca en silencio al pasarlo. Con una sola instancia en el harness no hay diferencia observable. Un test impide que vuelva cualquier join. |
+| APP-5 ✅ | **Panel reescrito por conveniencia, no por corrección.** Ahora usa los campos `*Bytes` del modelo con columnas en GB y porcentajes numéricos, en lugar de las cadenas legibles (`"847.61 GB"`, `"16.0%"`) que no se pueden ordenar ni promediar. **No estaba roto:** Ver la entrada retirada de B-19 en §7. Queda como mejora opcional pasar el panel a los campos `*Bytes` y a las calculations del modelo, por conveniencia de agregación, no por corrección. |
 | APP-6 | Agregar stanza `[id]` en `app.conf` (B-17). |
 | APP-7 | Panel de inventario que muestre versión de NiFi y método de recolección por instancia. |
 
@@ -363,7 +363,7 @@ Catalogados durante la lectura del repositorio del 2026-08-24. Severidad: **A** 
 | B-5 | **A** | `bin/nifi.py:__get_request` | En el reintento tras 401 se construye `headers` con el token nuevo pero **nunca se asigna a `req_args`**: el reintento reenvía el token viejo. La recuperación de sesión expirada no funciona. |
 | B-6 ✅ | **A** | `nifi_monitoring/default/macros.conf` | `index_nifi = index=*` — base de todos los dashboards y de las constraints del datamodel. Busca en todos los índices, incluidos los internos. |
 | B-7 ✅ | **B** | `datamodels.conf` + dashboards | `acceleration = false` mientras 6 paneles usan `tstats … from datamodel=NIFI.*`. Sin aceleración degrada a búsqueda cruda. |
-| B-8 | **B** | `nifi_overview.xml` | Dos `join type=left` en la query principal. |
+| B-8 ✅ | **B** | `nifi_overview.xml` | Dos `join type=left` en la query principal. Resuelto en APP-4. |
 | B-9 ✅ | **B** | TA + app | `controller_cluster` retirado; `site_to_site` pendiente de D-2. | `nifi:api:site_to_site` se recolecta (habilitado por defecto) y **ningún** dashboard ni objeto de datamodel lo consume. `nifi:api:controller_cluster` tiene `props.conf` y no lo produce nadie. |
 | B-10 | **A** | `mkdocs.yml` | No declara `docs_dir`; tras el rename `docs/` → `doc/` apunta a un directorio vacío. `docs.yml` publicaría un sitio vacío. |
 | B-11 | C | `AGENTS.md` / `CLAUDE.md` | Dice versión 1.2.2; las apps están en 1.2.3. También afirma que `main.yml`/`testing.yml` corren por push — los tres son `workflow_dispatch`. |

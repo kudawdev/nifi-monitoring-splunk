@@ -8,6 +8,7 @@ Skipped automatically when no stack is running, so `python3 -m unittest
 discover` stays safe to run anywhere.
 """
 
+import os
 import unittest
 
 from support import IntegrationTestCase, search, wait_for_events
@@ -371,6 +372,67 @@ class IndexAndAccelerationTest(IntegrationTestCase):
         self.assertTrue(rows)
         self.assertGreater(int(rows[0].get("count", 0)), 0,
                            "the datamodel returns no rows via tstats")
+
+
+class DashboardPanelTest(IntegrationTestCase):
+    """Run the shipped panel queries and check they return rows.
+
+    Rewriting the overview panels (dropping the joins, moving the disk panel
+    to the numeric fields) is exactly the kind of change that can leave a
+    panel silently empty, so the queries are exercised here rather than
+    eyeballed in the UI.
+    """
+
+    VIEWS = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        "nifi_monitoring", "default", "data", "ui", "views",
+    )
+
+    def panel_queries(self, view):
+        import re
+        text = open(os.path.join(self.VIEWS, view)).read()
+        # strip XML comments and unescape what Simple XML escapes
+        text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+        queries = re.findall(r"<query>(.*?)</query>", text, re.S)
+        return [
+            q.replace("&gt;", ">").replace("&lt;", "<").replace("&amp;", "&").strip()
+            for q in queries
+        ]
+
+    def test_the_overview_status_panel_returns_a_row_per_instance(self):
+        query = self.panel_queries("nifi_overview.xml")[0]
+        rows = wait_for_events(self.splunk, query, minimum=1)
+        self.assertTrue(rows, "the overall status panel returned nothing")
+        self.assertIn("host", rows[0])
+        self.assertEqual(rows[0].get("status"), "Up")
+
+    def test_the_disk_panel_returns_numeric_percentages(self):
+        query = self.panel_queries("nifi_overview.xml")[1]
+        rows = wait_for_events(self.splunk, query, minimum=1)
+        self.assertTrue(rows, "the disk panel returned nothing")
+        row = rows[0]
+        for column in ("Content %", "Content Used GB", "Provenance %"):
+            with self.subTest(column=column):
+                self.assertIn(column, row)
+                # the point of the rewrite: a number, not "16.0%"
+                float(row[column])
+
+    def test_the_disk_percentages_are_in_range(self):
+        query = self.panel_queries("nifi_overview.xml")[1]
+        rows = wait_for_events(self.splunk, query, minimum=1)
+        for column in ("Content %", "Flow %", "Provenance %"):
+            with self.subTest(column=column):
+                value = float(rows[0][column])
+                self.assertGreaterEqual(value, 0.0)
+                self.assertLessEqual(value, 100.0)
+
+    def test_the_inventory_panel_reports_the_version_and_path(self):
+        queries = self.panel_queries("nifi_internal_monitoring.xml")
+        inventory = [q for q in queries if "version_info" in q][0]
+        rows = wait_for_events(self.splunk, inventory, minimum=1)
+        self.assertTrue(rows, "the inventory panel returned nothing")
+        self.assertEqual(rows[0].get("nifi_version"), self.nifi_version)
+        self.assertIn("REST pull", str(rows[0].get("paths")))
 
 
 if __name__ == "__main__":

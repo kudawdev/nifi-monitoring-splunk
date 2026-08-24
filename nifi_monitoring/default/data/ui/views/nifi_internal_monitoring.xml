@@ -82,10 +82,12 @@
     like(sourcetype, "nifi:reporting:%"), "HEC push (reporting task)",
     like(sourcetype, "nifi:log:%"), "log file",
     1==1, sourcetype)
-| stats latest(last_seen) as last_seen, values(path) as paths by host
-| join type=left host
+| append
     [| tstats latest(niFiVersion) as nifi_version, latest(javaVersion) as java_version
          where `index_nifi` sourcetype="nifi:api:version_info" by host]
+| stats latest(last_seen) as last_seen, values(path) as paths,
+        values(nifi_version) as nifi_version, values(java_version) as java_version
+  by host
 | eval last_seen = strftime(last_seen, "%Y-%m-%d %H:%M:%S")
 | table host, nifi_version, java_version, paths, last_seen
 | sort host</query>
