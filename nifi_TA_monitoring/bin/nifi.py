@@ -39,6 +39,20 @@ class NiFiScript(Script):
     component_id_pattern = re.compile(r'^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$')
 
     @staticmethod
+    def __redact(secret):
+        """Render a credential safe for splunkd.log.
+
+        Long values (a JWT) show their last 4 characters, enough to tell two
+        tokens apart when debugging. Short values show nothing but a length,
+        since the last 4 of a short secret gives away too much of it.
+        """
+        if not secret:
+            return '<none>'
+        if len(secret) < 16:
+            return '<redacted, len {}>'.format(len(secret))
+        return '...{} <len {}>'.format(secret[-4:], len(secret))
+
+    @staticmethod
     def _split_ids(raw):
         """Split a comma/newline separated id list, dropping empty entries."""
         return [part.strip() for part in raw.replace('\n', ',').split(',') if part.strip()]
@@ -337,7 +351,7 @@ class NiFiScript(Script):
         else:
             dotenv.load_dotenv(dotenv_file)
             token = os.environ.get(unicodedata.normalize('NFKD',input_name).replace(' ',''), "unknown")
-            EventWriter.log(ew, EventWriter.INFO, '{} Get token base_url:{} path:{}, auth_type:{}, username:{}, input_name:{}, token:{}'.format(self.pid, base_url, path, auth_type, username, input_name, token))
+            EventWriter.log(ew, EventWriter.INFO, '{} Request base_url:{} path:{}, auth_type:{}, username:{}, input_name:{}, token:{}'.format(self.pid, base_url, path, auth_type, username, input_name, self.__redact(token)))
             
             url = self.__urljoin(base_url, path)
 
@@ -418,7 +432,7 @@ class NiFiScript(Script):
             
     
     def __get_password(self, ew, session_key, username):
-        EventWriter.log(ew, EventWriter.INFO, '{} Init Mask Password'.format(self.pid))
+        EventWriter.log(ew, EventWriter.INFO, '{} Retrieving stored credential'.format(self.pid))
         args = {'token': session_key}
         service = client.connect(**args)
         
@@ -426,6 +440,9 @@ class NiFiScript(Script):
         for storage_password in service.storage_passwords:
             if storage_password.username == username:
                 return storage_password.content.clear_password
+
+        EventWriter.log(ew, EventWriter.ERROR, '{} No stored credential found for user {} - the input cannot authenticate. Re-save the input to store the password.'.format(self.pid, username))
+        return None
     
 
 if __name__ == "__main__":

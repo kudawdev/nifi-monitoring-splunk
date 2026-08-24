@@ -74,11 +74,20 @@ class NiFiScriptTestCase(unittest.TestCase):
         self.dotenv.reset_mock()
         self.script = self.nifi.NiFiScript()
         self.event_writer = mock.MagicMock()
-        patcher = mock.patch.object(
+        self._password_patcher = mock.patch.object(
             self.nifi.NiFiScript, "_NiFiScript__get_password", return_value="pw"
         )
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        self._password_patcher.start()
+        self.addCleanup(self._stop_password_patcher)
+
+    def _stop_password_patcher(self):
+        if self._password_patcher is not None:
+            self._password_patcher.stop()
+            self._password_patcher = None
+
+    def use_real_get_password(self):
+        """Un-stub __get_password, for tests that exercise it directly."""
+        self._stop_password_patcher()
 
     def get_request(self, stored_token, input_name="instance", auth_type="basic"):
         """Call the private __get_request with `stored_token` as cached token."""
