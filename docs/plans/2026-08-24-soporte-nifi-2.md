@@ -221,6 +221,7 @@ El endpoint de métricas es un **complemento de alto valor**, no un sustituto:
 
    - `/flow/bulletin-board` acepta **`?after=<id>` en 1.x y en 2.x**, así que cada poll pide solo lo que no vio: no hay duplicados. El cursor vive en el `checkpoint_dir` de Splunk, que sobrevive reinicios — no en el `.env` (ver TA-7).
    - Lo que el `after` **no** puede hacer es recuperar un bulletin que NiFi ya descartó del board. Cuando una página vuelve llena, el input emite un WARN diciendo que pudo haber pérdida y qué hacer.
+   - **Verificado contra un bulletin real**, no solo contra el DTO: `tests/integration/capture_bulletin.py` provoca uno a propósito (un `InvokeHTTP` apuntado a un puerto cerrado) y guarda la respuesta en `docs/plans/samples/nifi2.11-bulletin-board.json`. 7 de los 8 FIELDALIAS resuelven; el octavo, `nodeAddress`, solo lo puebla un cluster. Dos detalles que solo se vieron ahí: `bulletin.timestamp` es un reloj sin fecha (`"18:44:32 UTC"`) e inusable como tiempo de evento, y el `stackTrace` real pasa los 500 caracteres — la razón concreta del `TRUNCATE = 0`.
    - **El board da menos campos que la Reporting Task:** `bulletinGroupName` y `bulletinGroupPath` no existen ahí (el board lleva el id del grupo, nunca resuelve su nombre). `sourceType` y `stackTrace` existen solo desde NiFi 2.0. Eso es una razón adicional para conservar las dos vías.
 
 ### 4.3 Los logs de NiFi: análisis aparte

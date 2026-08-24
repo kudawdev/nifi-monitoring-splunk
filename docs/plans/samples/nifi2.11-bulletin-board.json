@@ -1,0 +1,112 @@
+{
+  "bulletinBoard": {
+    "bulletins": [
+      {
+        "id": 0,
+        "groupId": "351610fc-01a0-1000-ad8f-47cdfee609ff",
+        "sourceId": "3516a439-01a0-1000-a7da-48e73bc8300f",
+        "timestamp": "18:44:32 UTC",
+        "timestampIso": "2026-08-24T18:44:32.513Z",
+        "canRead": true,
+        "bulletin": {
+          "id": 0,
+          "category": "Log Message",
+          "groupId": "351610fc-01a0-1000-ad8f-47cdfee609ff",
+          "sourceId": "3516a439-01a0-1000-a7da-48e73bc8300f",
+          "sourceName": "capture-failure",
+          "level": "ERROR",
+          "message": "InvokeHTTP[id=3516a439-01a0-1000-a7da-48e73bc8300f] Request Processing failed: FlowFile[filename=e1ea0208-7627-40d3-aa11-3f4997446da3]: java.net.ConnectException: Failed to connect to /127.0.0.1:1\n- Caused by: java.net.ConnectException: Connection refused",
+          "timestamp": "18:44:32 UTC",
+          "timestampIso": "2026-08-24T18:44:32.513Z",
+          "sourceType": "PROCESSOR",
+          "stackTrace": "java.net.ConnectException: Failed to connect to /127.0.0.1:1\n\tat okhttp3.internal.connection.ConnectPlan.connectSocket(ConnectPlan.kt:278)\n\tat okhttp3.internal.connection.ConnectPlan.connectTcp(ConnectPlan.kt:135)\n\tat okhttp3.internal.connection.FastFallbackExchangeFinder$launchTcpConnect$1.runOnce(FastFallbackExchangeFinder.kt:144)\n\tat okhttp3.internal.concurrent.TaskRunner$runnable$1.run(TaskRunner.kt:81)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)\n\tat java.base/java.lang.Thread.run(Thread.java:1583)\nCaused by: java.net.ConnectException: Connection refused\n\tat java.base/sun.nio.ch.Net.pollConnect(Native Method)\n\tat java.base/sun.nio.ch.Net.pollConnectNow(Net.java:694)\n\tat java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(NioSocketImpl.java:542)\n\tat java.base/sun.nio.ch.NioSocketImpl.connect(NioSocketImpl.java:592)\n\tat java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:327)\n\tat java.base/java.net.Socket.connect(Socket.java:751)\n\tat okhttp3.internal.platform.Platform.connectSocket(Platform.kt:149)\n\tat okhttp3.internal.connection.ConnectPlan.connectSocket(ConnectPlan.kt:276)\n\t... 6 more\n"
+        }
+      },
+      {
+        "id": 1,
+        "groupId": "351610fc-01a0-1000-ad8f-47cdfee609ff",
+        "sourceId": "3516a439-01a0-1000-a7da-48e73bc8300f",
+        "timestamp": "18:44:33 UTC",
+        "timestampIso": "2026-08-24T18:44:33.531Z",
+        "canRead": true,
+        "bulletin": {
+          "id": 1,
+          "category": "Log Message",
+          "groupId": "351610fc-01a0-1000-ad8f-47cdfee609ff",
+          "sourceId": "3516a439-01a0-1000-a7da-48e73bc8300f",
+          "sourceName": "capture-failure",
+          "level": "ERROR",
+          "message": "InvokeHTTP[id=3516a439-01a0-1000-a7da-48e73bc8300f] Request Processing failed: FlowFile[filename=25d1f42f-6b38-4c16-8083-7ef1e2581307]: java.net.ConnectException: Failed to connect to /127.0.0.1:1\n- Caused by: java.net.ConnectException: Connection refused",
+          "timestamp": "18:44:33 UTC",
+          "timestampIso": "2026-08-24T18:44:33.531Z",
+          "sourceType": "PROCESSOR",
+          "stackTrace": "java.net.ConnectException: Failed to connect to /127.0.0.1:1\n\tat okhttp3.internal.connection.ConnectPlan.connectSocket(ConnectPlan.kt:278)\n\tat okhttp3.internal.connection.ConnectPlan.connectTcp(ConnectPlan.kt:135)\n\tat okhttp3.internal.connection.FastFallbackExchangeFinder$launchTcpConnect$1.runOnce(FastFallbackExchangeFinder.kt:144)\n\tat okhttp3.internal.concurrent.TaskRunner$runnable$1.run(TaskRunner.kt:81)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)\n\tat java.base/java.lang.Thread.run(Thread.java:1583)\nCaused by: java.net.ConnectException: Connection refused\n\tat java.base/sun.nio.ch.Net.pollConnect(Native Method)\n\tat java.base/sun.nio.ch.Net.pollConnectNow(Net.java:694)\n\tat java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(NioSocketImpl.java:542)\n\tat java.base/sun.nio.ch.NioSocketImpl.connect(NioSocketImpl.java:592)\n\tat java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:327)\n\tat java.base/java.net.Socket.connect(Socket.java:751)\n\tat okhttp3.internal.platform.Platform.connectSocket(Platform.kt:149)\n\tat okhttp3.internal.connection.ConnectPlan.connectSocket(ConnectPlan.kt:276)\n\t... 6 more\n"
+        }
+      },
+      {
+        "id": 2,
+        "groupId": "351610fc-01a0-1000-ad8f-47cdfee609ff",
+        "sourceId": "3516a439-01a0-1000-a7da-48e73bc8300f",
+        "timestamp": "18:44:34 UTC",
+        "timestampIso": "2026-08-24T18:44:34.540Z",
+        "canRead": true,
+        "bulletin": {
+          "id": 2,
+          "category": "Log Message",
+          "groupId": "351610fc-01a0-1000-ad8f-47cdfee609ff",
+          "sourceId": "3516a439-01a0-1000-a7da-48e73bc8300f",
+          "sourceName": "capture-failure",
+          "level": "ERROR",
+          "message": "InvokeHTTP[id=3516a439-01a0-1000-a7da-48e73bc8300f] Request Processing failed: FlowFile[filename=ee24c886-2e1a-418a-b5e1-517a40fee113]: java.net.ConnectException: Failed to connect to /127.0.0.1:1\n- Caused by: java.net.ConnectException: Connection refused",
+          "timestamp": "18:44:34 UTC",
+          "timestampIso": "2026-08-24T18:44:34.540Z",
+          "sourceType": "PROCESSOR",
+          "stackTrace": "java.net.ConnectException: Failed to connect to /127.0.0.1:1\n\tat okhttp3.internal.connection.ConnectPlan.connectSocket(ConnectPlan.kt:278)\n\tat okhttp3.internal.connection.ConnectPlan.connectTcp(ConnectPlan.kt:135)\n\tat okhttp3.internal.connection.FastFallbackExchangeFinder$launchTcpConnect$1.runOnce(FastFallbackExchangeFinder.kt:144)\n\tat okhttp3.internal.concurrent.TaskRunner$runnable$1.run(TaskRunner.kt:81)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)\n\tat java.base/java.lang.Thread.run(Thread.java:1583)\nCaused by: java.net.ConnectException: Connection refused\n\tat java.base/sun.nio.ch.Net.pollConnect(Native Method)\n\tat java.base/sun.nio.ch.Net.pollConnectNow(Net.java:694)\n\tat java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(NioSocketImpl.java:542)\n\tat java.base/sun.nio.ch.NioSocketImpl.connect(NioSocketImpl.java:592)\n\tat java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:327)\n\tat java.base/java.net.Socket.connect(Socket.java:751)\n\tat okhttp3.internal.platform.Platform.connectSocket(Platform.kt:149)\n\tat okhttp3.internal.connection.ConnectPlan.connectSocket(ConnectPlan.kt:276)\n\t... 6 more\n"
+        }
+      },
+      {
+        "id": 3,
+        "groupId": "351610fc-01a0-1000-ad8f-47cdfee609ff",
+        "sourceId": "3516a439-01a0-1000-a7da-48e73bc8300f",
+        "timestamp": "18:44:35 UTC",
+        "timestampIso": "2026-08-24T18:44:35.544Z",
+        "canRead": true,
+        "bulletin": {
+          "id": 3,
+          "category": "Log Message",
+          "groupId": "351610fc-01a0-1000-ad8f-47cdfee609ff",
+          "sourceId": "3516a439-01a0-1000-a7da-48e73bc8300f",
+          "sourceName": "capture-failure",
+          "level": "ERROR",
+          "message": "InvokeHTTP[id=3516a439-01a0-1000-a7da-48e73bc8300f] Request Processing failed: FlowFile[filename=42b46ac0-c163-4dbc-bff8-a2f3d2fd59a2]: java.net.ConnectException: Failed to connect to /127.0.0.1:1\n- Caused by: java.net.ConnectException: Connection refused",
+          "timestamp": "18:44:35 UTC",
+          "timestampIso": "2026-08-24T18:44:35.544Z",
+          "sourceType": "PROCESSOR",
+          "stackTrace": "java.net.ConnectException: Failed to connect to /127.0.0.1:1\n\tat okhttp3.internal.connection.ConnectPlan.connectSocket(ConnectPlan.kt:278)\n\tat okhttp3.internal.connection.ConnectPlan.connectTcp(ConnectPlan.kt:135)\n\tat okhttp3.internal.connection.FastFallbackExchangeFinder$launchTcpConnect$1.runOnce(FastFallbackExchangeFinder.kt:144)\n\tat okhttp3.internal.concurrent.TaskRunner$runnable$1.run(TaskRunner.kt:81)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)\n\tat java.base/java.lang.Thread.run(Thread.java:1583)\nCaused by: java.net.ConnectException: Connection refused\n\tat java.base/sun.nio.ch.Net.pollConnect(Native Method)\n\tat java.base/sun.nio.ch.Net.pollConnectNow(Net.java:694)\n\tat java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(NioSocketImpl.java:542)\n\tat java.base/sun.nio.ch.NioSocketImpl.connect(NioSocketImpl.java:592)\n\tat java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:327)\n\tat java.base/java.net.Socket.connect(Socket.java:751)\n\tat okhttp3.internal.platform.Platform.connectSocket(Platform.kt:149)\n\tat okhttp3.internal.connection.ConnectPlan.connectSocket(ConnectPlan.kt:276)\n\t... 6 more\n"
+        }
+      },
+      {
+        "id": 4,
+        "groupId": "351610fc-01a0-1000-ad8f-47cdfee609ff",
+        "sourceId": "3516a439-01a0-1000-a7da-48e73bc8300f",
+        "timestamp": "18:44:36 UTC",
+        "timestampIso": "2026-08-24T18:44:36.550Z",
+        "canRead": true,
+        "bulletin": {
+          "id": 4,
+          "category": "Log Message",
+          "groupId": "351610fc-01a0-1000-ad8f-47cdfee609ff",
+          "sourceId": "3516a439-01a0-1000-a7da-48e73bc8300f",
+          "sourceName": "capture-failure",
+          "level": "ERROR",
+          "message": "InvokeHTTP[id=3516a439-01a0-1000-a7da-48e73bc8300f] Request Processing failed: FlowFile[filename=e96512b9-2b40-4708-ae47-b318415bac60]: java.net.ConnectException: Failed to connect to /127.0.0.1:1\n- Caused by: java.net.ConnectException: Connection refused",
+          "timestamp": "18:44:36 UTC",
+          "timestampIso": "2026-08-24T18:44:36.550Z",
+          "sourceType": "PROCESSOR",
+          "stackTrace": "java.net.ConnectException: Failed to connect to /127.0.0.1:1\n\tat okhttp3.internal.connection.ConnectPlan.connectSocket(ConnectPlan.kt:278)\n\tat okhttp3.internal.connection.ConnectPlan.connectTcp(ConnectPlan.kt:135)\n\tat okhttp3.internal.connection.FastFallbackExchangeFinder$launchTcpConnect$1.runOnce(FastFallbackExchangeFinder.kt:144)\n\tat okhttp3.internal.concurrent.TaskRunner$runnable$1.run(TaskRunner.kt:81)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)\n\tat java.base/java.lang.Thread.run(Thread.java:1583)\nCaused by: java.net.ConnectException: Connection refused\n\tat java.base/sun.nio.ch.Net.pollConnect(Native Method)\n\tat java.base/sun.nio.ch.Net.pollConnectNow(Net.java:694)\n\tat java.base/sun.nio.ch.NioSocketImpl.timedFinishConnect(NioSocketImpl.java:542)\n\tat java.base/sun.nio.ch.NioSocketImpl.connect(NioSocketImpl.java:592)\n\tat java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:327)\n\tat java.base/java.net.Socket.connect(Socket.java:751)\n\tat okhttp3.internal.platform.Platform.connectSocket(Platform.kt:149)\n\tat okhttp3.internal.connection.ConnectPlan.connectSocket(ConnectPlan.kt:276)\n\t... 6 more\n"
+        }
+      }
+    ],
+    "generated": "18:44:37 UTC"
+  }
+}

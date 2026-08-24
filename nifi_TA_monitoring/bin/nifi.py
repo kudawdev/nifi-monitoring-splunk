@@ -524,9 +524,10 @@ class NiFiScript(Script):
 
         Resumes from the highest id seen, so a bulletin is not indexed twice.
         """
+        # A bulletin id can legitimately be 0, so test for absence, not truth.
         after = self.__read_checkpoint(ew, input_name, 'bulletin_after')
         request_path = '{}?limit={}'.format(path, self.bulletin_page_limit)
-        if after:
+        if after is not None:
             request_path += '&after={}'.format(after)
 
         try:

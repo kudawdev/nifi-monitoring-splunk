@@ -218,5 +218,79 @@ class BulletinFieldMappingTest(unittest.TestCase):
         self.assertIn("bulletinGroupName", stanza)  # named in the comment
 
 
+class CapturedPayloadTest(unittest.TestCase):
+    """Validate the field mapping against a bulletin captured from a real
+    NiFi, not against the DTO definitions it was written from.
+
+    docs/plans/samples/nifi2.11-bulletin-board.json holds five bulletins
+    provoked on purpose (an InvokeHTTP pointed at a closed port) with
+    tests/integration/capture_bulletin.py.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        with open(os.path.join(repo, "docs", "plans", "samples",
+                               "nifi2.11-bulletin-board.json")) as handle:
+            cls.board = json.load(handle)
+        cls.props = open(
+            os.path.join(repo, "nifi_TA_monitoring", "default", "props.conf")
+        ).read()
+        cls.entry = cls.board["bulletinBoard"]["bulletins"][0]
+        script = load_nifi_module()[0].NiFiScript
+        cls.bulletins_of = staticmethod(script.bulletins_of)
+        cls.highest = staticmethod(script.highest_bulletin_id)
+
+    def aliases(self):
+        import re
+        stanza = self.props.split("[nifi:api:bulletin_board]", 1)[1].split("\n[", 1)[0]
+        return re.findall(r'FIELDALIAS-\S+ = "([^"]+)" AS (\S+)', stanza)
+
+    def resolve(self, path, node):
+        for part in path.split("."):
+            if not isinstance(node, dict) or part not in node:
+                return None
+            node = node[part]
+        return node
+
+    def test_the_parser_reads_the_captured_board(self):
+        parsed = self.bulletins_of(json.dumps(self.board))
+        self.assertEqual(len(parsed), 5)
+
+    def test_the_checkpoint_id_is_derived_from_the_captured_board(self):
+        parsed = self.bulletins_of(json.dumps(self.board))
+        self.assertIsNotNone(self.highest(parsed))
+
+    def test_every_alias_resolves_against_the_captured_bulletin(self):
+        """Except nodeAddress, which only a cluster populates."""
+        for source, target in self.aliases():
+            with self.subTest(alias=target):
+                value = self.resolve(source, self.entry)
+                if source.endswith("nodeAddress"):
+                    self.assertIsNone(value, "standalone NiFi should omit it")
+                    continue
+                self.assertIsNotNone(value, "%s is absent from a real bulletin" % source)
+
+    def test_the_level_and_category_carry_the_values_dashboards_filter_on(self):
+        self.assertEqual(self.resolve("bulletin.level", self.entry), "ERROR")
+        self.assertEqual(self.resolve("bulletin.category", self.entry), "Log Message")
+        self.assertEqual(self.resolve("bulletin.sourceType", self.entry), "PROCESSOR")
+
+    def test_a_real_bulletin_carries_a_stack_trace_worth_not_truncating(self):
+        """The reason TRUNCATE = 0 is on this stanza."""
+        trace = self.resolve("bulletin.stackTrace", self.entry)
+        self.assertIsNotNone(trace)
+        self.assertGreater(len(trace), 500)
+
+    def test_the_plain_timestamp_has_no_date_and_the_iso_one_does(self):
+        """Why DATETIME_CONFIG stays CURRENT: bulletin.timestamp is a wall
+        clock with no date, and timestampIso does not exist before NiFi 2.0."""
+        self.assertNotIn("-", self.resolve("bulletin.timestamp", self.entry))
+        self.assertRegex(
+            self.resolve("bulletin.timestampIso", self.entry),
+            r"^\d{4}-\d{2}-\d{2}T",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
