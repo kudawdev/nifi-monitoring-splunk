@@ -19,7 +19,7 @@ Extender las dos apps para monitorear instancias de **Apache NiFi 2.x** sin perd
 
 - Soporte simultáneo de NiFi 1.16+ y 2.x en un único código.
 - Revisión y consolidación del método de recolección.
-- Corrección de los 25 defectos catalogados en §7.
+- Corrección de los 24 defectos catalogados en §7 (B-19 se retiró tras verificarlo).
 - Rediseño de `tests/` como matriz parametrizable NiFi × Splunk con verificación automatizada.
 - Actualización de la documentación pública bilingüe en `doc/`.
 
@@ -321,7 +321,7 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 | APP-2 ✅ | **Hecho (D-4 = activarla).** Los paneles ya usaban `tstats … from datamodel=`, así que el diseño la suponía. `acceleration.earliest_time = -7d` con el costo documentado al lado. Verificado contra Splunk real: el modelo reporta acelerado y devuelve filas por `tstats`. |
 | APP-3 | Nuevos objetos de datamodel para `nifi:api:flow_metrics` y `nifi:api:bulletin_board`. |
 | APP-4 | Eliminar los `join` de `nifi_overview.xml` (B-8). |
-| APP-5 | Verificar los nombres de campo de `System_Diagnostics` en `nifi_overview.xml` — referencian `freeSpace`/`usedSpace`/`utilization` sin prefijo de objeto, y el datamodel solo declara las variantes `*Bytes` (B-19). |
+| APP-5 ✅ | **Verificado: no había nada que arreglar.** Ver la entrada retirada de B-19 en §7. Queda como mejora opcional pasar el panel a los campos `*Bytes` y a las calculations del modelo, por conveniencia de agregación, no por corrección. |
 | APP-6 | Agregar stanza `[id]` en `app.conf` (B-17). |
 | APP-7 | Panel de inventario que muestre versión de NiFi y método de recolección por instancia. |
 
@@ -374,7 +374,7 @@ Catalogados durante la lectura del repositorio del 2026-08-24. Severidad: **A** 
 | B-16 | C | `bin/nifi.py:__get_password` | Devuelve `None` silenciosamente si no encuentra el usuario en `storage/passwords`. |
 | B-17 ✅ | **B** | `app.conf` (ambas) | Falta la stanza `[id]` con `name`/`version`: agregarla baja 2 warnings de AppInspect (`check_for_valid_package_id`, `check_version_is_valid_semver`). Relevante porque el gate es `MAX_WARNING = 8` y AppInspect 4.2.x sumó `check_collections_conf` (+1, y `nifi_monitoring` tiene `collections.conf`). |
 | B-18 | C | `doc/configuration.md` | Link a `blob/main/template/NifiMonitoring.json`; la carpeta es `flow_definition/`. |
-| B-19 | **B** | `nifi_overview.xml` | El panel "Status Disk Space" pide `systemDiagnostics.…{}.freeSpace`/`usedSpace`/`utilization` dentro de un `tstats from datamodel=`, sin prefijo de objeto y con campos que el datamodel no declara (solo tiene las variantes `*Bytes`). Verificar si el panel devuelve datos. |
+| ~~B-19~~ | — | `nifi_overview.xml` | **Retirado: no era un defecto.** Se supuso que el panel "Status Disk Space" devolvía vacío por pedir campos (`…{}.freeSpace`, `utilization`) que el datamodel no declara. **Verificado contra Splunk 10.4 + NiFi 2.11: devuelve datos** (`contentFreeSpace = "847.61 GB"`, `contentUtilization = "16.0%"`); `tstats from datamodel=` sin `summariesonly` resuelve esos campos por los FIELDALIAS del TA. También se sospechó que comparar `"16.0%"` contra un umbral daría resultados erróneos: **falso**, Splunk devuelve el resultado correcto. Lo único cierto es que son cadenas legibles y no números, así que no se pueden promediar ni sumar, y que el panel ignora las tres calculations de porcentaje que el modelo ya trae. Eso es una mejora opcional de usabilidad, no un defecto. |
 | B-20 ✅ | **B** | `nifi_TA_monitoring/default/props.conf` | El corte de eventos de los logs es inconsistente y fragmenta los stack traces. `nifi:log:app` **no declara `SHOULD_LINEMERGE`** (queda al default `true`) mientras `nifi:log:user` y `nifi:log:bootstrap` sí lo ponen en `false`; con `LINE_BREAKER = ([\r\n]+)` cada línea de un stack trace se convierte en un evento suelto, sin timestamp ni `level`. **Medido: 77% de las líneas de `nifi-app.log` en un arranque limpio de NiFi 2.11 son continuaciones sin timestamp** (1014 de 1311). Ninguna stanza declara `TRUNCATE`, así que aplica el default de 10.000 bytes, que además de mutilar el evento grande se lleva el siguiente. |
 | B-21 ✅ | C | `nifi_TA_monitoring/default/inputs.conf` | Los monitor inputs apuntan a `/opt/nifi/logs/nifi-*.log`, pero en la imagen oficial de NiFi los logs están en `/opt/nifi/nifi-current/logs/`. La ruta por defecto no sirve para el despliegue más común. |
 | B-22 ✅ | C | TA | `nifi-deprecation.log` y `nifi-request.log` existen en 1.x y 2.x y **no se recolectan**. El primero es el log que dice qué componentes deprecados está usando el cliente: el insumo natural de un panel de apoyo a la migración a 2.x. |
