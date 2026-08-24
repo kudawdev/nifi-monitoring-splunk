@@ -14,11 +14,23 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check app versions are equal
         run: |
-          lista=`echo $(for d in $(ls -d allkun*);do cat $d/default/app.conf|grep ^version|awk -F '=' '{gsub(/ /,"");print $2}';done) | tr ' ' '\n' | sort | uniq | tr '\n' ' ' | sed -e 's/[[:space:]]*$//'`
-          echo $lista
-          count=$(echo $lista | tr ' ' '\n' | wc -l)
-          echo $count
-          if [ $count -eq 1 ];then echo 'App versions are equals';else echo 'App versions are different';exit -1;fi
+          set -euo pipefail
+          apps="nifi_monitoring nifi_TA_monitoring"
+          versions=""
+          for d in $apps; do
+            f="$d/default/app.conf"
+            [ -f "$f" ] || { echo "::error::missing $f"; exit 1; }
+            v=$(awk -F= '/^version[[:space:]]*=/{gsub(/[[:space:]]/,"");print $2}' "$f")
+            [ -n "$v" ] || { echo "::error::no version found in $f"; exit 1; }
+            echo "$d = $v"
+            versions="$versions$v\n"
+          done
+          count=$(printf "$versions" | sort -u | grep -c .)
+          if [ "$count" -eq 1 ]; then
+            echo "App versions are equal"
+          else
+            echo "::error::App versions differ across apps"; exit 1
+          fi
 
   appinspect:
     needs: check-apps-version
@@ -34,7 +46,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Get APP version
         id: get_app_id
-        run: echo "::set-output name=APP_VERSION::$(cat ${{ matrix.applications }}/default/app.conf | grep ^version | awk -F '=' '{gsub(/ /,"");print $2}')"
+        run: echo "APP_VERSION=$(cat ${{ matrix.applications }}/default/app.conf | grep ^version | awk -F '=' '{gsub(/ /,"");print $2}')" >> $GITHUB_OUTPUT
       - run: echo ${{ steps.get_app_id.outputs.APP_VERSION }}
       #- run: exit 1
       - name: Slim Package
