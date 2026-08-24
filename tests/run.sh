@@ -38,6 +38,7 @@ done
 echo "==> profile: $PROFILE"
 python3 matrix.py "$PROFILE" > .env
 cat .env | sed 's/^/    /'
+set -a; . ./.env; set +a
 
 cleanup() {
     status=$?
@@ -50,6 +51,26 @@ cleanup() {
     exit $status
 }
 trap cleanup EXIT
+
+# Start from a clean slate. Running profiles back to back otherwise fails:
+# the previous stack's containers and network are still going away while the
+# next `up` claims the same published ports, and `up --wait` gives up. The
+# CI matrix runs each profile on its own runner, but running them in
+# sequence locally is the normal way to check the whole matrix.
+echo "==> removing any previous stack"
+docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+
+for port in "$SPLUNK_WEB_PORT" "$SPLUNK_MGMT_PORT" "$SPLUNK_HEC_PORT" \
+            "$NIFI_HTTP_PORT" "$NIFI_HTTPS_PORT"; do
+    for _ in $(seq 1 30); do
+        if command -v ss >/dev/null 2>&1; then
+            ss -ltn 2>/dev/null | grep -q ":${port} " || break
+        else
+            break
+        fi
+        sleep 1
+    done
+done
 
 echo "==> starting (Splunk cold start can take several minutes)"
 docker compose up -d --wait
