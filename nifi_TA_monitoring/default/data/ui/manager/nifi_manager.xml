@@ -41,10 +41,6 @@
                <view name="edit" />
                <view name="create" />
             </element>
-            <element name="endpoint_site_to_site" type="checkbox" label="Site to Site">
-               <view name="edit" />
-               <view name="create" />
-            </element>
             <element name="endpoint_bulletin_board" type="checkbox" label="Bulletin Board">
                <view name="edit" />
                <view name="create" />

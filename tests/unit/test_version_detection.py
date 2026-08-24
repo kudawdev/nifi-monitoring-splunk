@@ -118,7 +118,7 @@ class VersionEventTest(NiFiScriptTestCase):
             "nifi://instance",
             {"api_url": "http://nifi:8080/nifi-api", "auth_type": "none",
              "host": "nifi", "endpoint_flow_status": "0",
-             "endpoint_system_diagnostics": "0", "endpoint_site_to_site": "0"},
+             "endpoint_system_diagnostics": "0"},
         )
         self.script._input_definition = mock.MagicMock()
         self.script._input_definition.metadata = {"session_key": "sk"}
@@ -156,7 +156,7 @@ class DiagnosticsReuseTest(NiFiScriptTestCase):
             "nifi://instance",
             {"api_url": "http://nifi:8080/nifi-api", "auth_type": "none",
              "host": "nifi", "endpoint_flow_status": "0",
-             "endpoint_system_diagnostics": "1", "endpoint_site_to_site": "0"},
+             "endpoint_system_diagnostics": "1"},
         )
         self.script._input_definition = mock.MagicMock()
         self.script._input_definition.metadata = {"session_key": "sk"}

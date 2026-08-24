@@ -27,7 +27,6 @@ class NiFiScript(Script):
     endpoints = [
             {"name":"endpoint_flow_status", "sourcetype":"nifi:api:flow_status", "path":"/flow/status"},
             {"name":"endpoint_system_diagnostics", "sourcetype":"nifi:api:system_diagnostics", "path":"/system-diagnostics"},
-            {"name":"endpoint_site_to_site", "sourcetype":"nifi:api:site_to_site", "path":"/site-to-site"},
             {"name":"endpoint_processors_history", "sourcetype":"nifi:api:processors_history", "path":"/flow/processors/{id}/status/history"},
             {"name":"endpoint_process_groups_history", "sourcetype":"nifi:api:process_groups_history", "path":"/flow/process-groups/{id}/status/history"},
             {"name":"endpoint_bulletin_board", "sourcetype":"nifi:api:bulletin_board", "path":"/flow/bulletin-board"},
@@ -317,16 +316,6 @@ class NiFiScript(Script):
         )
         scheme.add_argument(endpoint_flow_status_argument)
 
-        endpoint_site_to_site_argument = Argument(
-            name="endpoint_site_to_site",
-            description="Site to Site",
-            title="Site to Site",
-            data_type=Argument.data_type_boolean,
-            required_on_edit=True,
-            required_on_create=True
-        )
-        scheme.add_argument(endpoint_site_to_site_argument)
-
         endpoint_processors_history_argument = Argument(
             name="endpoint_processors_history",
             description="List of Processors ID",
@@ -527,6 +516,12 @@ class NiFiScript(Script):
         password   = input_item.get("password", None)
         processors = input_item.get("endpoint_processors_history", None)
         process_groups = input_item.get("endpoint_process_groups_history", None)
+
+        # Removed in 2.0.0: nothing in the app ever consumed this sourcetype,
+        # so it was ingestion billed against the licence for data no panel
+        # showed. Say so once rather than ignoring the leftover setting.
+        if input_item.get('endpoint_site_to_site') is not None:
+            EventWriter.log(ew, EventWriter.WARN, '{} endpoint_site_to_site was removed: nothing consumed nifi:api:site_to_site. The setting is ignored and can be deleted from inputs.conf'.format(self.pid))
 
         self.tls_verify = self._tls_verify(input_item)
         if self.tls_verify is False:
@@ -852,7 +847,6 @@ class NiFiScript(Script):
                                                         'interval',
                                                         'endpoint_system_diagnostics',
                                                         'endpoint_flow_status',
-                                                        'endpoint_site_to_site',
                                                         'endpoint_processors_history',
                                                         'endpoint_process_groups_history'
                                                         ] if k in input_item)

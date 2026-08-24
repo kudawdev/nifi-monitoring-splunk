@@ -4,7 +4,6 @@ api_url = http://nifi:8080/nifi-api/
 auth_type = none
 endpoint_flow_status = 1
 endpoint_system_diagnostics = 1
-endpoint_site_to_site = 1
 
 # Exercised by the harness so the flattening runs against a real payload.
 # Off by default in the shipped app: see the volume note in inputs.conf.spec.

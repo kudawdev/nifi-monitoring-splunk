@@ -303,7 +303,7 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 | TA-4 ✅ | **Hecho.** Nuevo sourcetype `nifi:api:flow_metrics` con su `props.conf` (`INDEXED_EXTRACTIONS = json`, **`TRUNCATE = 0`**, `SHOULD_LINEMERGE = false`, `LINE_BREAKER = ([\r\n]+)`) — un evento por línea. |
 | TA-4b | En NiFi ≥2.0 los repositorios llegan por métricas (`nifi_*_repo_*_space_bytes`): hacer `/system-diagnostics` opcional o de intervalo mayor, sin romper 1.x. |
 | TA-5 ✅ | **Hecho.** Polling de `/flow/bulletin-board` → `nifi:api:bulletin_board`, habilitado por defecto, con `?after=<id>` y cursor en el `checkpoint_dir`. `props.conf` mapea la forma del board a los nombres que ya usa el datamodel, para que ambas fuentes alimenten los mismos paneles. |
-| TA-6 ◐ | **Parcial:** `nifi:api:controller_cluster` retirado (nada lo producía, ni el flow ni el TA). `nifi:api:site_to_site` sigue en pie a la espera de D-2. |
+| TA-6 ✅ | **Hecho.** `nifi:api:controller_cluster` retirado (nada lo producía) y `nifi:api:site_to_site` retirado por D-2. |
 | TA-7 ◐ | **Parcial:** el cursor de bulletins ya usa el `checkpoint_dir` de Splunk. Falta mover el token. Sustituir el estado en `.env` por el KV store de Splunk o `storage/passwords` (B-14). **Medido en el run del 2026-08-24:** el `.env` vive dentro del directorio de la app, así que se pierde al reinstalarla o recrear el contenedor, y cada arranque en frío paga un 401 evitable. Al no haber token cacheado, pedirlo proactivamente antes de la primera request en lugar de provocar el 401. |
 | TA-8 | Corregir B-4, B-5, B-15, B-16. |
 | TA-9 | Extender `nifi_manager.xml` y `inputs.conf.spec` con los parámetros nuevos. |
@@ -364,7 +364,7 @@ Catalogados durante la lectura del repositorio del 2026-08-24. Severidad: **A** 
 | B-6 | **A** | `nifi_monitoring/default/macros.conf` | `index_nifi = index=*` — base de todos los dashboards y de las constraints del datamodel. Busca en todos los índices, incluidos los internos. |
 | B-7 | **B** | `datamodels.conf` + dashboards | `acceleration = false` mientras 6 paneles usan `tstats … from datamodel=NIFI.*`. Sin aceleración degrada a búsqueda cruda. |
 | B-8 | **B** | `nifi_overview.xml` | Dos `join type=left` en la query principal. |
-| B-9 ◐ | **B** | TA + app | `controller_cluster` retirado; `site_to_site` pendiente de D-2. | `nifi:api:site_to_site` se recolecta (habilitado por defecto) y **ningún** dashboard ni objeto de datamodel lo consume. `nifi:api:controller_cluster` tiene `props.conf` y no lo produce nadie. |
+| B-9 ✅ | **B** | TA + app | `controller_cluster` retirado; `site_to_site` pendiente de D-2. | `nifi:api:site_to_site` se recolecta (habilitado por defecto) y **ningún** dashboard ni objeto de datamodel lo consume. `nifi:api:controller_cluster` tiene `props.conf` y no lo produce nadie. |
 | B-10 | **A** | `mkdocs.yml` | No declara `docs_dir`; tras el rename `docs/` → `doc/` apunta a un directorio vacío. `docs.yml` publicaría un sitio vacío. |
 | B-11 | C | `AGENTS.md` / `CLAUDE.md` | Dice versión 1.2.2; las apps están en 1.2.3. También afirma que `main.yml`/`testing.yml` corren por push — los tres son `workflow_dispatch`. |
 | B-12 | C | `mkdocs.yml` | `current_version: 1.0`. |
@@ -546,6 +546,7 @@ El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el c
 | R-3 | Recapturar ~25 screenshots de una UI nueva es más trabajo que el código | tratar DOC-3 como tarea propia con su estimación; considerar reducir el set de imágenes |
 | R-4 | Cambiar sourcetypes rompe las búsquedas guardadas de los clientes actuales | 2.0.0 es major; **agregar** sourcetypes sin retirar los viejos en este release, y anunciar la deprecación para 2.1 |
 | R-5 | El token de B-1 puede estar activo en un HEC de producción | rotarlo antes de tocar el repo, y verificar en qué instancia estaba |
+| R-10 | **Retirar `nifi:api:site_to_site` es breaking.** Un input existente con ese endpoint habilitado deja de recolectarlo al actualizar | Deliberado en un major. Los datos ya indexados no se pierden ni se degradan: `INDEXED_EXTRACTIONS` corre en tiempo de indexación, así que los eventos históricos conservan sus campos. El input avisa una vez si encuentra el ajuste obsoleto. Debe ir en las notas de migración de 2.0.0 |
 | R-9 | **Volumen del endpoint de métricas.** Medido: un NiFi **ocioso** ya emite 60 muestras (~14 KB) por poll; con `ALL_COMPONENTS` eso escala con cada procesador del flujo. Un flujo de 500 procesadores puede rondar 1 GB/día solo de métricas | Por eso `endpoint_flow_metrics` viene **apagado** por defecto, el default de estrategia es `ALL_PROCESS_GROUPS` (más acotado que el `ALL_COMPONENTS` de NiFi) y se exponen `metrics_registries` y `metrics_sample_filter`. La doc de instalación debe traer el cálculo antes de recomendar habilitarlo |
 | R-7 | **Activar la verificación TLS por defecto (B-23) es un breaking change.** Un input existente contra un NiFi con certificado autofirmado deja de conectar al actualizar | Es deliberado y corresponde a un major. El error dice qué hacer (apuntar `ca_bundle` a un bundle que lo valide, o destildar la verificación aceptando el riesgo). Debe ir en las notas de migración de 2.0.0, y hay que decidir si se acepta el default seguro o se invierte |
 | R-8 | El harness prueba el camino con la verificación **desactivada** (`verify_tls = 0`), porque los contenedores usan certificados autofirmados. El camino por defecto, que es el seguro, no está cubierto por ningún perfil | Agregar un perfil que extraiga el certificado del contenedor de NiFi y lo pase como `ca_bundle`, para ejercitar la verificación real |
@@ -556,7 +557,7 @@ El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el c
 | # | Decisión | Opciones |
 |---|---|---|
 | **D-1** ✅ | Bulletins individuales | **Decidido (c): ambas, con polling por defecto** (Anibal Vasquez, 2026-08-24). Implementado en TA-5. |
-| **D-2** | `nifi:api:site_to_site` | (a) retirarlo; (b) construir el panel que hoy falta. **Recomendación: (a)** — se paga ingesta por dato que nadie mira. |
+| **D-2** ✅ | `nifi:api:site_to_site` | **Decidido (a): retirado** (Anibal Vasquez, 2026-08-24). Se recolectaba en cada ciclo y ningún panel ni objeto del datamodel lo leía. Un input viejo que todavía traiga `endpoint_site_to_site` recibe un WARN diciendo que se ignora, en lugar de que desaparezca en silencio. |
 | **D-3** | Piso de NiFi soportado | (a) 1.16 (donde aparece `producer=json`); (b) 1.23 (lo que hoy se prueba); (c) solo 2.x + una 1.x de cortesía. **Recomendación: (a)**, con CI en 1.23.2 y 1.28.1. |
 | **D-4** | Aceleración del datamodel | (a) activarla y asumir el costo de almacenamiento; (b) sacar `tstats` de los dashboards. **Recomendación: (a)**, es lo que los paneles ya suponen. |
 | **D-5** | ¿1.2.4 de saneamiento antes de 2.0.0? | **Recomendación: sí.** F1 arregla un secreto expuesto y un gate de release roto; no debería esperar al resto del plan. |

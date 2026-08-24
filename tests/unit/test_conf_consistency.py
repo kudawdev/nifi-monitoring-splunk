@@ -239,5 +239,35 @@ class MonitorPathTest(unittest.TestCase):
         self.assertEqual(self.inputs["nifi"]["python.version"], "python3")
 
 
+class RemovedEndpointTest(unittest.TestCase):
+    """nifi:api:site_to_site was removed in 2.0.0 (decision D-2): it was
+    collected on every cycle and no dashboard or datamodel object read it, so
+    it was licence spend on data nobody looked at."""
+
+    def test_it_is_gone_from_both_apps(self):
+        for app in (TA, APP):
+            with self.subTest(app=os.path.basename(app)):
+                props = conf(os.path.join(app, "default", "props.conf"))
+                self.assertNotIn("nifi:api:site_to_site", props.sections())
+
+    def test_it_is_gone_from_the_endpoint_table_and_the_scheme(self):
+        source = open(os.path.join(TA, "bin", "nifi.py")).read()
+        self.assertNotIn('"path":"/site-to-site"', source)
+        self.assertNotIn("endpoint_site_to_site_argument", source)
+
+    def test_it_is_gone_from_the_setup_page_and_the_spec(self):
+        ui = open(os.path.join(TA, "default", "data", "ui", "manager",
+                               "nifi_manager.xml")).read()
+        self.assertNotIn("endpoint_site_to_site", ui)
+        spec = open(os.path.join(TA, "README", "inputs.conf.spec")).read()
+        self.assertNotIn("endpoint_site_to_site", spec)
+
+    def test_a_leftover_setting_is_still_noticed(self):
+        """An input saved before 2.0.0 keeps the setting in inputs.conf. The
+        input must say it is ignored rather than silently dropping it."""
+        source = open(os.path.join(TA, "bin", "nifi.py")).read()
+        self.assertIn("endpoint_site_to_site was removed", source)
+
+
 if __name__ == "__main__":
     unittest.main()

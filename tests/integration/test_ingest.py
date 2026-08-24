@@ -18,6 +18,10 @@ CORE_SOURCETYPES = [
     "nifi:api:system_diagnostics",
 ]
 
+# nifi:api:site_to_site was removed in 2.0.0: it was collected and no panel
+# or datamodel object ever read it.
+REMOVED_SOURCETYPES = ["nifi:api:site_to_site"]
+
 
 class IngestTest(IntegrationTestCase):
 
@@ -45,6 +49,14 @@ class IngestTest(IntegrationTestCase):
         for sourcetype in CORE_SOURCETYPES:
             with self.subTest(sourcetype=sourcetype):
                 self.assertIn(sourcetype, seen)
+
+    def test_the_removed_sourcetype_is_no_longer_collected(self):
+        rows = search(
+            self.splunk,
+            'index=main sourcetype="nifi:api:site_to_site" | stats count',
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertEqual(count, 0, "site_to_site is still being ingested")
 
     def test_flow_status_fields_are_extracted(self):
         """INDEXED_EXTRACTIONS must turn the JSON into the datamodel's fields."""
@@ -138,10 +150,11 @@ class IngestTest(IntegrationTestCase):
         )
         error_count = int(errors[0]["count"]) if errors and errors[0].get("count") else 0
 
-        # flow_status, system_diagnostics and site_to_site are enabled by the
-        # harness input; each can pay at most one 401 before the token is
-        # cached, and a cold start can happen twice if a container is recreated.
-        ceiling = 3 * 2
+        # flow_status, system_diagnostics, the bulletin board and flow metrics
+        # are enabled by the harness input; each can pay at most one 401
+        # before the token is cached, and a cold start can happen twice if a
+        # container is recreated.
+        ceiling = 4 * 2
         self.assertLessEqual(
             error_count,
             ceiling,
