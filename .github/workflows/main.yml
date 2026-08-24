@@ -20,8 +20,11 @@ jobs:
           for d in $apps; do
             f="$d/default/app.conf"
             [ -f "$f" ] || { echo "::error::missing $f"; exit 1; }
-            v=$(awk -F= '/^version[[:space:]]*=/{gsub(/[[:space:]]/,"");print $2}' "$f")
+            v=$(awk -F= '/^version[[:space:]]*=/{gsub(/[[:space:]]/,"");print $2}' "$f" | head -1)
             [ -n "$v" ] || { echo "::error::no version found in $f"; exit 1; }
+            # AppInspect reads the [id] stanza too, so the two must agree.
+            ids=$(awk -F= '/^version[[:space:]]*=/{gsub(/[[:space:]]/,"");print $2}' "$f" | sort -u | wc -l)
+            [ "$ids" -eq 1 ] || { echo "::error::version differs between stanzas in $f"; exit 1; }
             echo "$d = $v"
             versions="$versions$v\n"
           done
