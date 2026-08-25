@@ -65,6 +65,10 @@ services:
   nifi:
     image: apache/nifi:${NIFI_VERSION:-2.11.0}
     hostname: nifi
+    # NIFI_ENTRYPOINT is the image's own start.sh except for the unsecured
+    # 2.x profile, which needs a replacement: start.sh cannot be told to skip
+    # HTTPS. See provision/nifi/start-unsecured.sh.
+    entrypoint: ${NIFI_ENTRYPOINT:-../scripts/start.sh}
     env_file:
       - ${NIFI_ENV_FILE:-./env/nifi-singleuser.env}
     ports:
@@ -74,6 +78,7 @@ services:
       - nifi_logs:/opt/nifi/nifi-current/logs
       - nifi_conf:/opt/nifi/nifi-current/conf
       - nifi_state:/opt/nifi/nifi-current/state
+      - ./provision/nifi:/opt/nifi/harness:ro
     healthcheck:
       # /access/config answers before authentication is configured, so it
       # works for both the unsecured and the single-user profile.

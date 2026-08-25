@@ -171,6 +171,57 @@ def mark_sensitive_headers(root, report, sensitive_names):
                               % (name, processor.get("name")))
 
 
+# nifi:api:site_to_site was retired from the TA (decision D-2): it was
+# collected on every cycle and nothing read it. The flow has to match, or it
+# keeps delivering events for a sourcetype no props.conf defines any more,
+# which arrive with no fields extracted at all.
+RETIRED_PROCESSORS = ("GetHTTP-site_to_site",)
+
+#: A retired branch leaves behind the processors that only served it. This
+#: matches a processor by a property value rather than by name, since the
+#: labelling processors in this flow all share the name Set-Splunk_variables.
+RETIRED_BY_PROPERTY = (("sourcetype", "nifi:api:site_to_site"),)
+
+
+def drop_retired(root, report):
+    """Remove retired processors and every connection touching them."""
+    dropped = set()
+    for group in walk_groups(root):
+        keep = []
+        for processor in group.get("processors") or []:
+            props = (processor.get("properties")
+                     or processor.get("config", {}).get("properties", {}) or {})
+            orphaned = any(props.get(key) == value for key, value in RETIRED_BY_PROPERTY)
+            if processor.get("name") in RETIRED_PROCESSORS or orphaned:
+                dropped.add(processor.get("identifier"))
+                report.append("dropped retired processor: %s%s"
+                              % (processor.get("name"),
+                                 " (orphaned by the retired branch)" if orphaned else ""))
+            else:
+                keep.append(processor)
+        if "processors" in group:
+            group["processors"] = keep
+
+    if not dropped:
+        return
+
+    for group in walk_groups(root):
+        connections = group.get("connections")
+        if not connections:
+            continue
+        remaining = []
+        for connection in connections:
+            endpoints = {(connection.get("source") or {}).get("id"),
+                         (connection.get("destination") or {}).get("id")}
+            if endpoints & dropped:
+                report.append("dropped its connection: %s -> %s"
+                              % ((connection.get("source") or {}).get("name", "?"),
+                                 (connection.get("destination") or {}).get("name", "?")))
+            else:
+                remaining.append(connection)
+        group["connections"] = remaining
+
+
 def variables_to_parameters(root, report):
     """Turn the root group's variables into a Parameter Context."""
     variables = root.get("variables") or {}
@@ -265,6 +316,8 @@ def main(argv):
         for group in walk_groups(root):
             group["parameterContextName"] = PARAMETER_CONTEXT_NAME
             group.pop("variables", None)
+
+    drop_retired(root, report)
 
     converted_ids = set()
     for group in walk_groups(root):

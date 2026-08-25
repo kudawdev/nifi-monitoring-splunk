@@ -125,6 +125,11 @@ def env_for(profile_name):
         "SPLUNK_VERSION=%s" % profile["splunk_version"],
         "NIFI_AUTH=%s" % auth,
         "NIFI_ENV_FILE=./env/nifi-%s.env" % auth,
+        # 'pull' (the TA's modular input) or 'hec' (the flow inside NiFi).
+        "COLLECTION=%s" % profile.get("collection", "pull"),
+        # The unsecured 2.x profile cannot use the image's entrypoint.
+        "NIFI_ENTRYPOINT=%s" % ("/opt/nifi/harness/start-unsecured.sh"
+                                if auth == "none2x" else "../scripts/start.sh"),
         "SPLUNK_PASSWORD=%s" % SPLUNK_PASSWORD,
         "SPLUNK_HEC_TOKEN=%s" % SPLUNK_HEC_TOKEN,
     ]

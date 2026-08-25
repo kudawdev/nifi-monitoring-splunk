@@ -11,7 +11,7 @@ discover` stays safe to run anywhere.
 import os
 import unittest
 
-from support import IntegrationTestCase, search, wait_for_events
+from support import IntegrationTestCase, env, search, wait_for_events
 
 # Sourcetypes the TA's pull path must produce in every supported version.
 CORE_SOURCETYPES = [
@@ -25,6 +25,7 @@ REMOVED_SOURCETYPES = ["nifi:api:site_to_site"]
 
 
 class IngestTest(IntegrationTestCase):
+    collection = "pull"
 
     def test_the_modular_input_produces_events(self):
         rows = wait_for_events(
@@ -165,6 +166,7 @@ class IngestTest(IntegrationTestCase):
 
 
 class VersionDetectionTest(IntegrationTestCase):
+    collection = "pull"
     """The TA detects which NiFi it is talking to and records it.
 
     Detection reads versionInfo.niFiVersion from /system-diagnostics, which
@@ -210,6 +212,7 @@ class VersionDetectionTest(IntegrationTestCase):
 
 
 class BulletinPollingTest(IntegrationTestCase):
+    collection = "pull"
     """Bulletins now reach Splunk by polling /flow/bulletin-board, with no
     reporting task configured inside NiFi (TA-5).
 
@@ -256,6 +259,7 @@ class BulletinPollingTest(IntegrationTestCase):
 
 
 class FlowMetricsTest(IntegrationTestCase):
+    collection = "pull"
     """The flattening has to survive a real payload (TA-2).
 
     /flow/metrics/json returns Prometheus' model with parallel label arrays;
@@ -427,6 +431,9 @@ class DashboardPanelTest(IntegrationTestCase):
                 self.assertLessEqual(value, 100.0)
 
     def test_the_inventory_panel_reports_the_version_and_path(self):
+        if self.profile_collection != "pull":
+            self.skipTest("the version column comes from nifi:api:version_info, "
+                          "which only the TA produces")
         queries = self.panel_queries("nifi_internal_monitoring.xml")
         inventory = [q for q in queries if "version_info" in q][0]
         rows = wait_for_events(self.splunk, inventory, minimum=1)
@@ -438,6 +445,12 @@ class DashboardPanelTest(IntegrationTestCase):
 class DatamodelObjectTest(IntegrationTestCase):
     """The objects added for the new sourcetypes have to actually return rows
     through the model, not just exist in NIFI.json (APP-3)."""
+
+    def requires_pull(self):
+        """Some objects are only fed by the TA, so they have nothing to show
+        on a push profile even though the object itself is fine."""
+        if self.profile_collection != "pull":
+            self.skipTest("only the TA produces this sourcetype")
 
     def rows_from(self, obj):
         return search(self.splunk, "| tstats count from datamodel=NIFI.%s" % obj)
@@ -461,16 +474,19 @@ class DatamodelObjectTest(IntegrationTestCase):
                 self.assertTrue(rows, "datamodel=NIFI.%s is not queryable" % obj)
 
     def test_flow_metrics_returns_rows(self):
+        self.requires_pull()
         wait_for_events(self.splunk, "| tstats count from datamodel=NIFI.Flow_Metrics",
                         minimum=1)
         self.assertGreater(self.count_from("Flow_Metrics"), 0)
 
     def test_version_info_returns_rows(self):
+        self.requires_pull()
         wait_for_events(self.splunk, "| tstats count from datamodel=NIFI.Version_Info",
                         minimum=1)
         self.assertGreater(self.count_from("Version_Info"), 0)
 
     def test_flow_metrics_fields_are_queryable_through_the_model(self):
+        self.requires_pull()
         rows = wait_for_events(
             self.splunk,
             "| tstats count from datamodel=NIFI.Flow_Metrics "
@@ -488,6 +504,66 @@ class DatamodelObjectTest(IntegrationTestCase):
         )
         count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
         self.assertEqual(count, 0, "the request log leaked into the Logs object")
+
+
+class PushPathTest(IntegrationTestCase):
+    collection = "hec"
+    """Data arriving through the flow inside NiFi rather than the TA.
+
+    Only meaningful on a profile whose collection is `hec`; the others skip.
+    """
+
+    def test_events_arrive_through_the_hec(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:*" | stats count by sourcetype',
+            minimum=1,
+            timeout=420,
+        )
+        self.assertTrue(rows, "nothing reached Splunk through the HEC")
+
+    def test_the_ta_input_is_not_also_collecting(self):
+        """Running both paths duplicates every event, which the docs warn
+        about; the profile disables the input so this must stay at zero."""
+        rows = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" "Started Stream Events" '
+            "| stats count",
+            earliest="-1h",
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertEqual(count, 0, "the TA input ran as well as the flow")
+
+    def test_the_flow_delivers_the_sourcetypes_it_is_responsible_for(self):
+        """What the push path actually carries: the API endpoints the flow
+        polls, plus NiFi's own log files through TailFile."""
+        wait_for_events(self.splunk,
+                        'index=nifi | stats count by sourcetype', minimum=1, timeout=420)
+        rows = search(self.splunk, 'index=nifi | stats count by sourcetype')
+        seen = {r["sourcetype"] for r in rows}
+        for sourcetype in ("nifi:api:flow_status", "nifi:api:system_diagnostics",
+                           "nifi:log:app"):
+            with self.subTest(sourcetype=sourcetype):
+                self.assertIn(sourcetype, seen)
+
+    def test_the_flow_does_not_send_the_retired_sourcetype(self):
+        """site_to_site was retired from the TA (D-2). The flow must match, or
+        it delivers events for a sourcetype no props.conf defines any more --
+        they arrive with no fields extracted."""
+        rows = search(self.splunk,
+                      'index=nifi sourcetype="nifi:api:site_to_site" | stats count')
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertEqual(count, 0, "the flow still sends site_to_site")
+
+    def test_the_flow_reports_no_bulletins_at_error_level(self):
+        """A processor failing inside the flow raises an ERROR bulletin, which
+        is how a broken push path shows itself."""
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:*" bulletinLevel=ERROR | stats count',
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertEqual(count, 0, "the flow raised %d error bulletins" % count)
 
 
 if __name__ == "__main__":

@@ -81,5 +81,10 @@ python3 integration/wait_for_nifi.py
 echo "==> loading the instance kvstore collection"
 python3 integration/seed_kvstore.py
 
+if [ "${COLLECTION:-pull}" = "hec" ]; then
+    echo "==> installing and starting the flow inside NiFi (push path)"
+    python3 integration/provision_flow.py
+fi
+
 echo "==> running assertions"
 (cd integration && python3 -m unittest discover -v)

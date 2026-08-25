@@ -144,6 +144,20 @@ class GeneratedFlowTest(unittest.TestCase):
                     with self.subTest(connection=connection.get("identifier")):
                         self.assertNotIn("success", connection.get("selectedRelationships") or [])
 
+    def test_the_retired_sourcetype_is_gone(self):
+        """site_to_site was retired from the TA (D-2), so the flow must not
+        keep delivering it: props.conf no longer defines that sourcetype, and
+        the events would arrive with nothing extracted."""
+        blob = json.dumps(self.flow)
+        self.assertNotIn("site_to_site", blob)
+        self.assertNotIn("site-to-site", blob)
+
+    def test_no_processor_is_left_without_its_branch(self):
+        """Dropping a source leaves its labelling processor orphaned, feeding
+        the funnel with nothing upstream."""
+        names = [p.get("name") for p in self.processors]
+        self.assertNotIn("GetHTTP-site_to_site", names)
+
     def test_no_environment_data_is_shipped(self):
         """The 1.x flow leaked a HEC token and a host this way."""
         blob = json.dumps(self.flow)

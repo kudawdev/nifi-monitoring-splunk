@@ -88,7 +88,7 @@ jobs:
       fail-fast: false
       matrix:
         # Keep in step with the `ci.release` list in tests/matrix.yml.
-        profile: [nifi1-legacy, nifi1-last, nifi2-first, nifi2-current]
+        profile: [nifi1-legacy, nifi1-last, nifi2-first, nifi2-current, nifi2-hec]
     steps:
       - uses: actions/checkout@v4
       - name: Run the ${{ matrix.profile }} profile

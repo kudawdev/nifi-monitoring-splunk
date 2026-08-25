@@ -125,6 +125,19 @@ Esto invierte la intuición: **el camino que envejece bien es el pull (el TA); e
 | `rootFieldName` | string | solo producer `json` |
 | `flowMetricsReportingStrategy` | `ALL_COMPONENTS` (default) \| `ALL_PROCESS_GROUPS` | control de cardinalidad |
 
+### 3.8 Lo que reveló ejecutar el camino push (perfil `nifi2-hec`)
+
+Importar el flow probaba que **carga**. Ejecutarlo probó otras cuatro cosas, todas invisibles antes:
+
+| Hallazgo | Detalle |
+|---|---|
+| **Arrancar procesadores no alcanza** | Los *input/output ports* y los funnels tienen estado propio. Con los puertos detenidos, los FlowFiles se acumulan en el output port —medido: 2204 FlowFiles, 1.23 MB— mientras `Send2Splunk-HEC` figura **RUNNING y VALID con 0 bytes** y NiFi no levanta un solo bulletin. Hay que arrancar el grupo con `PUT /flow/process-groups/{id}`. |
+| **El push exige NiFi sin auth** | El flow llama a su propia API sin credenciales. Y el `start.sh` de la imagen no puede correr en HTTP puro, así que el perfil necesita un entrypoint de reemplazo (ver R-11). Resuelve T-4/F0.6, que había quedado pendiente. |
+| **D-2 estaba a medias** | `site_to_site` se retiró del TA pero **el flow seguía enviándolo**: los eventos llegaban sin `props.conf` que los defina, o sea sin un campo extraído. Ahora el script de migración lo retira del flow, junto con el `UpdateAttribute` que quedaba huérfano etiquetando una rama inexistente (39 → 37 procesadores). |
+| **Una búsqueda podía colgar el run** | `exec_mode="blocking"` de splunklib bloquea sin deadline. El primer intento quedó **16 horas** colgado; en CI habría consumido el runner hasta el tope del job. Ahora es `exec_mode="normal"` con deadline y cancelación. |
+
+**Resultado verificado:** 972 `nifi:log:app`, 25 `nifi:log:user`, 3 `nifi:api:flow_status` y 3 `nifi:api:system_diagnostics` llegados por el HEC, con **cero** ejecuciones del modular input (sin duplicación entre caminos) y **cero** eventos de `site_to_site`.
+
 ### 3.7 Lo que reveló importar el flow en un NiFi 2.11.0 real
 
 `GetHTTP` era lo único que la documentación señalaba. Importar el flow y leer el estado de validación mostró tres cosas más:
@@ -456,7 +469,7 @@ tests/
 | `nifi1-legacy` | 1.23.2 | 9.4 | none | pull (regresión) |
 | `nifi1-last` | 1.28.1 | 10.4 | singleuser | pull + token |
 | `nifi2-current` | 2.11.0 | 10.4 | singleuser | pull + token |
-| `nifi2-hec` | 2.11.0 | 10.4 | singleuser | push (flow reconstruido) |
+| `nifi2-hec` | 2.11.0 | 10.4 | **none2x** | push (flow reconstruido) |
 
 En PR corren `nifi1-legacy` y `nifi2-current`; la matriz completa en el workflow de release.
 
@@ -572,6 +585,7 @@ El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el c
 | R-10 | **Retirar `nifi:api:site_to_site` es breaking.** Un input existente con ese endpoint habilitado deja de recolectarlo al actualizar | Deliberado en un major. Los datos ya indexados no se pierden ni se degradan: `INDEXED_EXTRACTIONS` corre en tiempo de indexación, así que los eventos históricos conservan sus campos. El input avisa una vez si encuentra el ajuste obsoleto. Debe ir en las notas de migración de 2.0.0 |
 | R-9 | **Volumen del endpoint de métricas.** Medido: un NiFi **ocioso** ya emite 60 muestras (~14 KB) por poll; con `ALL_COMPONENTS` eso escala con cada procesador del flujo. Un flujo de 500 procesadores puede rondar 1 GB/día solo de métricas | Por eso `endpoint_flow_metrics` viene **apagado** por defecto, el default de estrategia es `ALL_PROCESS_GROUPS` (más acotado que el `ALL_COMPONENTS` de NiFi) y se exponen `metrics_registries` y `metrics_sample_filter`. La doc de instalación debe traer el cálculo antes de recomendar habilitarlo |
 | R-7 | **Activar la verificación TLS por defecto (B-23) es un breaking change.** Un input existente contra un NiFi con certificado autofirmado deja de conectar al actualizar | Es deliberado y corresponde a un major. El error dice qué hacer (apuntar `ca_bundle` a un bundle que lo valide, o destildar la verificación aceptando el riesgo). Debe ir en las notas de migración de 2.0.0, y hay que decidir si se acepta el default seguro o se invierte |
+| R-11 | **El camino push exige un NiFi sin autenticación.** El flow consulta su propia API sin credenciales, así que un NiFi con auth lo rechaza. Eso no estaba dicho en el plan y limita cuándo el push es viable | Documentado en `compatibility.md`. El perfil `nifi2-hec` usa un entrypoint de reemplazo (`provision/nifi/start-unsecured.sh`) porque el `start.sh` de la imagen **no puede** correr en HTTP: escribe `nifi.web.https.port` desde `${VAR:-8443}` y `:-` sustituye el default también para un valor vacío |
 | R-8 | El harness prueba el camino con la verificación **desactivada** (`verify_tls = 0`), porque los contenedores usan certificados autofirmados. El camino por defecto, que es el seguro, no está cubierto por ningún perfil | Agregar un perfil que extraiga el certificado del contenedor de NiFi y lo pase como `ca_bundle`, para ejercitar la verificación real |
 | R-6 | AppInspect nuevo sube warnings por encima de `MAX_WARNING = 8` y bloquea el release | B-17 baja 2; medir el conteo real en F1 y ajustar el umbral con justificación |
 

@@ -1,0 +1,12 @@
+# The push profile collects through the flow inside NiFi, not the TA's
+# modular input. Both at once would duplicate every event, which the
+# documentation warns about, so the input is disabled here.
+#
+# This is the only profile where the TA does not poll.
+[nifi://nifi]
+disabled = 1
+api_url = http://nifi:8080/nifi-api/
+auth_type = none
+host = nifi
+index = nifi
+interval = 60

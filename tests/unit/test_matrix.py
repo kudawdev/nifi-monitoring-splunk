@@ -120,6 +120,48 @@ class SingleUserCredentialsTest(unittest.TestCase):
         self.assertNotIn("<", content.split("NIFI_WEB_PROXY_HOST=")[1].split("\n")[0])
 
 
+class PushProfileTest(unittest.TestCase):
+    """The push profile exercises the flow inside NiFi instead of the TA."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.data = matrix.load()
+
+    def push_profiles(self):
+        return {n: p for n, p in self.data["profiles"].items()
+                if p.get("collection") == "hec"}
+
+    def test_there_is_a_push_profile(self):
+        self.assertTrue(self.push_profiles(), "no profile covers the push path")
+
+    def test_the_push_profile_disables_the_ta_input(self):
+        """Both paths at once duplicates every event."""
+        for name, profile in self.push_profiles().items():
+            with self.subTest(profile=name):
+                text = open(os.path.join(
+                    TESTS_DIR, "provision", "splunk",
+                    "inputs.conf.%s" % profile["nifi_auth"])).read()
+                self.assertIn("disabled = 1", text)
+
+    def test_the_push_profile_runs_nifi_unauthenticated(self):
+        """The flow calls its own API with no credentials, so an
+        authenticated NiFi rejects it."""
+        for name, profile in self.push_profiles().items():
+            with self.subTest(profile=name):
+                self.assertIn("none", profile["nifi_auth"])
+
+    def test_the_push_profile_is_in_the_release_matrix(self):
+        for name in self.push_profiles():
+            with self.subTest(profile=name):
+                self.assertIn(name, self.data["ci"]["release"])
+
+    def test_the_unsecured_2x_entrypoint_exists(self):
+        """The image's start.sh cannot be told to skip HTTPS."""
+        script = os.path.join(TESTS_DIR, "provision", "nifi", "start-unsecured.sh")
+        self.assertTrue(os.path.isfile(script))
+        self.assertTrue(os.access(script, os.X_OK), "not executable")
+
+
 class ProvisioningTest(unittest.TestCase):
     """Every auth mode needs a TA input template that matches it.
 
@@ -147,6 +189,9 @@ class ProvisioningTest(unittest.TestCase):
         expected = {
             "none": ("auth_type = none", "http://nifi:8080"),
             "singleuser": ("auth_type = basic", "https://nifi:8443"),
+            # The push profile collects through the flow, so the TA's input
+            # is present but disabled: running both duplicates every event.
+            "none2x": ("auth_type = none", "disabled = 1"),
         }
         for mode in self.auth_modes():
             with self.subTest(auth=mode):

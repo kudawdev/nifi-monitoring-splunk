@@ -39,6 +39,16 @@ profiles:
     splunk_version: "10.4"
     nifi_auth: singleuser
 
+  nifi2-hec:
+    description: >
+      The push path: the monitoring flow runs inside NiFi and sends to
+      Splunk's HEC. Needs an unauthenticated NiFi, because the flow calls
+      its own API without credentials.
+    nifi_version: "2.11.0"
+    splunk_version: "10.4"
+    nifi_auth: none2x
+    collection: hec
+
 ci:
   # Runs on every pull request: one profile per NiFi major.
   pull_request:
@@ -50,3 +60,4 @@ ci:
     - nifi1-last
     - nifi2-first
     - nifi2-current
+    - nifi2-hec
