@@ -120,6 +120,49 @@ class SingleUserCredentialsTest(unittest.TestCase):
         self.assertNotIn("<", content.split("NIFI_WEB_PROXY_HOST=")[1].split("\n")[0])
 
 
+class ExecutableBitTest(unittest.TestCase):
+    """The scripts CI runs have to arrive executable from a fresh checkout.
+
+    This repository has core.fileMode = false, so chmod on a working copy
+    changes nothing that git records: a script can be 755 on the machine that
+    wrote it and 644 for everyone who clones it. `./run.sh` is how all three
+    workflows start the integration matrix and start-unsecured.sh is a
+    container entrypoint, so a missing bit is not cosmetic -- it is a
+    permission denied on a fresh clone, which is exactly what CI does and a
+    developer never sees.
+    """
+
+    #: Executed directly rather than handed to an interpreter.
+    SCRIPTS = [
+        "run.sh",
+        "provision/nifi/start-unsecured.sh",
+        "provision/seed-splunk-etc.sh",
+        "provision/seed-uf-etc.sh",
+    ]
+
+    def recorded_mode(self, relative):
+        import subprocess
+        try:
+            out = subprocess.check_output(
+                ["git", "ls-files", "-s", relative],
+                cwd=TESTS_DIR, stderr=subprocess.DEVNULL).decode()
+        except (OSError, subprocess.CalledProcessError):
+            self.skipTest("not a git checkout")
+        if not out.strip():
+            self.fail("%s is not tracked" % relative)
+        return out.split()[0]
+
+    def test_the_scripts_ci_runs_are_executable(self):
+        for relative in self.SCRIPTS:
+            with self.subTest(script=relative):
+                self.assertEqual(
+                    self.recorded_mode(relative), "100755",
+                    "%s is not executable in the index; chmod alone does not "
+                    "fix it with core.fileMode = false -- use "
+                    "`git update-index --chmod=+x`" % relative,
+                )
+
+
 class PushProfileTest(unittest.TestCase):
     """The push profile exercises the flow inside NiFi instead of the TA."""
 
