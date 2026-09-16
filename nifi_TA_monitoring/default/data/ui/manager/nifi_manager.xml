@@ -70,7 +70,21 @@
          </elements>
       </element>
 
-     
+      <element name="custom_endpoints_fieldset" type="fieldset">
+         <key name="legend">Custom Endpoints</key>
+         <view name="list" />
+         <view name="edit" />
+         <view name="create" />
+         <elements>
+            <element name="custom_endpoints" type="expando_textarea" label="Additional endpoints">
+               <view name="edit" />
+               <view name="create" />
+               <key name="exampleText">One per line, as sourcetype,path -- e.g. nifi:api:custom:queue_stats,/flow/connections/1234-5678-90ab-cdef/status. The path is relative to the NiFi API URL above.</key>
+            </element>
+         </elements>
+      </element>
+
+
 
       <element name="auth" type="fieldset">
          <key name="legend">Auth</key>

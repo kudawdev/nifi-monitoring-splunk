@@ -31,6 +31,9 @@ metrics_sample_filter = <value>
 endpoint_bulletin_board = <value>
 *Poll the bulletin board for individual bulletins [0 | 1]. Defaults to 1.
 
+custom_endpoints = <value>
+*Additional NiFi REST endpoints to poll, one per line as "sourcetype,path" (e.g. nifi:api:custom:queue_stats,/flow/connections/1234-5678-90ab-cdef/status). The path is relative to the NiFi API URL. Empty by default.
+
 auth_type = <value>
 *Authentication type [none | basic ]
 

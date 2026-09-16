@@ -183,7 +183,7 @@ Sí toda la configuración se ejecutó de manera correcta, se iniciará el enví
 
 *Esta configuración debe ser aplicada cuando las instancias de NIFI cuenten con almenos autenticación básica*
 
-En en los data input de Splunk puedes configurar varios recursos, como: NIFI Endpoints para el monitoreo de System Diagnostics, Flow Status y Site to Site y el NIFI Status History para monitoreo específico de procesadores y grupos de procesos en base a los ID de éstos.
+En en los data input de Splunk puedes configurar varios recursos, como: NIFI Endpoints para el monitoreo de System Diagnostics, Flow Status, Bulletin Board y Flow Metrics, Custom Endpoints para cualquier otra ruta REST de NiFi, y el NIFI Status History para monitoreo específico de procesadores y grupos de procesos en base a los ID de éstos.
 
 Para configurar, en el splunk donde está instalada la aplicación Nifi Monitoring, accede al Home de la APP.
 
@@ -226,7 +226,11 @@ En el apartado NIFI Endpoints, selecciona los elementos a monitorear de la lista
 
 - System Diagnostics
 - Flow Status
-- Site to Site
+- Bulletin Board
+- Flow Metrics (NiFi 1.16 en adelante; se configura en Advanced settings, desactivado por defecto)
+
+### a.1 Endpoints personalizados
+La lista fija anterior cubre lo que la app trae de fábrica. Si necesitás consultar un endpoint REST de NiFi que no está en esa lista, usá en cambio el apartado **Custom Endpoints**: una línea por endpoint, con el formato `sourcetype,path` (por ejemplo `nifi:api:custom:queue_stats,/flow/connections/1234-5678-90ab-cdef/status`). El path es relativo a la NiFi API URL configurada arriba. Splunk indexa la respuesta cruda bajo el sourcetype que elijas; si necesitás extracción de campos para ese sourcetype, agregá tu propia stanza en `props.conf`.
 
 ### b. NIFI Status History para Procesadores
 En el apartado NIFI Status History > List Processors ID especifica los ID de procesadores que serán monitorieados y separados por coma en caso de ser varios.

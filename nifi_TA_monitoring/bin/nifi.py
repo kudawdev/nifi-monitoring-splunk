@@ -269,6 +269,58 @@ class NiFiScript(Script):
         """Split a comma/newline separated id list, dropping empty entries."""
         return [part.strip() for part in raw.replace('\n', ',').split(',') if part.strip()]
 
+    # Custom endpoints. The fixed `endpoints` table above covers what the app
+    # ships with; a customer with a NiFi endpoint outside that list has no way
+    # to collect it without a code change. `custom_endpoints` lets them add
+    # any number of additional REST paths, each tagged with the sourcetype
+    # they want it indexed under -- the TA does not know their shape, so it
+    # cannot pick a sourcetype for them the way it does for the built-in six.
+    custom_sourcetype_pattern = re.compile(r'^[A-Za-z0-9:_.-]+$')
+
+    @classmethod
+    def _validate_custom_endpoint(cls, sourcetype, path):
+        """None when (sourcetype, path) is usable, else why it is not."""
+        if not sourcetype:
+            return 'sourcetype is empty'
+        if not cls.custom_sourcetype_pattern.match(sourcetype):
+            return "sourcetype '{}' must contain only letters, digits, ':', '_', '.' or '-'".format(sourcetype)
+        if not path:
+            return 'path is empty'
+        if '://' in path:
+            return "path '{}' must be a relative path, not a full URL".format(path)
+        if not path.startswith('/'):
+            return "path '{}' must start with / and be relative to the NiFi API URL".format(path)
+        if any(character.isspace() for character in path):
+            return "path '{}' must not contain whitespace".format(path)
+        return None
+
+    @classmethod
+    def _parse_custom_endpoints(cls, raw, ew=None):
+        """Parse `custom_endpoints`: one '<sourcetype>,<path>' per line.
+
+        Lenient by design -- this runs on every poll, against a value that
+        was already accepted by validate_input at save time. A line that is
+        no longer valid (hand-edited inputs.conf) is skipped with a WARN
+        rather than aborting the whole cycle.
+        """
+        endpoints = []
+        for line_number, line in enumerate((raw or '').splitlines(), start=1):
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if ',' not in line:
+                if ew is not None:
+                    EventWriter.log(ew, EventWriter.WARN, "{} Ignoring custom endpoint on line {}: expected '<sourcetype>,<path>'".format(cls.pid, line_number))
+                continue
+            sourcetype, path = (part.strip() for part in line.split(',', 1))
+            error = cls._validate_custom_endpoint(sourcetype, path)
+            if error:
+                if ew is not None:
+                    EventWriter.log(ew, EventWriter.WARN, '{} Ignoring custom endpoint on line {}: {}'.format(cls.pid, line_number, error))
+                continue
+            endpoints.append({'sourcetype': sourcetype, 'path': path})
+        return endpoints
+
 
     def get_scheme(self):
         scheme = Scheme("NiFi")
@@ -386,6 +438,21 @@ class NiFiScript(Script):
         )
         scheme.add_argument(metrics_sample_filter_argument)
 
+        custom_endpoints_argument = Argument(
+            name="custom_endpoints",
+            description=(
+                "Additional NiFi REST endpoints to poll, one per line as 'sourcetype,path' "
+                "(e.g. nifi:api:custom:queue_stats,/flow/connections/1234-5678-90ab-cdef/status). "
+                "The path is relative to the NiFi API URL above. Splunk indexes the raw response "
+                "under the sourcetype given; add your own props.conf if you need field extraction."
+            ),
+            title="Custom endpoints",
+            data_type=Argument.data_type_string,
+            required_on_edit=False,
+            required_on_create=False
+        )
+        scheme.add_argument(custom_endpoints_argument)
+
         auth_type_argument = Argument(
             name="auth_type",
             description="Auth Type",
@@ -500,7 +567,20 @@ class NiFiScript(Script):
                     raise ValueError(
                         "Invalid {} id '{}': expected a UUID".format(label, component_id)
                     )
-    
+
+        for line_number, line in enumerate((params.get("custom_endpoints") or "").splitlines(), start=1):
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if ',' not in line:
+                raise ValueError(
+                    "Custom endpoint on line {} must be 'sourcetype,path': {}".format(line_number, line)
+                )
+            sourcetype, path = (part.strip() for part in line.split(',', 1))
+            error = self._validate_custom_endpoint(sourcetype, path)
+            if error:
+                raise ValueError("Custom endpoint on line {}: {}".format(line_number, error))
+
 
     def stream_events(self, inputs, ew):
 
@@ -653,6 +733,27 @@ class NiFiScript(Script):
             else:
                 EventWriter.log(ew, EventWriter.INFO, 'there wasnt an endpoint detected: ')
                 pass
+
+        for custom in self._parse_custom_endpoints(input_item.get('custom_endpoints') or '', ew):
+            self.__collect_custom_endpoint(ew, base_url, custom, auth_type, username, iname,
+                                           session_key, input_name, input_item)
+
+    def __collect_custom_endpoint(self, ew, base_url, custom, auth_type, username, iname,
+                                  session_key, input_name, input_item):
+        """Poll one user-declared endpoint and pass its response through as-is."""
+        EventWriter.log(ew, EventWriter.INFO, '{} Request custom endpoint: {}'.format(self.pid, custom))
+        try:
+            response = self.__get_request(ew, base_url, custom['path'], auth_type, username, iname, session_key)
+            EventWriter.log(ew, EventWriter.DEBUG, '{} Response: {}'.format(self.pid, response))
+            event = Event(
+                sourcetype=custom['sourcetype'],
+                stanza=input_name,
+                data=response,
+                host=input_item.get("host")
+            )
+            ew.write_event(event)
+        except Exception as e:
+            EventWriter.log(ew, EventWriter.ERROR, "{} There was an error requesting custom endpoint '{}': {}".format(self.pid, custom['path'], e))
 
     def __collect_flow_metrics(self, ew, base_url, path, sourcetype, auth_type,
                                username, iname, session_key, input_name, input_item):
