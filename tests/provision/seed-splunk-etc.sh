@@ -44,6 +44,12 @@ port = 8088
 disabled = 0
 token = 00000000-0000-0000-0000-0000000000ab
 index = nifi
+
+# Receiving port for the Universal Forwarder. Only the forwarder profile
+# connects to it; leaving it enabled everywhere costs nothing and keeps the
+# seeded config identical across profiles.
+[splunktcp://9997]
+disabled = 0
 EOF
 
 # The input has to match the auth mode of the NiFi that is coming up: the

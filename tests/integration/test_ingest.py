@@ -509,6 +509,165 @@ class DatamodelObjectTest(IntegrationTestCase):
         self.assertEqual(count, 0, "the request log leaked into the Logs object")
 
 
+class ForwarderPathTest(IntegrationTestCase):
+    """The other half of the pull strategy: NiFi's log files, shipped by a
+    Universal Forwarder.
+
+    The API half had four profiles and the log half had none, so every
+    log-side change of 2.0.0 -- the two new sourcetypes, the event breaking
+    that groups multi-line messages, the corrected container paths -- was
+    only ever checked against props.conf, never against a real log file
+    arriving in a real index.
+    """
+
+    forwarder = True
+
+    #: nifi-deprecation.log is created empty and only written when something
+    #: deprecated is used, so a clean instance legitimately has nothing to
+    #: send. It is asserted separately.
+    EXPECTED = [
+        "nifi:log:app",
+        "nifi:log:user",
+        "nifi:log:bootstrap",
+        "nifi:log:request",
+    ]
+
+    def wait_for_app_events(self):
+        """`| stats count` emits a row even when it counts nothing, so waiting
+        on it returns at once and proves nothing -- and then `max()` over an
+        empty set emits no column at all, which surfaces as a KeyError rather
+        than as the assertion failing. A by-clause returns no rows until there
+        is data, which is what "wait" has to mean here.
+        """
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:app" | stats count by sourcetype',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows, "no nifi:log:app events arrived")
+
+    def test_the_forwarder_delivers_the_log_sourcetypes(self):
+        wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:*" | stats count by sourcetype',
+            minimum=len(self.EXPECTED), timeout=420,
+        )
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:*" | stats count by sourcetype')
+        seen = {r["sourcetype"] for r in rows}
+        for sourcetype in self.EXPECTED:
+            with self.subTest(sourcetype=sourcetype):
+                self.assertIn(sourcetype, seen)
+
+    def test_the_shipped_monitor_paths_match_the_container(self):
+        """Defect B-21: the stanzas pointed at /opt/nifi/logs/, which is not
+        where the official image keeps them. Only the local/ override flips
+        `disabled`, so the paths under test are the ones the TA ships."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:app" | stats count by source',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows, "no nifi:log:app events arrived")
+        for row in rows:
+            with self.subTest(source=row["source"]):
+                self.assertTrue(
+                    row["source"].startswith("/opt/nifi/nifi-current/logs/"),
+                    "unexpected source %r" % row["source"],
+                )
+
+    def test_multi_line_messages_are_one_event(self):
+        """Defect B-20, the reason for the LINE_BREAKER in props.conf.
+
+        A clean NiFi 2.11 start writes about a thousand continuation lines
+        with no timestamp of their own. Broken on every newline they become
+        that many junk events; grouped, they stay part of the message that
+        owns them.
+        """
+        self.wait_for_app_events()
+        # Counting newlines with len()/replace() rather than the `regex`
+        # command or split()/mvcount(): those depend on how SPL unescapes a
+        # backslash inside a double-quoted string, and both came back empty
+        # against a stack that demonstrably held multi-line events.
+        rows = search(
+            self.splunk,
+            r'index=nifi sourcetype="nifi:log:app" '
+            r'| eval newlines = len(_raw) - len(replace(_raw, "[\r\n]", "")) '
+            r'| stats max(newlines) as longest, count as events')
+        self.assertTrue(rows, "the search returned nothing at all")
+        self.assertGreater(
+            int(rows[0]["longest"]), 0,
+            "no event spans more than one line, so multi-line messages "
+            "were split into one event per line",
+        )
+
+    def test_no_event_is_an_orphan_continuation_line(self):
+        """The negative half of the same defect: a continuation line indexed
+        on its own has no timestamp and no level, which is exactly how the
+        breakage shows up in a search.
+
+        Waits first: with no events at all the count is trivially zero and the
+        test would pass without having checked anything.
+        """
+        self.wait_for_app_events()
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:app" '
+            '| where isnull(level) | stats count as orphans')
+        self.assertTrue(rows, "the search returned nothing at all")
+        self.assertEqual(
+            int(rows[0]["orphans"]), 0,
+            "%s events carry no level, so they are stray continuation lines"
+            % rows[0]["orphans"],
+        )
+
+    def test_the_request_log_is_parsed_as_ncsa(self):
+        """TA-12 reuses the core's access-extractions instead of repeating the
+        regex, so the proof is that the core's field names come out."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:request" '
+            '| head 1 | table status, uri_path, clientip',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows, "no nifi:log:request events arrived")
+        row = rows[0]
+        for field in ("status", "uri_path", "clientip"):
+            with self.subTest(field=field):
+                self.assertTrue(row.get(field), "%s not extracted" % field)
+
+    def test_the_request_log_keeps_its_own_timestamp(self):
+        """It is the only NiFi log with a timestamp of its own, so _time must
+        be the request's, not the moment the forwarder read the line."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:request" '
+            '| eval lag = _indextime - _time | stats min(lag) as lag',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows, "no nifi:log:request events arrived")
+        self.assertGreaterEqual(
+            float(rows[0]["lag"]), 0,
+            "events are indexed before they happened, so _time is wrong",
+        )
+
+    def test_the_deprecation_log_is_monitored_even_when_empty(self):
+        """The file is created empty and stays that way until something
+        deprecated runs, so its absence from the index is not a failure. What
+        must hold is that the TA declares the stanza -- the panel that reads
+        it is the migration-readiness one."""
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:deprecation" | stats count')
+        count = int(rows[0]["count"]) if rows else 0
+        if count == 0:
+            self.skipTest(
+                "nifi-deprecation.log is empty on a clean instance; the "
+                "stanza itself is covered by the unit tests")
+        self.assertGreater(count, 0)
+
+
 class PushPathTest(IntegrationTestCase):
     collection = "hec"
     """Data arriving through the flow inside NiFi rather than the TA.

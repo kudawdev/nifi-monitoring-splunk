@@ -25,11 +25,17 @@ profiles:
 
   nifi2-current:
     description: >
-      Current 2.x release with single-user auth. The combination most
-      clients will land on.
+      The recommended strategy, whole: the TA pulls the REST API and a
+      Universal Forwarder ships NiFi's log files. Current 2.x with
+      single-user auth, which is where most clients land. Its counterpart
+      is nifi2-hec, the push strategy; between them every supported way of
+      getting data out of NiFi is exercised end to end.
     nifi_version: "2.11.0"
     splunk_version: "10.4"
     nifi_auth: singleuser
+    # Brings up the universalforwarder service. Without it the pull strategy
+    # is only half covered: the API half, never the logs.
+    forwarder: true
 
   nifi2-first:
     description: >

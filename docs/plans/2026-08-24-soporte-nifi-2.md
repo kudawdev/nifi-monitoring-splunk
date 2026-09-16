@@ -465,15 +465,19 @@ tests/
 | T-6 | **Healthchecks reales.** Splunk 10 arranca lento: `start_period` de 900 s (con 180 s el `up --wait` falla). Splunk 10 además exige `SPLUNK_GENERAL_TERMS: '--accept-sgt-current-at-splunk-com'` o el contenedor sale con código 1. |
 | T-7 | **`run.sh` devuelve exit code** para que el job `unittest` del CI —hoy un `echo "TODO"`— pase a ejecutar la matriz de verdad. |
 | T-8 | Quitar `version: '3.8'` (obsoleto) y el `splunk_uf1` con `replicas: 0`; si se prueban logs, un UF real en su propio perfil. |
+| T-9 ✅ | **Una estrategia por perfil, cada una cubierta entera** (2026-09-16, ver D-6). El servicio `forwarder` existía en el compose pero detrás de un profile de Docker que **ningún perfil de la matriz activaba**: se levantaba a mano o no se levantaba. Ahora un perfil declara `forwarder: true` y `matrix.py` lo traduce a `COMPOSE_PROFILES=forwarder` en el `.env`, que Compose lee solo — `run.sh` no necesita una bandera. El UF recibe **el TA de verdad**, con un `local/inputs.conf` que solo cambia `disabled` y el `index`, así que lo que se prueba son las rutas y los sourcetypes tal como se distribuyen. **Tres cosas que solo aparecieron al ejecutarlo:** (1) el healthcheck del UF no puede ser HTTP — su imagen pone el management en modo UDS, así que TCP 8089 no escucha y `curl` devuelve **000**, no 401 como Splunk y NiFi; (2) el UF estampa **su propio** `host`, así que con el forwarder como sidecar el panel de inventario ve **una instancia de NiFi como dos** — una fila por REST con versión y otra por archivo sin versión. En el despliegue soportado el UF corre en la máquina de NiFi y el nombre coincide solo; quien lo corra como sidecar **debe** fijar `host` en `inputs.conf`, y el perfil lo hace; (3) B-20 quedó medido de punta a punta: **1360 líneas de `nifi-app.log` → 346 eventos**, con un solo evento de 1015 líneas. Sin el `LINE_BREAKER` de TA-13 serían 1360 eventos. |
 
 ### 8.4 Matriz propuesta para CI
 
-| Perfil | NiFi | Splunk | Auth | Camino de datos |
+Hay **dos estrategias recomendadas** (D-6) y cada una tiene un perfil que la cubre **entera, API y logs**. El resto de los perfiles son regresión de versión: su trabajo es probar que el TA sigue hablando con cada NiFi soportado, no cubrir una estrategia.
+
+| Perfil | NiFi | Splunk | Auth | Qué cubre |
 |---|---|---|---|---|
-| `nifi1-legacy` | 1.23.2 | 9.4 | none | pull (regresión) |
-| `nifi1-last` | 1.28.1 | 10.4 | singleuser | pull + token |
-| `nifi2-current` | 2.11.0 | 10.4 | singleuser | pull + token |
-| `nifi2-hec` | 2.11.0 | 10.4 | **none2x** | push (flow reconstruido) |
+| `nifi2-current` | 2.11.0 | 10.4 | singleuser | **Estrategia pull + forwarder, completa:** modular input para la API y un **Universal Forwarder** para los archivos de log |
+| `nifi2-hec` | 2.11.0 | 10.4 | **none2x** | **Estrategia push, completa:** el flow reconstruido lleva API por `InvokeHTTP` y logs por `TailFile`, todo al HEC |
+| `nifi1-legacy` | 1.23.2 | 9.4 | none | regresión: la 1.x más vieja soportada, sin auth |
+| `nifi1-last` | 1.28.1 | 10.4 | singleuser | regresión: la última 1.x, con token |
+| `nifi2-first` | 2.0.0 | 10.4 | singleuser | regresión: la primera 2.x |
 
 En PR corren `nifi1-legacy` y `nifi2-current`; la matriz completa en el workflow de release.
 
@@ -603,6 +607,7 @@ El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el c
 | **D-2** ✅ | `nifi:api:site_to_site` | **Decidido (a): retirado** (Anibal Vasquez, 2026-08-24). Se recolectaba en cada ciclo y ningún panel ni objeto del datamodel lo leía. Un input viejo que todavía traiga `endpoint_site_to_site` recibe un WARN diciendo que se ignora, en lugar de que desaparezca en silencio. |
 | **D-3** ✅ | Piso de NiFi soportado | **Decidido (a): 1.16**, donde aparece `producer=json`. Publicado en §5 y en `doc/compatibility.md`; el CI corre 1.23.2 y 1.28.1. |
 | **D-4** ✅ | Aceleración del datamodel | **Reabierta y vuelta a decidir el 2026-09-16: se distribuye apagada.** La primera decisión fue activarla, porque es lo que los paneles suponían. Al correr AppInspect en precert apareció lo que nadie había mirado: `check_for_datamodel_acceleration` **falla** cualquier app que distribuya un datamodel acelerado, o sea que con `true` la app no se puede publicar. Ahora `acceleration = false`, la tuning queda en el archivo para el momento en que se encienda, y `upgrading.md`/`.es.md` traen el paso a paso por Splunk Web — que es la condición que el propio check pone para aceptar una app sin acelerar. |
+| **D-6** ✅ | Estrategias de obtención recomendadas | **Decidido el 2026-09-16: dos, y cada una completa en sí misma.** (a) **push**, con el flow definition, que lleva API y logs; (b) **pull + forwarder**, el modular input para la API y un UF para los logs. El plan trataba los logs como una decisión ortogonal al camino de datos (§4.3), y eso dejó un hueco que nadie vio: el harness cubría el push entero y del pull solo la mitad de la API. Encuadrar cada estrategia como una unidad hace evidente qué falta probar. Implementado en T-9. |
 | **D-5** ✅ | ¿1.2.4 de saneamiento antes de 2.0.0? | **Resuelto por los hechos: no.** F1 se absorbió en 2.0.0 y nunca hubo 1.2.4. El apuro que justificaba el release intermedio se desinfló al confirmar que el token de B-1 era de un ambiente ya dado de baja. |
 
 ---

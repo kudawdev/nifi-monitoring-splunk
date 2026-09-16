@@ -90,27 +90,58 @@ services:
       retries: 60
       start_period: 180s
 
-  # Ships NiFi's log files to Splunk. This is the recommended path for logs
-  # (see the plan's section on logs); enable with `--profile forwarder`.
+  # Same seeding trick as `provision`, for the forwarder's etc/. Installs the
+  # TA so the profile exercises the monitor stanzas as shipped rather than a
+  # bespoke inputs.conf.
+  provision-uf:
+    profiles: ["forwarder"]
+    image: busybox:1.37
+    volumes:
+      - uf_etc:/etc-seed
+      - ..:/src:ro
+      - ./provision:/provision:ro
+    command: sh /provision/seed-uf-etc.sh
+    restart: "no"
+
+  # Ships NiFi's log files to Splunk. This is the recommended path for logs,
+  # and the half of the pull strategy the harness used to leave untested.
+  # Activated by the `forwarder: true` flag on a matrix profile, which makes
+  # matrix.py write COMPOSE_PROFILES=forwarder into .env.
   forwarder:
     profiles: ["forwarder"]
     image: splunk/universalforwarder:${SPLUNK_VERSION:-9.4}
     hostname: forwarder
     depends_on:
+      provision-uf:
+        condition: service_completed_successfully
       splunk:
+        condition: service_healthy
+      nifi:
         condition: service_healthy
     environment:
       SPLUNK_START_ARGS: --accept-license
       SPLUNK_GENERAL_TERMS: --accept-sgt-current-at-splunk-com
       SPLUNK_PASSWORD: ${SPLUNK_PASSWORD:-Password123}
-      SPLUNK_STANDALONE_URL: splunk
     volumes:
+      - uf_etc:/opt/splunkforwarder/etc
       - nifi_logs:/opt/nifi/nifi-current/logs:ro
       - ..:/src:ro
+    healthcheck:
+      # Not an HTTP check: the forwarder image sets the management mode to
+      # "auto (Allows UDS)", so splunkd listens on a Unix socket and nothing
+      # answers on TCP 8089. Curling it returns 000 and the container would
+      # never be healthy. That splunkd is up is enough of a gate here -- the
+      # assertions are what prove events actually arrive.
+      test: ["CMD-SHELL", "pgrep -f 'splunkd.*start' > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 300s
 
 volumes:
   splunk_etc:
   splunk_var:
+  uf_etc:
   nifi_logs:
   nifi_conf:
   nifi_state:

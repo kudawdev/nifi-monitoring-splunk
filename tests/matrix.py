@@ -30,9 +30,25 @@ SPLUNK_PASSWORD = "Password123"
 SPLUNK_HEC_TOKEN = "00000000-0000-0000-0000-0000000000ab"
 
 
+# PyYAML resolves these to booleans (YAML 1.1), and the fallback parser has
+# to agree or `forwarder: false` comes back as the non-empty -- and therefore
+# truthy -- string "false". Numbers are deliberately not coerced: matrix.yml
+# quotes every version, and test_matrix.ParserParityTest fails if that ever
+# stops being true.
+_TRUE = ("true", "True", "TRUE", "yes", "Yes", "YES", "on", "On", "ON")
+_FALSE = ("false", "False", "FALSE", "no", "No", "NO", "off", "Off", "OFF")
+_NULL = ("null", "Null", "NULL", "~")
+
+
 def _unquote(value):
     if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
         return value[1:-1]
+    if value in _TRUE:
+        return True
+    if value in _FALSE:
+        return False
+    if value in _NULL:
+        return None
     return value
 
 
@@ -127,6 +143,10 @@ def env_for(profile_name):
         "NIFI_ENV_FILE=./env/nifi-%s.env" % auth,
         # 'pull' (the TA's modular input) or 'hec' (the flow inside NiFi).
         "COLLECTION=%s" % profile.get("collection", "pull"),
+        # Whether a Universal Forwarder ships NiFi's logs. Compose reads
+        # COMPOSE_PROFILES from .env by itself, so run.sh needs no flag.
+        "FORWARDER=%s" % ("1" if profile.get("forwarder") else "0"),
+        "COMPOSE_PROFILES=%s" % ("forwarder" if profile.get("forwarder") else ""),
         # The unsecured 2.x profile cannot use the image's entrypoint.
         "NIFI_ENTRYPOINT=%s" % ("/opt/nifi/harness/start-unsecured.sh"
                                 if auth == "none2x" else "../scripts/start.sh"),

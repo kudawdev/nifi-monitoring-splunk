@@ -111,6 +111,9 @@ class IntegrationTestCase(unittest.TestCase):
     #: "pull", "hec", or None for a class that does not care.
     collection = None
 
+    #: True for a class that needs the Universal Forwarder profile.
+    forwarder = None
+
     @classmethod
     def setUpClass(cls):
         try:
@@ -123,12 +126,18 @@ class IntegrationTestCase(unittest.TestCase):
         cls.profile = env("PROFILE", "unknown")
         cls.nifi_version = env("NIFI_VERSION", "unknown")
         cls.profile_collection = env("COLLECTION", "pull")
+        cls.profile_forwarder = env("FORWARDER", "0") == "1"
 
     def setUp(self):
         if self.collection and self.collection != self.profile_collection:
             raise unittest.SkipTest(
                 "this profile collects through the %s path, not %s"
                 % (self.profile_collection, self.collection)
+            )
+        if self.forwarder and not self.profile_forwarder:
+            raise unittest.SkipTest(
+                "this profile runs no Universal Forwarder, so NiFi's log "
+                "files are not shipped"
             )
 
     @property

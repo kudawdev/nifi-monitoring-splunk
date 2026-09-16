@@ -56,11 +56,28 @@ They skip, rather than fail, when no stack is reachable.
 ### Profiles
 
 `matrix.yml` holds the supported combinations and which ones CI runs.
+
+There are two recommended ways to get data out of NiFi, and each one is
+covered **whole** -- API *and* logs -- by one profile:
+
+| Strategy | API | Logs | Profile |
+|---|---|---|---|
+| **Push** | the flow's `InvokeHTTP` → HEC | the flow's `TailFile` → HEC | `nifi2-hec` |
+| **Pull + forwarder** | the TA's modular input | a Universal Forwarder | `nifi2-current` |
+
+The remaining profiles (`nifi1-legacy`, `nifi1-last`, `nifi2-first`) are
+version regression: their job is to prove the TA still talks to every
+supported NiFi, not to cover a strategy.
+
 `nifi_auth` selects an environment file from `env/`:
 
 - `none` — plain HTTP, no authentication. The TA's `auth_type = none` path.
 - `singleuser` — HTTPS with NiFi's single-user provider. Exercises
   `POST /access/token`, the same login the TA performs.
+
+`forwarder: true` brings up the `universalforwarder` service. `matrix.py`
+turns it into `COMPOSE_PROFILES=forwarder` in `.env`, which Compose reads by
+itself -- `run.sh` needs no flag for it.
 
 ### Provisioning
 
@@ -90,5 +107,15 @@ HEC in the UI on every start.
   container hostname to the HTTPS host, which takes precedence over the HTTP
   settings. The `none` profile is verified on 1.x; for 2.x prefer
   `singleuser`, which is also closer to a real deployment.
-- **Log forwarding** is off by default. Bring up the Universal Forwarder
-  with `docker compose --profile forwarder up -d`.
+- **The forwarder has no management port.** Its image sets the management
+  mode to "auto (Allows UDS)", so splunkd listens on a Unix socket and TCP
+  8089 answers nothing at all -- `curl` returns 000, not 401. Its healthcheck
+  therefore looks for the process, unlike Splunk's and NiFi's.
+- **The forwarder gets the real TA**, not a bespoke `inputs.conf`. The
+  seeded `local/inputs.conf` only flips `disabled` and sets the index, so the
+  profile tests the monitor paths and sourcetypes exactly as shipped -- which
+  is how defect B-21 (the stanzas pointed at `/opt/nifi/logs/`, not where the
+  official image keeps them) would be caught next time.
+- **`nifi-deprecation.log` is created empty** and stays that way until
+  something deprecated runs, so its assertion skips rather than fails on a
+  clean instance.

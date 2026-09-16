@@ -134,6 +134,45 @@ class PushProfileTest(unittest.TestCase):
     def test_there_is_a_push_profile(self):
         self.assertTrue(self.push_profiles(), "no profile covers the push path")
 
+    def forwarder_profiles(self):
+        return {n: p for n, p in self.data["profiles"].items()
+                if p.get("forwarder")}
+
+    def test_there_is_a_pull_plus_forwarder_profile(self):
+        """The two recommended strategies are push (the flow, which tails the
+        logs itself) and pull + forwarder. Each must be covered whole: the
+        pull profiles alone only exercise the API half."""
+        self.assertTrue(
+            self.forwarder_profiles(),
+            "no profile ships NiFi's logs, so the pull strategy is only "
+            "half covered")
+
+    def test_the_forwarder_profile_collects_through_the_pull_path(self):
+        """A push profile already carries logs through the flow's TailFile
+        branch; adding a forwarder there would duplicate them."""
+        for name, profile in self.forwarder_profiles().items():
+            with self.subTest(profile=name):
+                self.assertNotEqual(profile.get("collection", "pull"), "hec")
+
+    def test_the_forwarder_profile_is_in_the_release_matrix(self):
+        for name in self.forwarder_profiles():
+            with self.subTest(profile=name):
+                self.assertIn(name, self.data["ci"]["release"])
+
+    def test_the_forwarder_env_reaches_compose(self):
+        """Compose reads COMPOSE_PROFILES from .env by itself; if matrix.py
+        stopped writing it the forwarder would silently never start and the
+        log assertions would skip instead of fail."""
+        for name in self.forwarder_profiles():
+            with self.subTest(profile=name):
+                env = matrix.env_for(name)
+                self.assertIn("COMPOSE_PROFILES=forwarder", env)
+                self.assertIn("FORWARDER=1", env)
+        for name, profile in self.data["profiles"].items():
+            if not profile.get("forwarder"):
+                with self.subTest(profile=name):
+                    self.assertIn("FORWARDER=0", matrix.env_for(name))
+
     def test_the_push_profile_disables_the_ta_input(self):
         """Both paths at once duplicates every event."""
         for name, profile in self.push_profiles().items():
