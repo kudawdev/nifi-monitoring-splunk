@@ -5,9 +5,9 @@
 | **Fecha** | 2026-08-24 |
 | **Autor** | Anibal Vasquez (Kudaw SA) |
 | **Última revisión** | 2026-09-16 |
-| **Estado** | **Ejecutado — 2.0.0 liberada.** Lo que queda diferido está en §11 |
+| **Estado** | **Ejecutado — 2.0.0 lista, sin liberar.** El último tag y el último release siguen siendo 1.2.3; la rama `nifi-2` no está mergeada. Lo diferido a 2.1 está en §11 |
 | **Versión al abrir el plan** | 1.2.3 (ambas) |
-| **Versión liberada** | **2.0.0 (ambas)** — breaking change |
+| **Versión en la fuente** | **2.0.0 (ambas)** — breaking change, sin publicar |
 | **Apps afectadas** | `nifi_monitoring` (Splunkbase 6125), `nifi_TA_monitoring` (Splunkbase 6124) |
 
 ---
@@ -343,7 +343,7 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 | TA-7 ◐ | **Parcial (el resto va a 2.1, §11):** el cursor de bulletins ya usa el `checkpoint_dir` de Splunk. Falta mover el token. Sustituir el estado en `.env` por el KV store de Splunk o `storage/passwords` (B-14). **Medido en el run del 2026-08-24:** el `.env` vive dentro del directorio de la app, así que se pierde al reinstalarla o recrear el contenedor, y cada arranque en frío paga un 401 evitable. Al no haber token cacheado, pedirlo proactivamente antes de la primera request en lugar de provocar el 401. |
 | TA-8 ◐ | **Parcial.** B-4, B-5 y B-16 corregidos; **B-15 (vendorizar `requests`/`urllib3`) diferido a 2.1** — §11. |
 | TA-9 ✅ | **Hecho.** `nifi_manager.xml` e `inputs.conf.spec` exponen los 18 parámetros del input, incluidos `metrics_registries`, `metrics_strategy`, `metrics_sample_filter`, `endpoint_bulletin_board`, `custom_endpoints`, `verify_tls` y `ca_bundle`. |
-| TA-10 ✅ | **Hecho.** `python.required` junto a `python.version`, que se conserva para Splunk 8.2–9.1. |
+| TA-10 ✅ | **Hecho, corregido el 2026-09-16.** `python.required` junto a `python.version`, que se conserva para Splunk 8.2–9.1. El valor era `python3` y **AppInspect no lo acepta**: `python.required` solo admite `3.9` o `3.13` (`PYTHON_REQUIRED_VALUES`), y Splunk 10.2 deprecó todo lo anterior a 3.13. Ahora es `python.required = 3.13`; `python.version` sigue en `python3`, que es su propio conjunto de valores. |
 | TA-11 ✅ | **Hecho.** Nuevo sourcetype `nifi:log:deprecation` + su stanza `[monitor://…nifi-deprecation*.log]`. Es el insumo del panel de apoyo a la migración (§4.3). |
 | TA-12 ✅ | **Hecho.** `nifi:log:request`. El formato se capturó de un NiFi real (`docs/plans/samples/nifi2.11-request.log`): es **NCSA combined**, idéntico al `access_combined` de Splunk, así que reutiliza `REPORT-access = access-extractions` del core en lugar de repetir el regex. Es el único log de NiFi con timestamp propio, así que el `_time` es el de la request, no el de recolección. |
 | TA-13 ✅ | **Hecho.** Corregido el corte de eventos de los cuatro `nifi:log:*` para agrupar los stack traces (B-20): `LINE_BREAKER = ([\r\n]+)(?=\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})`, `SHOULD_LINEMERGE = false` explícito en las cuatro stanzas y `TRUNCATE` holgado. |
@@ -355,7 +355,7 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 | # | Cambio |
 |---|---|
 | APP-1 ✅ | **Hecho.** `index_nifi` pasa de `index=*` a `index=nifi`, la app trae su `indexes.conf`, y el panel de Internal Monitoring gana un diagnóstico que dice cuántos eventos ve el macro y **en qué índices hay datos de NiFi realmente** — para que un override no requiera adivinar. Ese panel es el único lugar donde `index=*` queda justificado, y un test verifica que ningún otro dashboard lo use. |
-| APP-2 ✅ | **Hecho (D-4 = activarla).** Los paneles ya usaban `tstats … from datamodel=`, así que el diseño la suponía. `acceleration.earliest_time = -7d` con el costo documentado al lado. Verificado contra Splunk real: el modelo reporta acelerado y devuelve filas por `tstats`. |
+| APP-2 ✅ | **Hecho, con la decisión invertida el 2026-09-16 (ver D-4).** Los paneles usan `tstats … from datamodel=`, así que el diseño suponía la aceleración; se activó y se verificó contra Splunk real. Pero AppInspect no deja publicar una app que la distribuya, así que el artefacto sale con `acceleration = false` y `acceleration.earliest_time = -7d` esperando. Los paneles no quedan rotos — `tstats` sin `summariesonly` cae en búsqueda cruda —, quedan más lentos hasta que el operador la enciende. |
 | APP-3 ✅ | **Hecho.** Cuatro objetos nuevos: `Flow_Metrics`, `Bulletin_Board`, `Version_Info` y `Request_Log`. `Bulletin_Board` reutiliza los nombres de campo de `Reporting_Bulletin` para que una búsqueda no tenga que saber por qué vía llegó el bulletin, con un test que verifica que la única diferencia sean los dos campos que el board no puede dar. `Request_Log` va aparte y queda **excluido** del objeto `Logs`: matchea `nifi:log:*` pero es NCSA combined, sin ninguno de los campos de logback. |
 | APP-4 ✅ | **Hecho.** Los tres `join type=left` de la app eliminados (dos en `nifi_overview`, uno en el panel de inventario nuevo), reemplazados por `append` + `stats`. Justificación estructural, no medida: un join corre su lado derecho como subsearch, con tope de 50k filas y 60 s por defecto, y trunca en silencio al pasarlo. Con una sola instancia en el harness no hay diferencia observable. Un test impide que vuelva cualquier join. |
 | APP-5 ✅ | **Panel reescrito por conveniencia, no por corrección.** Ahora usa los campos `*Bytes` del modelo con columnas en GB y porcentajes numéricos, en lugar de las cadenas legibles (`"847.61 GB"`, `"16.0%"`) que no se pueden ordenar ni promediar. **No estaba roto:** Ver la entrada retirada de B-19 en §7. Queda como mejora opcional pasar el panel a los campos `*Bytes` y a las calculations del modelo, por conveniencia de agregación, no por corrección. |
@@ -399,7 +399,7 @@ Catalogados durante la lectura del repositorio del 2026-08-24. Severidad: **A** 
 | B-4 ✅ | **A** | `bin/nifi.py:validate_input` | Stub (`a=1; b=2; if a>=b: raise`) con `use_external_validation = True`. No valida nada: URL inválida o credenciales vacías se aceptan. **Resuelto** (TA-8). `validate_input` valida URL y esquema, `auth_type`, credenciales, intervalo, estrategia de métricas, registries y filtro. |
 | B-5 ✅ | **A** | `bin/nifi.py:__get_request` | En el reintento tras 401 se construye `headers` con el token nuevo pero **nunca se asigna a `req_args`**: el reintento reenvía el token viejo. La recuperación de sesión expirada no funciona. **Resuelto** (TA-8). El reintento reasigna `req_args["headers"]`; validado contra un NiFi real en §9.1. |
 | B-6 ✅ | **A** | `nifi_monitoring/default/macros.conf` | `index_nifi = index=*` — base de todos los dashboards y de las constraints del datamodel. Busca en todos los índices, incluidos los internos. |
-| B-7 ✅ | **B** | `datamodels.conf` + dashboards | `acceleration = false` mientras 6 paneles usan `tstats … from datamodel=NIFI.*`. Sin aceleración degrada a búsqueda cruda. |
+| B-7 ✅ | **B** | `datamodels.conf` + dashboards | `acceleration = false` mientras 6 paneles usan `tstats … from datamodel=NIFI.*`. Sin aceleración degrada a búsqueda cruda. **Resuelto, pero no como se creía.** El artefacto **debe** salir con `acceleration = false` — AppInspect lo exige —, así que lo que se corrige no es el valor sino el hueco: la doc ahora dice cómo encenderla y la tuning ya viene puesta. Ver D-4. |
 | B-8 ✅ | **B** | `nifi_overview.xml` | Dos `join type=left` en la query principal. Resuelto en APP-4. |
 | B-9 ✅ | **B** | TA + app | **Resuelto** en TA-6 y D-2. `nifi:api:site_to_site` se recolectaba habilitado por defecto y **ningún** dashboard ni objeto de datamodel lo consumía; `nifi:api:controller_cluster` tenía `props.conf` y no lo producía nadie. Los dos retirados en 2.0.0. |
 | B-10 ✅ | **A** | `mkdocs.yml` | No declara `docs_dir`; tras el rename `docs/` → `doc/` apunta a un directorio vacío. `docs.yml` publicaría un sitio vacío. **Resuelto.** `mkdocs.yml` declara `docs_dir: doc`, con un test que lo sostiene. |
@@ -588,7 +588,7 @@ El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el c
 | R-3 | Recapturar ~25 screenshots de una UI nueva es más trabajo que el código | tratar DOC-3 como tarea propia con su estimación; considerar reducir el set de imágenes |
 | R-4 | Cambiar sourcetypes rompe las búsquedas guardadas de los clientes actuales | 2.0.0 es major; **agregar** sourcetypes sin retirar los viejos en este release, y anunciar la deprecación para 2.1 |
 | ~~R-5~~ | **Retirado.** El token pertenecía a un Splunk de prueba ya dado de baja; no había producción que proteger. | — |
-| R-6 ◻ | AppInspect nuevo sube warnings por encima de `MAX_WARNING = 8` y bloquea el release | B-17 baja 2; medir el conteo real en F1 y ajustar el umbral con justificación |
+| R-6 ✅ | AppInspect nuevo sube warnings por encima de `MAX_WARNING = 8` y bloquea el release | **Medido el 2026-09-16 con `kudaw/appinspect:latest`: 5 y 7 warnings, bajo el umbral de 8.** B-17 hizo su trabajo y no hay que tocar `MAX_WARNING`. El riesgo estaba mal apuntado: lo que bloqueaba el release no era el conteo de warnings sino un **failure**, `check_for_datamodel_acceleration` (ver D-4) |
 | R-7 | **Activar la verificación TLS por defecto (B-23) es un breaking change.** Un input existente contra un NiFi con certificado autofirmado deja de conectar al actualizar | Es deliberado y corresponde a un major. El error dice qué hacer (apuntar `ca_bundle` a un bundle que lo valide, o destildar la verificación aceptando el riesgo). Debe ir en las notas de migración de 2.0.0, y hay que decidir si se acepta el default seguro o se invierte |
 | R-8 ◻ | El harness prueba el camino con la verificación **desactivada** (`verify_tls = 0`), porque los contenedores usan certificados autofirmados. El camino por defecto, que es el seguro, no está cubierto por ningún perfil | Agregar un perfil que extraiga el certificado del contenedor de NiFi y lo pase como `ca_bundle`, para ejercitar la verificación real |
 | R-9 | **Volumen del endpoint de métricas.** Medido: un NiFi **ocioso** ya emite 60 muestras (~14 KB) por poll; con `ALL_COMPONENTS` eso escala con cada procesador del flujo. Un flujo de 500 procesadores puede rondar 1 GB/día solo de métricas | Por eso `endpoint_flow_metrics` viene **apagado** por defecto, el default de estrategia es `ALL_PROCESS_GROUPS` (más acotado que el `ALL_COMPONENTS` de NiFi) y se exponen `metrics_registries` y `metrics_sample_filter`. La doc de instalación debe traer el cálculo antes de recomendar habilitarlo |
@@ -602,7 +602,7 @@ El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el c
 | **D-1** ✅ | Bulletins individuales | **Decidido (c): ambas, con polling por defecto** (Anibal Vasquez, 2026-08-24). Implementado en TA-5. |
 | **D-2** ✅ | `nifi:api:site_to_site` | **Decidido (a): retirado** (Anibal Vasquez, 2026-08-24). Se recolectaba en cada ciclo y ningún panel ni objeto del datamodel lo leía. Un input viejo que todavía traiga `endpoint_site_to_site` recibe un WARN diciendo que se ignora, en lugar de que desaparezca en silencio. |
 | **D-3** ✅ | Piso de NiFi soportado | **Decidido (a): 1.16**, donde aparece `producer=json`. Publicado en §5 y en `doc/compatibility.md`; el CI corre 1.23.2 y 1.28.1. |
-| **D-4** ✅ | Aceleración del datamodel | **Resuelto (a): activada.** Es lo que los paneles ya suponían. `earliest_time` en 7 días; bajarlo o desactivarla es una línea, con el costo documentado en `datamodels.conf`. |
+| **D-4** ✅ | Aceleración del datamodel | **Reabierta y vuelta a decidir el 2026-09-16: se distribuye apagada.** La primera decisión fue activarla, porque es lo que los paneles suponían. Al correr AppInspect en precert apareció lo que nadie había mirado: `check_for_datamodel_acceleration` **falla** cualquier app que distribuya un datamodel acelerado, o sea que con `true` la app no se puede publicar. Ahora `acceleration = false`, la tuning queda en el archivo para el momento en que se encienda, y `upgrading.md`/`.es.md` traen el paso a paso por Splunk Web — que es la condición que el propio check pone para aceptar una app sin acelerar. |
 | **D-5** ✅ | ¿1.2.4 de saneamiento antes de 2.0.0? | **Resuelto por los hechos: no.** F1 se absorbió en 2.0.0 y nunca hubo 1.2.4. El apuro que justificaba el release intermedio se desinfló al confirmar que el token de B-1 era de un ambiente ya dado de baja. |
 
 ---
@@ -610,8 +610,9 @@ El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el c
 ## 11. Pendiente para 2.1
 
 Estado al **2026-09-16**, verificado contra el código y no contra las marcas de
-este documento. Todo lo demás del plan está cerrado. **Nada de esto bloquea
-2.0.0, que ya salió.**
+este documento. Todo lo demás del plan está cerrado. **Nada de esto bloquea el
+release de 2.0.0**, que aún no se publicó: falta mergear `nifi-2` y correr
+`main.yml`.
 
 | # | Qué falta | Cómo se verificó que sigue abierto |
 |---|---|---|
@@ -621,7 +622,6 @@ este documento. Todo lo demás del plan está cerrado. **Nada de esto bloquea
 | **TA-4b** | Hacer `/system-diagnostics` opcional o de intervalo mayor en NiFi ≥2.0, donde las métricas ya cubren los tres repositorios. | La entrada de `endpoints` no tiene condición de versión ni de intervalo |
 | **R-8** | Un perfil del harness que extraiga el certificado del contenedor de NiFi y lo pase como `ca_bundle`, para ejercitar `verify_tls = 1`. | `tests/provision/splunk/inputs.conf.singleuser` usa `verify_tls = 0`: el camino **por defecto**, que es el seguro, no lo cubre ningún perfil |
 | **F0.3 / R-1 / R-9** | Medir la cardinalidad de `/flow/metrics` con un flujo no trivial. Es lo que sostiene la estimación de R-9 (≈1 GB/día con `ALL_COMPONENTS`), hoy extrapolada de un NiFi ocioso. | En `docs/plans/samples/` solo hay muestras de NiFi vacío |
-| **R-6** | Registrar el conteo real de warnings de AppInspect contra `MAX_WARNING = 8` y ajustar el umbral con justificación. | No hay ninguna medición anotada en este plan |
 | **DOC-3** ❌ | Recapturar los screenshots con la UI de NiFi 2.x. **No se hará desde acá**: es trabajo visual. 12 imágenes de 1.x siguen referenciadas en §4 de la doc, advertidas como tales. | — |
 
 **Prioridad sugerida:** B-14 y B-15 primero. El primero hace que el TA sobreviva
@@ -661,6 +661,20 @@ sin cubrir un camino que el propio 2.0.0 volvió el default.
 | Endpoints del TA vigentes en 2.11.0 | doc oficial REST API 2.11.0 | los 6 presentes |
 | Releases y tags disponibles | `gh api repos/apache/nifi/releases`, Docker Hub API | 2.11.0 (2026-08-03) es la última; 1.28.1 la última 1.x |
 | Inventario del flow actual | parseo de `flow_definition/NiFiMonitoring.json` | 39 procesadores, 14 tipos, 6 variables legacy, 0 parameter contexts |
+
+### AppInspect sobre el artefacto 2.0.0 (2026-09-16)
+
+`kudaw/appinspect:latest`, `slim package` + `slim validate` + `splunk-appinspect inspect --mode precert`, el mismo gate que corre `main.yml`.
+
+| Verificación | Resultado |
+|---|---|
+| `slim package` y `slim validate` en las dos apps | ✅ |
+| Gate **antes** de las correcciones | **BLOQUEA**: `nifi_monitoring` con 1 failure, `check_for_datamodel_acceleration` |
+| Conteo de warnings antes | 4 (`nifi_monitoring`) y 7 (`nifi_TA_monitoring`), bajo el umbral de 8 — R-6 era falsa alarma |
+| `check_modular_inputs_python_required` | future_failure: `python.required = python3` no es un valor válido; solo `3.9` o `3.13` |
+| Gate **después** de las correcciones | **PASA**: 0 errors, 0 failures, 0 future_failures; 5 y 7 warnings |
+
+El failure pasó a warning (`Data model [NIFI] was detected in this app and can eat disk space`), que es el precio documentado de distribuir el modelo sin acelerar.
 
 ### Contra instancias reales (spike del 2026-08-24)
 

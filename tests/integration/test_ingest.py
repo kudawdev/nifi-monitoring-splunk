@@ -342,15 +342,18 @@ class IndexAndAccelerationTest(IntegrationTestCase):
         )
         self.assertTrue(rows, "the index_nifi macro finds no NiFi data")
 
-    def test_the_datamodel_is_accelerated(self):
-        """The REST field is a flag, not the JSON blob the .conf holds."""
+    def test_the_datamodel_ships_unaccelerated(self):
+        """Acceleration ships off because AppInspect rejects an app that
+        distributes it on; enabling it is the operator's call, documented in
+        upgrading.md. The REST field is a flag, not the JSON blob the .conf
+        holds."""
         rows = search(
             self.splunk,
             "| rest /services/data/models/NIFI | table title, acceleration",
         )
         self.assertTrue(rows, "the NIFI datamodel is not present")
         self.assertIn(
-            str(rows[0]["acceleration"]).lower(), ("1", "true"),
+            str(rows[0]["acceleration"]).lower(), ("0", "false"),
             "acceleration reads %r" % rows[0]["acceleration"],
         )
 

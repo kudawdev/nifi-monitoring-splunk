@@ -42,13 +42,24 @@ búsqueda guardada lo leía nunca. Si construiste algo sobre ese sourcetype,
 deja de recibir eventos nuevos; los datos ya indexados no se ven afectados.
 El input avisa una vez si encuentra el ajuste viejo en `inputs.conf`.
 
-### La aceleración del datamodel queda activada
+### La aceleración del datamodel viene apagada -- cómo activarla
 
-Los dashboards consultan el modelo NIFI con `tstats`, que necesita un modelo
-acelerado para rendir como fue diseñado. La aceleración queda habilitada con
-un rango de 7 días. Eso cuesta disco en los summaries. Para cambiar latencia
-por almacenamiento, acortá `acceleration.earliest_time` o poné
-`acceleration = false` en `local/datamodels.conf`.
+Splunkbase no acepta una app que distribuya un datamodel acelerado, así que
+el modelo NIFI se entrega con `acceleration = false`. Los dashboards siguen
+devolviendo los números correctos, porque `tstats ... from datamodel=NIFI.*`
+cae en una búsqueda cruda, pero se vuelven más lentos a medida que crece el
+índice.
+
+Activar la aceleración es lo que más mejora la latencia de los paneles:
+
+1. Andá a **Settings > Data models**.
+2. Elegí **NIFI** y después **Edit > Edit Acceleration**.
+3. Marcá **Accelerate** y elegí un rango de summary. La app trae
+   `acceleration.earliest_time = -7d`, que es el rango con el que se
+   diseñaron los paneles.
+
+El costo es un summary tsidx por bucket dentro de ese rango. Acortá el rango
+si el almacenamiento te importa más que la historia.
 
 ### El flow definition se divide por versión de NiFi
 

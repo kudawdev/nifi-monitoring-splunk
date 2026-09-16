@@ -235,8 +235,10 @@ class MonitorPathTest(unittest.TestCase):
         self.assertIn("nifi:log:deprecation", sourcetypes)
 
     def test_python_required_is_declared(self):
-        """python.version alone no longer satisfies AppInspect."""
-        self.assertEqual(self.inputs["nifi"]["python.required"], "python3")
+        """Two keys for two audiences: python.version is what Splunk 8.2-9.1
+        reads, python.required is what AppInspect checks -- and it only accepts
+        3.9 or 3.13, so 'python3' is rejected outright."""
+        self.assertEqual(self.inputs["nifi"]["python.required"], "3.13")
         self.assertEqual(self.inputs["nifi"]["python.version"], "python3")
 
 
@@ -318,10 +320,12 @@ class IndexConfigurationTest(unittest.TestCase):
                         "%s scans every index" % name,
                     )
 
-    def test_acceleration_matches_what_the_panels_assume(self):
-        """The dashboards use `tstats ... from datamodel=`, which needs an
-        accelerated model to perform as intended."""
-        self.assertEqual(self.datamodels["NIFI"]["acceleration"], "true")
+    def test_acceleration_ships_off(self):
+        """AppInspect's precert mode fails any app that distributes an
+        accelerated datamodel, so shipping `true` means the app cannot be
+        published. The tuning stays in the file so it is already right when an
+        operator turns acceleration on."""
+        self.assertEqual(self.datamodels["NIFI"]["acceleration"], "false")
         self.assertIn("acceleration.earliest_time", self.datamodels["NIFI"])
 
 
@@ -483,6 +487,16 @@ class DocumentationTest(unittest.TestCase):
                 self.assertNotIn(
                     "blob/main/template/", open(os.path.join(self.DOC, name)).read()
                 )
+
+    def test_the_upgrade_notes_say_how_to_turn_acceleration_on(self):
+        """AppInspect lets an app ship unaccelerated only if it tells users how
+        to enable acceleration from Splunk Web, so the walkthrough is part of
+        the deal, not a nicety. Both languages."""
+        for page in ("upgrading.md", "upgrading.es.md"):
+            with self.subTest(page=page):
+                notes = open(os.path.join(self.DOC, page)).read()
+                self.assertIn("Data models", notes)
+                self.assertIn("Edit Acceleration", notes)
 
     def test_the_upgrade_notes_cover_every_breaking_change(self):
         """Each of these changes an existing installation's behaviour, so it
