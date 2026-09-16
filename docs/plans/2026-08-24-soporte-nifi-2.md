@@ -1,12 +1,13 @@
 # Plan: soporte de NiFi 2.x en NiFi Monitoring for Splunk
 
-| | |
+| ||
 |---|---|
 | **Fecha** | 2026-08-24 |
 | **Autor** | Anibal Vasquez (Kudaw SA) |
-| **Estado** | Propuesta — pendiente de aprobación |
-| **Versión actual de las apps** | 1.2.3 (ambas) |
-| **Versión objetivo** | 2.0.0 (breaking change) |
+| **Última revisión** | 2026-09-16 |
+| **Estado** | **Ejecutado — 2.0.0 liberada.** Lo que queda diferido está en §11 |
+| **Versión al abrir el plan** | 1.2.3 (ambas) |
+| **Versión liberada** | **2.0.0 (ambas)** — breaking change |
 | **Apps afectadas** | `nifi_monitoring` (Splunkbase 6125), `nifi_TA_monitoring` (Splunkbase 6124) |
 
 ---
@@ -19,7 +20,7 @@ Extender las dos apps para monitorear instancias de **Apache NiFi 2.x** sin perd
 
 - Soporte simultáneo de NiFi 1.16+ y 2.x en un único código.
 - Revisión y consolidación del método de recolección.
-- Corrección de los 24 defectos catalogados en §7 (B-19 se retiró tras verificarlo).
+- Corrección de los 24 defectos catalogados en §7 (B-19 se retiró tras verificarlo). **Cerrados 21; B-14, B-15 y B-24 diferidos a 2.1 — §11.**
 - Rediseño de `tests/` como matriz parametrizable NiFi × Splunk con verificación automatizada.
 - Actualización de la documentación pública bilingüe en `doc/`.
 
@@ -60,7 +61,7 @@ El costo estructural de este diseño: **la lógica de recolección está duplica
 
 ### 3.1 Ciclo de vida de versiones
 
-| | |
+| ||
 |---|---|
 | NiFi 1.x — última release | **1.28.1** (2024-11-20) |
 | NiFi 1.x — fin de soporte | **2024-12-08** (EOL) |
@@ -125,38 +126,6 @@ Esto invierte la intuición: **el camino que envejece bien es el pull (el TA); e
 | `rootFieldName` | string | solo producer `json` |
 | `flowMetricsReportingStrategy` | `ALL_COMPONENTS` (default) \| `ALL_PROCESS_GROUPS` | control de cardinalidad |
 
-### 3.8 Lo que reveló ejecutar el camino push (perfil `nifi2-hec`)
-
-Importar el flow probaba que **carga**. Ejecutarlo probó otras cuatro cosas, todas invisibles antes:
-
-| Hallazgo | Detalle |
-|---|---|
-| **Arrancar procesadores no alcanza** | Los *input/output ports* y los funnels tienen estado propio. Con los puertos detenidos, los FlowFiles se acumulan en el output port —medido: 2204 FlowFiles, 1.23 MB— mientras `Send2Splunk-HEC` figura **RUNNING y VALID con 0 bytes** y NiFi no levanta un solo bulletin. Hay que arrancar el grupo con `PUT /flow/process-groups/{id}`. |
-| **El push exige NiFi sin auth** | El flow llama a su propia API sin credenciales. Y el `start.sh` de la imagen no puede correr en HTTP puro, así que el perfil necesita un entrypoint de reemplazo (ver R-11). Resuelve T-4/F0.6, que había quedado pendiente. |
-| **D-2 estaba a medias** | `site_to_site` se retiró del TA pero **el flow seguía enviándolo**: los eventos llegaban sin `props.conf` que los defina, o sea sin un campo extraído. Ahora el script de migración lo retira del flow, junto con el `UpdateAttribute` que quedaba huérfano etiquetando una rama inexistente (39 → 37 procesadores). |
-| **Una búsqueda podía colgar el run** | `exec_mode="blocking"` de splunklib bloquea sin deadline. El primer intento quedó **16 horas** colgado; en CI habría consumido el runner hasta el tope del job. Ahora es `exec_mode="normal"` con deadline y cancelación. |
-
-**Resultado verificado:** 972 `nifi:log:app`, 25 `nifi:log:user`, 3 `nifi:api:flow_status` y 3 `nifi:api:system_diagnostics` llegados por el HEC, con **cero** ejecuciones del modular input (sin duplicación entre caminos) y **cero** eventos de `site_to_site`.
-
-### 3.7 Lo que reveló importar el flow en un NiFi 2.11.0 real
-
-`GetHTTP` era lo único que la documentación señalaba. Importar el flow y leer el estado de validación mostró tres cosas más:
-
-| Hallazgo | Detalle |
-|---|---|
-| **`JoltTransformJSON` fue relocalizado, no removido** | `org.apache.nifi.processors.standard` → `org.apache.nifi.processors.jolt`, y el bundle de `nifi-standard-nar` a `nifi-jolt-nar`. Además renombró sus propiedades (`jolt-spec` → `Jolt Specification`, …). **Mi método de verificación no podía detectarlo**: comprobaba que el archivo del procesador siguiera existiendo en el repo de NiFi, y sigue existiendo — en otro paquete. Existir y ser el mismo tipo no son lo mismo. |
-| **La pérdida de las variables es silenciosa** | Las 6 variables desaparecen, ningún componente reporta error, y `Send2Splunk-HEC` importa **VÁLIDO** con `HTTP URL = ${splunk_hec}/…` — una referencia que ya no resuelve a nada. Falla en runtime sin ninguna señal al importar. Es el peor de los modos de falla: el operador ve 5 procesadores en rojo, los arregla, y el envío al HEC sigue roto. |
-| **`InvokeHTTP` sí migra solo** | Renombró ~25 propiedades, pero NiFi 2.x aplica la migración al importar: `Remote URL` → `HTTP URL` con el valor intacto, y el procesador queda válido. No hay que tocarlas. |
-
-Y cuatro detalles que solo aparecieron al iterar el script contra el NiFi real:
-
-1. **Un process group hijo no hereda el parameter context del padre.** Poniéndolo solo en el raíz, todos los procesadores de los subgrupos quedaban inválidos.
-2. **Los booleanos de `InvokeHTTP` en 2.x solo aceptan `True`/`False`.** El `false` en minúscula que escribía `GetHTTP` se rechaza por estar fuera del conjunto permitido.
-3. **`InvokeHTTP` no tiene relación `success`.** Las conexiones que salían de los `GetHTTP` había que repuntarlas a `Response`, y auto-terminar las otras cuatro.
-4. **Una propiedad no sensible no puede referenciar un parámetro sensible.** El header `Authorization` debe declararse como propiedad dinámica sensible — lo que además mantiene el token fuera de un flow exportado, que es exactamente cómo se filtró el original.
-
-**Resultado verificado:** 39 procesadores, **37 válidos** tal como se distribuye y **39 de 39** en cuanto el operador da valor a `processors_list` y `process_groups_list`. Esos dos vienen vacíos a propósito: NiFi se niega a arrancar un procesador con una propiedad requerida vacía, que es mejor que arrancarlo apuntando a los IDs de otra instalación.
-
 ### 3.5 Lo que el spike encontró (medido, no supuesto)
 
 Se ejecutó el spike contra `apache/nifi:1.23.2` (HTTP sin auth) y `apache/nifi:2.11.0` (single-user, HTTPS). Las muestras están en `docs/plans/samples/`. Tres resultados cambian el diseño respecto de lo que la documentación sugería:
@@ -215,6 +184,38 @@ El endpoint de métricas es un **complemento de alto valor**, no un sustituto:
 - Al ser 1.x ⊂ 2.x, **un solo parser sirve para ambas líneas**: las métricas nuevas simplemente aparecen cuando el NiFi es 2.x.
 
 ---
+
+### 3.7 Lo que reveló importar el flow en un NiFi 2.11.0 real
+
+`GetHTTP` era lo único que la documentación señalaba. Importar el flow y leer el estado de validación mostró tres cosas más:
+
+| Hallazgo | Detalle |
+|---|---|
+| **`JoltTransformJSON` fue relocalizado, no removido** | `org.apache.nifi.processors.standard` → `org.apache.nifi.processors.jolt`, y el bundle de `nifi-standard-nar` a `nifi-jolt-nar`. Además renombró sus propiedades (`jolt-spec` → `Jolt Specification`, …). **Mi método de verificación no podía detectarlo**: comprobaba que el archivo del procesador siguiera existiendo en el repo de NiFi, y sigue existiendo — en otro paquete. Existir y ser el mismo tipo no son lo mismo. |
+| **La pérdida de las variables es silenciosa** | Las 6 variables desaparecen, ningún componente reporta error, y `Send2Splunk-HEC` importa **VÁLIDO** con `HTTP URL = ${splunk_hec}/…` — una referencia que ya no resuelve a nada. Falla en runtime sin ninguna señal al importar. Es el peor de los modos de falla: el operador ve 5 procesadores en rojo, los arregla, y el envío al HEC sigue roto. |
+| **`InvokeHTTP` sí migra solo** | Renombró ~25 propiedades, pero NiFi 2.x aplica la migración al importar: `Remote URL` → `HTTP URL` con el valor intacto, y el procesador queda válido. No hay que tocarlas. |
+
+Y cuatro detalles que solo aparecieron al iterar el script contra el NiFi real:
+
+1. **Un process group hijo no hereda el parameter context del padre.** Poniéndolo solo en el raíz, todos los procesadores de los subgrupos quedaban inválidos.
+2. **Los booleanos de `InvokeHTTP` en 2.x solo aceptan `True`/`False`.** El `false` en minúscula que escribía `GetHTTP` se rechaza por estar fuera del conjunto permitido.
+3. **`InvokeHTTP` no tiene relación `success`.** Las conexiones que salían de los `GetHTTP` había que repuntarlas a `Response`, y auto-terminar las otras cuatro.
+4. **Una propiedad no sensible no puede referenciar un parámetro sensible.** El header `Authorization` debe declararse como propiedad dinámica sensible — lo que además mantiene el token fuera de un flow exportado, que es exactamente cómo se filtró el original.
+
+**Resultado verificado:** 39 procesadores, **37 válidos** tal como se distribuye y **39 de 39** en cuanto el operador da valor a `processors_list` y `process_groups_list`. Esos dos vienen vacíos a propósito: NiFi se niega a arrancar un procesador con una propiedad requerida vacía, que es mejor que arrancarlo apuntando a los IDs de otra instalación.
+
+### 3.8 Lo que reveló ejecutar el camino push (perfil `nifi2-hec`)
+
+Importar el flow probaba que **carga**. Ejecutarlo probó otras cuatro cosas, todas invisibles antes:
+
+| Hallazgo | Detalle |
+|---|---|
+| **Arrancar procesadores no alcanza** | Los *input/output ports* y los funnels tienen estado propio. Con los puertos detenidos, los FlowFiles se acumulan en el output port —medido: 2204 FlowFiles, 1.23 MB— mientras `Send2Splunk-HEC` figura **RUNNING y VALID con 0 bytes** y NiFi no levanta un solo bulletin. Hay que arrancar el grupo con `PUT /flow/process-groups/{id}`. |
+| **El push exige NiFi sin auth** | El flow llama a su propia API sin credenciales. Y el `start.sh` de la imagen no puede correr en HTTP puro, así que el perfil necesita un entrypoint de reemplazo (ver R-11). Resuelve T-4/F0.6, que había quedado pendiente. |
+| **D-2 estaba a medias** | `site_to_site` se retiró del TA pero **el flow seguía enviándolo**: los eventos llegaban sin `props.conf` que los defina, o sea sin un campo extraído. Ahora el script de migración lo retira del flow, junto con el `UpdateAttribute` que quedaba huérfano etiquetando una rama inexistente (39 → 37 procesadores). |
+| **Una búsqueda podía colgar el run** | `exec_mode="blocking"` de splunklib bloquea sin deadline. El primer intento quedó **16 horas** colgado; en CI habría consumido el runner hasta el tope del job. Ahora es `exec_mode="normal"` con deadline y cancelación. |
+
+**Resultado verificado:** 972 `nifi:log:app`, 25 `nifi:log:user`, 3 `nifi:api:flow_status` y 3 `nifi:api:system_diagnostics` llegados por el HEC, con **cero** ejecuciones del modular input (sin duplicación entre caminos) y **cero** eventos de `site_to_site`.
 
 ## 4. Decisión de arquitectura: el método de obtención
 
@@ -325,21 +326,23 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 
 ## 6. Cambios por componente
 
+> **Leyenda:** ✅ hecho · ◐ parcial · ◻ pendiente, diferido a 2.1 (§11) · ❌ no se hará.
+
 ### 6.1 `nifi_TA_monitoring`
 
 | # | Cambio |
 |---|---|
-| TA-1 | Reescribir `NiFiScript.endpoints` como tabla declarativa con `min_version` / `max_version` por endpoint, en lugar de la lista plana actual. |
+| TA-1 ✅ | **Hecho.** `NiFiScript.endpoints` es una tabla declarativa con `min_version` por endpoint y un chequeo contra la versión detectada, en lugar de la lista plana. `max_version` no se implementó: ningún endpoint soportado desapareció, así que no hubo caso de uso. |
 | TA-2 ✅ | **Hecho.** Agregar `/flow/metrics/json` con `includedRegistries`, `flowMetricsReportingStrategy` y `sampleName` expuestos como parámetros del input. **No es pass-through:** implementar el zip de `labelNames`/`labelValues` y emitir un evento plano por muestra (`{name, value, <labels…>}`). Ver §3.5(a). |
 | TA-2b ✅ | **Hecho** (los registries se filtran por versión detectada). `includedRegistries=VERSION_INFO` responde **404 en 1.x**: pedirlo solo cuando la versión detectada sea ≥2.0, o tratar el 404 como "no soportado" sin marcarlo como error. |
 | TA-3 ✅ | **Hecho.** Autodetección de versión leyendo `versionInfo.niFiVersion` de `/system-diagnostics`, que existe en **todas** las versiones soportadas — un solo camino, no la bifurcación que preveía este plan. `VERSION_INFO` del endpoint de métricas quedó descartado para esto: responde 404 antes de 2.0, así que no sirve para averiguar con qué versión se está hablando. La respuesta se reutiliza para el endpoint `system_diagnostics` (una sola llamada por ciclo) y la versión se emite como `nifi:api:version_info`. |
 | TA-4 ✅ | **Hecho.** Nuevo sourcetype `nifi:api:flow_metrics` con su `props.conf` (`INDEXED_EXTRACTIONS = json`, **`TRUNCATE = 0`**, `SHOULD_LINEMERGE = false`, `LINE_BREAKER = ([\r\n]+)`) — un evento por línea. |
-| TA-4b | En NiFi ≥2.0 los repositorios llegan por métricas (`nifi_*_repo_*_space_bytes`): hacer `/system-diagnostics` opcional o de intervalo mayor, sin romper 1.x. |
+| TA-4b ◻ | **Pendiente (2.1).** En NiFi ≥2.0 los repositorios llegan por métricas (`nifi_*_repo_*_space_bytes`): hacer `/system-diagnostics` opcional o de intervalo mayor, sin romper 1.x. |
 | TA-5 ✅ | **Hecho.** Polling de `/flow/bulletin-board` → `nifi:api:bulletin_board`, habilitado por defecto, con `?after=<id>` y cursor en el `checkpoint_dir`. `props.conf` mapea la forma del board a los nombres que ya usa el datamodel, para que ambas fuentes alimenten los mismos paneles. |
 | TA-6 ✅ | **Hecho.** `nifi:api:controller_cluster` retirado (nada lo producía) y `nifi:api:site_to_site` retirado por D-2. |
-| TA-7 ◐ | **Parcial:** el cursor de bulletins ya usa el `checkpoint_dir` de Splunk. Falta mover el token. Sustituir el estado en `.env` por el KV store de Splunk o `storage/passwords` (B-14). **Medido en el run del 2026-08-24:** el `.env` vive dentro del directorio de la app, así que se pierde al reinstalarla o recrear el contenedor, y cada arranque en frío paga un 401 evitable. Al no haber token cacheado, pedirlo proactivamente antes de la primera request en lugar de provocar el 401. |
-| TA-8 | Corregir B-4, B-5, B-15, B-16. |
-| TA-9 | Extender `nifi_manager.xml` y `inputs.conf.spec` con los parámetros nuevos. |
+| TA-7 ◐ | **Parcial (el resto va a 2.1, §11):** el cursor de bulletins ya usa el `checkpoint_dir` de Splunk. Falta mover el token. Sustituir el estado en `.env` por el KV store de Splunk o `storage/passwords` (B-14). **Medido en el run del 2026-08-24:** el `.env` vive dentro del directorio de la app, así que se pierde al reinstalarla o recrear el contenedor, y cada arranque en frío paga un 401 evitable. Al no haber token cacheado, pedirlo proactivamente antes de la primera request en lugar de provocar el 401. |
+| TA-8 ◐ | **Parcial.** B-4, B-5 y B-16 corregidos; **B-15 (vendorizar `requests`/`urllib3`) diferido a 2.1** — §11. |
+| TA-9 ✅ | **Hecho.** `nifi_manager.xml` e `inputs.conf.spec` exponen los 18 parámetros del input, incluidos `metrics_registries`, `metrics_strategy`, `metrics_sample_filter`, `endpoint_bulletin_board`, `custom_endpoints`, `verify_tls` y `ca_bundle`. |
 | TA-10 ✅ | **Hecho.** `python.required` junto a `python.version`, que se conserva para Splunk 8.2–9.1. |
 | TA-11 ✅ | **Hecho.** Nuevo sourcetype `nifi:log:deprecation` + su stanza `[monitor://…nifi-deprecation*.log]`. Es el insumo del panel de apoyo a la migración (§4.3). |
 | TA-12 ✅ | **Hecho.** `nifi:log:request`. El formato se capturó de un NiFi real (`docs/plans/samples/nifi2.11-request.log`): es **NCSA combined**, idéntico al `access_combined` de Splunk, así que reutiliza `REPORT-access = access-extractions` del core en lugar de repetir el regex. Es el único log de NiFi con timestamp propio, así que el `_time` es el de la request, no el de recolección. |
@@ -365,9 +368,9 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 |---|---|
 | FLOW-1 ✅ | **Hecho.** Más `flow_definition/README.md` con la tabla de qué importar según versión y qué hace la migración. |
 | FLOW-2 ✅ | **Hecho** vía `migrate_to_nifi2.py`, un script versionado en lugar de una edición a mano de 6467 líneas. Un test verifica que el archivo distribuido coincida con una corrida limpia del script, así que no puede desincronizarse. |
-| FLOW-3 | **Purgar el token HEC y la IP del JSON** y reemplazarlos por placeholders (B-1). |
+| FLOW-3 ✅ | **Hecho.** El token HEC y la IP salieron del JSON: el flow 2.x declara `splunk_hec_token` como parámetro **sensible**, no queda ningún valor de ambiente en los dos flows distribuidos, y un test lo sostiene (B-1). |
 | FLOW-4 ✅ | **Hecho.** Movido a `nifi-1.x/`, que es donde sigue sirviendo; NiFi 2.x eliminó el soporte de templates. |
-| FLOW-5 | **Conservar** la rama de logs (`TailFile`) — no se rompe en 2.x (§4.3); solo mover `nifi_path` al Parameter Context. Cambia la recomendación de la doc a UF por defecto, no el artefacto. |
+| FLOW-5 ✅ | **Hecho.** La rama de logs (`TailFile`) se conservó — no se rompe en 2.x (§4.3) — y `nifi_path` pasó al Parameter Context. Lo que cambió es la recomendación de la doc, que ahora es UF por defecto; el artefacto no. |
 | FLOW-6 ✅ | **Hecho, y fue la fuente de todo lo demás.** Importado en NiFi 2.11.0 real: **39 de 39 procesadores válidos** una vez que el operador da valor a `processors_list` y `process_groups_list`; 37 de 39 tal como se distribuye, porque esos dos parámetros vienen vacíos a propósito. Ver §3.7. |
 
 ### 6.4 `doc/` (pública, bilingüe)
@@ -391,30 +394,30 @@ Catalogados durante la lectura del repositorio del 2026-08-24. Severidad: **A** 
 | ID | Sev | Componente | Defecto |
 |---|:---:|---|---|
 | B-1 ✅ | **A** | `flow_definition/…/NiFiMonitoring.json` | **Resuelto, y sin exposición real.** Traía el token HEC y la dirección de un ambiente **de prueba que ya fue dado de baja** (confirmado por Anibal Vasquez, 2026-08-24), así que el token estaba muerto y no hubo nada que rotar. Igual se purgó del HEAD: el flow 2.x declara `splunk_hec_token` como parámetro **sensible**, así NiFi no lo escribe al exportar — que fue exactamente la vía por la que se filtró — y un test falla si vuelve a aparecer un valor de ambiente en el flow distribuido. |
-| B-2 | **A** | `.github/workflows/main.yml`, `testing.yml` | `check-apps-version` globea `ls -d allkun*` (heredado de otro repo). Sin coincidencias el gate pasa vacuamente: se puede publicar un release con las dos apps desalineadas. `dev.yml` está correcto (`nifi*`). |
-| B-3 | **A** | `.github/workflows/testing.yml` | Usa `::set-output`, deshabilitado por GitHub en 2023 → `APP_VERSION` vacío → `slim validate` falla. El workflow está roto de punta a punta. |
-| B-4 | **A** | `bin/nifi.py:validate_input` | Stub (`a=1; b=2; if a>=b: raise`) con `use_external_validation = True`. No valida nada: URL inválida o credenciales vacías se aceptan. |
-| B-5 | **A** | `bin/nifi.py:__get_request` | En el reintento tras 401 se construye `headers` con el token nuevo pero **nunca se asigna a `req_args`**: el reintento reenvía el token viejo. La recuperación de sesión expirada no funciona. |
+| B-2 ✅ | **A** | `.github/workflows/main.yml`, `testing.yml` | `check-apps-version` globea `ls -d allkun*` (heredado de otro repo). Sin coincidencias el gate pasa vacuamente: se puede publicar un release con las dos apps desalineadas. `dev.yml` está correcto (`nifi*`). **Resuelto.** El gate compara las dos apps por nombre y además verifica que `[launcher]` e `[id]` coincidan dentro de cada app. |
+| B-3 ✅ | **A** | `.github/workflows/testing.yml` | Usa `::set-output`, deshabilitado por GitHub en 2023 → `APP_VERSION` vacío → `slim validate` falla. El workflow está roto de punta a punta. **Resuelto.** Los tres workflows escriben a `$GITHUB_OUTPUT`. |
+| B-4 ✅ | **A** | `bin/nifi.py:validate_input` | Stub (`a=1; b=2; if a>=b: raise`) con `use_external_validation = True`. No valida nada: URL inválida o credenciales vacías se aceptan. **Resuelto** (TA-8). `validate_input` valida URL y esquema, `auth_type`, credenciales, intervalo, estrategia de métricas, registries y filtro. |
+| B-5 ✅ | **A** | `bin/nifi.py:__get_request` | En el reintento tras 401 se construye `headers` con el token nuevo pero **nunca se asigna a `req_args`**: el reintento reenvía el token viejo. La recuperación de sesión expirada no funciona. **Resuelto** (TA-8). El reintento reasigna `req_args["headers"]`; validado contra un NiFi real en §9.1. |
 | B-6 ✅ | **A** | `nifi_monitoring/default/macros.conf` | `index_nifi = index=*` — base de todos los dashboards y de las constraints del datamodel. Busca en todos los índices, incluidos los internos. |
 | B-7 ✅ | **B** | `datamodels.conf` + dashboards | `acceleration = false` mientras 6 paneles usan `tstats … from datamodel=NIFI.*`. Sin aceleración degrada a búsqueda cruda. |
 | B-8 ✅ | **B** | `nifi_overview.xml` | Dos `join type=left` en la query principal. Resuelto en APP-4. |
-| B-9 ✅ | **B** | TA + app | `controller_cluster` retirado; `site_to_site` pendiente de D-2. | `nifi:api:site_to_site` se recolecta (habilitado por defecto) y **ningún** dashboard ni objeto de datamodel lo consume. `nifi:api:controller_cluster` tiene `props.conf` y no lo produce nadie. |
-| B-10 | **A** | `mkdocs.yml` | No declara `docs_dir`; tras el rename `docs/` → `doc/` apunta a un directorio vacío. `docs.yml` publicaría un sitio vacío. |
-| B-11 | C | `AGENTS.md` / `CLAUDE.md` | Dice versión 1.2.2; las apps están en 1.2.3. También afirma que `main.yml`/`testing.yml` corren por push — los tres son `workflow_dispatch`. |
-| B-12 | C | `mkdocs.yml` | `current_version: 1.0`. |
-| B-13 | **A** | `tests/nifi123-splunk91-nifi_login.yml` | `NIFI_WEB_PROXY_HOST: '<URL_BASE>:9443'` sin reemplazar → NiFi rechaza por host header. `SINGLE_USER_CREDENTIALS_PASSWORD: 'Password'` tiene 8 caracteres y NiFi exige 12: ignora las credenciales y genera aleatorias. **El modo login no funciona como está escrito.** Además mapea `443:9443` (puerto privilegiado) y no monta `../:/tmp/test` ni instala las apps auxiliares. |
-| B-14 | **B** | `bin/nifi.py` | Persiste el token JWT en claro en un `.env` dentro de `bin/`. `dotenv.find_dotenv()` busca desde el CWD hacia arriba: en un modular input eso es `$SPLUNK_HOME`, y puede enganchar un `.env` ajeno. |
-| B-15 | **B** | `bin/nifi.py` | `import requests` / `import urllib3` sin vendorizar en `lib/` — depende de que el Python de Splunk los traiga. Frágil entre versiones de Splunk. |
-| B-16 | C | `bin/nifi.py:__get_password` | Devuelve `None` silenciosamente si no encuentra el usuario en `storage/passwords`. |
+| B-9 ✅ | **B** | TA + app | **Resuelto** en TA-6 y D-2. `nifi:api:site_to_site` se recolectaba habilitado por defecto y **ningún** dashboard ni objeto de datamodel lo consumía; `nifi:api:controller_cluster` tenía `props.conf` y no lo producía nadie. Los dos retirados en 2.0.0. |
+| B-10 ✅ | **A** | `mkdocs.yml` | No declara `docs_dir`; tras el rename `docs/` → `doc/` apunta a un directorio vacío. `docs.yml` publicaría un sitio vacío. **Resuelto.** `mkdocs.yml` declara `docs_dir: doc`, con un test que lo sostiene. |
+| B-11 ✅ | C | `AGENTS.md` / `CLAUDE.md` | Dice versión 1.2.2; las apps están en 1.2.3. También afirma que `main.yml`/`testing.yml` corren por push — los tres son `workflow_dispatch`. **Resuelto el 2026-09-16.** `AGENTS.md` reescrito: 2.0.0, Splunk 9.0–10.x, los dos caminos de datos con sus endpoints reales, el harness de `tests/` tal como es hoy, y los defectos que siguen vigentes (B-14, B-24) señalados donde se los encuentra. |
+| B-12 ✅ | C | `mkdocs.yml` | `current_version: 1.0`. **Resuelto.** `current_version: 2.0`. |
+| B-13 ✅ | **A** | `tests/nifi123-splunk91-nifi_login.yml` | `NIFI_WEB_PROXY_HOST: '<URL_BASE>:9443'` sin reemplazar → NiFi rechaza por host header. `SINGLE_USER_CREDENTIALS_PASSWORD: 'Password'` tiene 8 caracteres y NiFi exige 12: ignora las credenciales y genera aleatorias. **El modo login no funciona como está escrito.** Además mapea `443:9443` (puerto privilegiado) y no monta `../:/tmp/test` ni instala las apps auxiliares. **Resuelto** en F2. Los composes por combinación desaparecieron: hay un solo compose parametrizado por perfil, con provisioning declarativo. |
+| B-14 ◻ | **B** | `bin/nifi.py` | Persiste el token JWT en claro en un `.env` dentro de `bin/`. `dotenv.find_dotenv()` busca desde el CWD hacia arriba: en un modular input eso es `$SPLUNK_HOME`, y puede enganchar un `.env` ajeno. **Pendiente — diferido a 2.1 (§11).** |
+| B-15 ◻ | **B** | `bin/nifi.py` | `import requests` / `import urllib3` sin vendorizar en `lib/` — depende de que el Python de Splunk los traiga. Frágil entre versiones de Splunk. **Pendiente — diferido a 2.1 (§11).** |
+| B-16 ✅ | C | `bin/nifi.py:__get_password` | Devuelve `None` silenciosamente si no encuentra el usuario en `storage/passwords`. **Resuelto** (TA-8). Ahora loguea un ERROR accionable antes de devolver `None`. |
 | B-17 ✅ | **B** | `app.conf` (ambas) | Falta la stanza `[id]` con `name`/`version`: agregarla baja 2 warnings de AppInspect (`check_for_valid_package_id`, `check_version_is_valid_semver`). Relevante porque el gate es `MAX_WARNING = 8` y AppInspect 4.2.x sumó `check_collections_conf` (+1, y `nifi_monitoring` tiene `collections.conf`). |
-| B-18 | C | `doc/configuration.md` | Link a `blob/main/template/NifiMonitoring.json`; la carpeta es `flow_definition/`. |
+| B-18 ✅ | C | `doc/configuration.md` | Link a `blob/main/template/NifiMonitoring.json`; la carpeta es `flow_definition/`. **Resuelto** (DOC-5). No queda ningún link a `template/`, y un test impide que vuelva. |
 | ~~B-19~~ | — | `nifi_overview.xml` | **Retirado: no era un defecto.** Se supuso que el panel "Status Disk Space" devolvía vacío por pedir campos (`…{}.freeSpace`, `utilization`) que el datamodel no declara. **Verificado contra Splunk 10.4 + NiFi 2.11: devuelve datos** (`contentFreeSpace = "847.61 GB"`, `contentUtilization = "16.0%"`); `tstats from datamodel=` sin `summariesonly` resuelve esos campos por los FIELDALIAS del TA. También se sospechó que comparar `"16.0%"` contra un umbral daría resultados erróneos: **falso**, Splunk devuelve el resultado correcto. Lo único cierto es que son cadenas legibles y no números, así que no se pueden promediar ni sumar, y que el panel ignora las tres calculations de porcentaje que el modelo ya trae. Eso es una mejora opcional de usabilidad, no un defecto. |
 | B-20 ✅ | **B** | `nifi_TA_monitoring/default/props.conf` | El corte de eventos de los logs es inconsistente y fragmenta los stack traces. `nifi:log:app` **no declara `SHOULD_LINEMERGE`** (queda al default `true`) mientras `nifi:log:user` y `nifi:log:bootstrap` sí lo ponen en `false`; con `LINE_BREAKER = ([\r\n]+)` cada línea de un stack trace se convierte en un evento suelto, sin timestamp ni `level`. **Medido: 77% de las líneas de `nifi-app.log` en un arranque limpio de NiFi 2.11 son continuaciones sin timestamp** (1014 de 1311). Ninguna stanza declara `TRUNCATE`, así que aplica el default de 10.000 bytes, que además de mutilar el evento grande se lleva el siguiente. |
 | B-21 ✅ | C | `nifi_TA_monitoring/default/inputs.conf` | Los monitor inputs apuntan a `/opt/nifi/logs/nifi-*.log`, pero en la imagen oficial de NiFi los logs están en `/opt/nifi/nifi-current/logs/`. La ruta por defecto no sirve para el despliegue más común. |
 | B-22 ✅ | C | TA | `nifi-deprecation.log` y `nifi-request.log` existen en 1.x y 2.x y **no se recolectan**. El primero es el log que dice qué componentes deprecados está usando el cliente: el insumo natural de un panel de apoyo a la migración a 2.x. |
-| B-23 | **A** ✅ | `bin/nifi.py` | **Resuelto.** Todas las llamadas a NiFi usaban `verify = False` (y se silencian los warnings de urllib3 con `disable_warnings`). Contra un NiFi con HTTPS eso acepta cualquier certificado: un atacante en la red puede interceptar la sesión y quedarse con el usuario, la contraseña y el JWT. En NiFi 2.x esto importa más que antes, porque HTTPS es el default y el modo sin auth dejó de ser práctico. Ahora es opcional (`verify_tls`, checkbox "Verify TLS certificate") con un `ca_bundle` opcional, y la verificación queda **activada** por defecto — incluido para los inputs guardados antes de que la opción existiera. Los warnings de urllib3 solo se silencian cuando el usuario apagó la verificación, y un fallo de certificado ahora dice qué hacer en lugar de mostrar solo el error de `requests`. Ver R-7 (breaking change) y R-8 (el harness cubre el camino sin verificar, no el default). |
+| B-23 ✅ | **A** | `bin/nifi.py` | **Resuelto.** Todas las llamadas a NiFi usaban `verify = False` (y se silencian los warnings de urllib3 con `disable_warnings`). Contra un NiFi con HTTPS eso acepta cualquier certificado: un atacante en la red puede interceptar la sesión y quedarse con el usuario, la contraseña y el JWT. En NiFi 2.x esto importa más que antes, porque HTTPS es el default y el modo sin auth dejó de ser práctico. Ahora es opcional (`verify_tls`, checkbox "Verify TLS certificate") con un `ca_bundle` opcional, y la verificación queda **activada** por defecto — incluido para los inputs guardados antes de que la opción existiera. Los warnings de urllib3 solo se silencian cuando el usuario apagó la verificación, y un fallo de certificado ahora dice qué hacer en lugar de mostrar solo el error de `requests`. Ver R-7 (breaking change) y R-8 (el harness cubre el camino sin verificar, no el default). |
 | B-25 ✅ | **A** | `nifi_monitoring/metadata/default.meta` | **Resuelto.** El datamodel `NIFI` se exportaba a `system` pero el macro `index_nifi` que usan sus **6 constraints** no tenía stanza de export. Fuera del contexto de la app el modelo no resolvía a nada — justo lo que se busca al exportarlo — y las búsquedas de aceleración tampoco podían resolver el macro. Apareció al activar la aceleración y correr las assertions sin app context. |
-| B-24 | C | `nifi_TA_monitoring/lib/splunklib` | `splunklib/results.py` hace `import deprecation`, un paquete de terceros que **no está vendorizado** junto a él, así que ese módulo lanza `ModuleNotFoundError` si alguien lo importa. Apareció al upgradear splunklib a 2.1.1 (`51f3ae6`). Hoy no rompe nada porque `bin/nifi.py` solo usa `splunklib.client` y `splunklib.modularinput`, que importan bien; queda como trampa para el próximo que necesite leer resultados de búsqueda. Vendorizar `deprecation` o retirar `results.py` del paquete. |
+| B-24 ◻ | C | `nifi_TA_monitoring/lib/splunklib` | `splunklib/results.py` hace `import deprecation`, un paquete de terceros que **no está vendorizado** junto a él, así que ese módulo lanza `ModuleNotFoundError` si alguien lo importa. Apareció al upgradear splunklib a 2.1.1 (`51f3ae6`). Hoy no rompe nada porque `bin/nifi.py` solo usa `splunklib.client` y `splunklib.modularinput`, que importan bien; queda como trampa para el próximo que necesite leer resultados de búsqueda. Vendorizar `deprecation` o retirar `results.py` del paquete. **Pendiente — diferido a 2.1 (§11).** |
 
 ---
 
@@ -484,16 +487,16 @@ En PR corren `nifi1-legacy` y `nifi2-current`; la matriz completa en el workflow
 |---|---|---|---|
 | F0.1 | Levantar `1.23.2` y `2.11.0` | ✅ | 1.23.2 en HTTP sin auth; 2.11.0 en HTTPS single-user |
 | F0.2 | Capturar `/flow/metrics/json` de ambas | ✅ | muestras en `docs/plans/samples/` |
-| F0.3 | Medir cardinalidad y efecto de los filtros | ⚠️ parcial | medido en NiFi **vacío** (§3.5d). Falta medir con un flujo no trivial, que es donde `ALL_COMPONENTS` vs `ALL_PROCESS_GROUPS` importa |
+| F0.3 | Medir cardinalidad y efecto de los filtros | ⚠️ parcial | medido en NiFi **vacío** (§3.5d). Falta medir con un flujo no trivial, que es donde `ALL_COMPONENTS` vs `ALL_PROCESS_GROUPS` importa — **diferido a 2.1 (§11)** |
 | F0.4 | `POST /access/token` contra 2.11.0 | ✅ | JWT válido, 8 h de vida; los 5 endpoints del TA responden 200 |
-| F0.5 | Importar el flow actual en 2.11.0 | ❌ pendiente | requiere UI; confirmar el modo de falla exacto |
-| F0.6 | Modo HTTP sin auth en el contenedor 2.x | ⚠️ parcial | se reprodujo el **421** y se resolvió con `NIFI_WEB_PROXY_HOST`; falta la receta de HTTP puro sin auth |
+| F0.5 | Importar el flow actual en 2.11.0 | ✅ | **Hecho.** El import deja 5 procesadores inválidos y pierde las 6 variables sin reportarlo. Ver §3.7 |
+| F0.6 | Modo HTTP sin auth en el contenedor 2.x | ✅ | **Hecho.** El **421** se resuelve con `NIFI_WEB_PROXY_HOST`, y la receta de HTTP puro es el entrypoint de reemplazo `provision/nifi/start-unsecured.sh` del perfil `nifi2-hec`. Ver §3.8 y R-11 |
 | F0.7 | Mapeo métricas ↔ datamodel | ✅ | §3.5(b) y (c): `/flow/status` irreemplazable; repositorios cubiertos solo en 2.x |
-| F0.8 | Levantar `1.28.1` y probar el TA real end-to-end contra Splunk | ❌ pendiente | se cubre en F2 con el harness nuevo |
+| F0.8 | Levantar `1.28.1` y probar el TA real end-to-end contra Splunk | ✅ | **Hecho** en F2: el perfil `nifi1-last` corre 1.28.1 + Splunk 10.4 en verde |
 
 **Lo que F0 ya cambió del plan:** §3.5 y §3.6 (nuevas), §4.1 (dos criterios agregados), §4.2.1 (reescrito), TA-2/TA-2b/TA-4/TA-4b. La decisión de §4.2 se sostiene, pero el rol del endpoint de métricas pasó de "sustituto" a "complemento con transformación en el TA".
 
-**Lo que falta antes de F3:** F0.3 con un flujo real y F0.5. F0.8 se absorbe en F2.
+**Cierre de F0 (2026-09-16):** F0.5, F0.6 y F0.8 se completaron después de escribir esta tabla. El único pendiente es **F0.3** — la medición con un flujo no trivial —, diferido a 2.1 (§11).
 
 ### F1 — Saneamiento (independiente de NiFi 2.x)
 
@@ -508,7 +511,7 @@ Todo esto se puede mergear ya y liberar como **1.2.4**, sin esperar el resto.
 
 - T-1 … T-8 y la matriz de §8.4.
 - **Aceptación:** `run.sh` levanta los 4 perfiles y las assertions pasan contra la app 1.2.4 tal cual; el job `unittest` del CI ejecuta la matriz y falla si un perfil falla.
-- **Estado 2026-08-24: F2 completa.** Los **cuatro perfiles** de la matriz corren de punta a punta en verde, `run.sh` devuelve exit 0 con teardown limpio, y el CI ejecuta la matriz (`integration` como job aparte, con `publish` dependiendo de él). Suite unit: 49 tests.
+- **Estado 2026-08-24: F2 completa.** Los **cuatro perfiles de pull** de la matriz corren de punta a punta en verde, `run.sh` devuelve exit 0 con teardown limpio, y el CI ejecuta la matriz (`integration` como job aparte, con `publish` dependiendo de él). Suite unit: 49 tests.
 
 | Perfil | NiFi | Java | Splunk | Resultado |
 |---|---|---|---|---|
@@ -517,7 +520,9 @@ Todo esto se puede mergear ya y liberar como **1.2.4**, sin esperar el resto.
 | `nifi2-first` | 2.0.0 | 21.0.5 | 10.4 | 7 ok · 1 skip |
 | `nifi2-current` | 2.11.0 | 21.0.12 | 10.4 | 7 ok · 1 skip |
 
-Los skips son correctos: `VERSION_INFO` no existe en 1.x, la recolección de `/flow/metrics` todavía no está implementada (TA-2), y en `nifi1-legacy` no hubo errores de los que recuperarse porque el modo sin auth no paga el 401 de bootstrap.
+**Actualización 2026-08-25:** se sumó el quinto perfil, `nifi2-hec` — el camino push —, cuyo resultado está en §3.8. `matrix.yml` y el job `integration` de `main.yml` corren hoy **cinco** perfiles en release y dos en pull request. **Actualización 2026-09-16:** la suite unit pasó de 49 a **226 tests**.
+
+Los skips son correctos: `VERSION_INFO` no existe en 1.x, la recolección de `/flow/metrics` **todavía no estaba implementada en esa corrida** (TA-2, cerrada después), y en `nifi1-legacy` no hubo errores de los que recuperarse porque el modo sin auth no paga el 401 de bootstrap.
 
 **El resultado que importa: el TA actual, sin una línea de cambio en su lógica de recolección, indexa correctamente desde NiFi 1.23.2, 1.28.1, 2.0.0 y 2.11.0.** Es la confirmación empírica de la decisión de §4.2.
 
@@ -534,8 +539,8 @@ El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el c
 | 5 | La assertion "sin errores" trataba el 401 de bootstrap como fallo | Falso positivo sobre un comportamiento que es de diseño |
 | 6 | `run.sh` sembraba el KV store en cuanto Splunk estaba *healthy*, pero el KV store sigue inicializando → `HTTP 503 KV Store is initializing` | Solo aparece cuando los pasos corren seguidos, que es justo lo que hace el CI. Resuelto con un gate sobre `/services/kvstore/status` |
 | 7 | La assertion comparaba errores totales contra eventos totales: lo primero es un one-off del arranque, lo segundo crece con el uptime | Test flaky por construcción: el mismo stack sano pasaba si las assertions corrían tarde y fallaba si corrían temprano |
-| 9 | `run.sh` no partía de un estado limpio: correr perfiles en secuencia fallaba en `up --wait` porque el stack anterior todavía se estaba yendo mientras el siguiente reclamaba los mismos puertos publicados | Cada perfil pasaba aislado, lo que lo hacía confuso. Correr la matriz en secuencia es la forma normal de verificarla localmente |
 | 8 | **En el TA:** `__get_request` leía la credencial almacenada antes de ramificar por `auth_type`, así que el modo sin auth hacía una llamada inútil a `storage/passwords` por endpoint y por ciclo — y al hacer hablar a `__get_password`, un ERROR por request | 6 errores contra 2 eventos en `nifi1-legacy`. **Los unit tests no podían verlo porque mockean `__get_password`**: es el argumento más claro a favor de tener las dos capas |
+| 9 | `run.sh` no partía de un estado limpio: correr perfiles en secuencia fallaba en `up --wait` porque el stack anterior todavía se estaba yendo mientras el siguiente reclamaba los mismos puertos publicados | Cada perfil pasaba aislado, lo que lo hacía confuso. Correr la matriz en secuencia es la forma normal de verificarla localmente |
 
 **Lo que el run sí demostró**, y era el objetivo:
 
@@ -547,7 +552,7 @@ El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el c
 
 ### F3 — TA multi-versión
 
-- TA-1 … TA-10.
+- TA-1 … TA-15. (TA-11 … TA-15 se sumaron durante la ejecución: los dos sourcetypes de log que faltaban, el corte de eventos de los stack traces, las rutas del contenedor y el pedido del cliente de endpoints configurables.)
 - **Aceptación:** un mismo input configurado contra NiFi 1.23.2, 1.28.1 y 2.11.0 produce eventos en los tres, con autodetección de versión visible en `nifi:api:version_info`; AppInspect sin errores y warnings ≤ el umbral.
 
 ### F4 — App visual
@@ -582,13 +587,13 @@ El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el c
 | R-2 | El formato de `producer=json` cambia entre 1.16 y 2.11 y obliga a bifurcar el parsing | F0.2 compara las tres muestras antes de diseñar |
 | R-3 | Recapturar ~25 screenshots de una UI nueva es más trabajo que el código | tratar DOC-3 como tarea propia con su estimación; considerar reducir el set de imágenes |
 | R-4 | Cambiar sourcetypes rompe las búsquedas guardadas de los clientes actuales | 2.0.0 es major; **agregar** sourcetypes sin retirar los viejos en este release, y anunciar la deprecación para 2.1 |
-| ~~R-5~~ | **Retirado.** El token pertenecía a un Splunk de prueba ya dado de baja; no había producción que proteger. |
-| R-10 | **Retirar `nifi:api:site_to_site` es breaking.** Un input existente con ese endpoint habilitado deja de recolectarlo al actualizar | Deliberado en un major. Los datos ya indexados no se pierden ni se degradan: `INDEXED_EXTRACTIONS` corre en tiempo de indexación, así que los eventos históricos conservan sus campos. El input avisa una vez si encuentra el ajuste obsoleto. Debe ir en las notas de migración de 2.0.0 |
-| R-9 | **Volumen del endpoint de métricas.** Medido: un NiFi **ocioso** ya emite 60 muestras (~14 KB) por poll; con `ALL_COMPONENTS` eso escala con cada procesador del flujo. Un flujo de 500 procesadores puede rondar 1 GB/día solo de métricas | Por eso `endpoint_flow_metrics` viene **apagado** por defecto, el default de estrategia es `ALL_PROCESS_GROUPS` (más acotado que el `ALL_COMPONENTS` de NiFi) y se exponen `metrics_registries` y `metrics_sample_filter`. La doc de instalación debe traer el cálculo antes de recomendar habilitarlo |
+| ~~R-5~~ | **Retirado.** El token pertenecía a un Splunk de prueba ya dado de baja; no había producción que proteger. | — |
+| R-6 ◻ | AppInspect nuevo sube warnings por encima de `MAX_WARNING = 8` y bloquea el release | B-17 baja 2; medir el conteo real en F1 y ajustar el umbral con justificación |
 | R-7 | **Activar la verificación TLS por defecto (B-23) es un breaking change.** Un input existente contra un NiFi con certificado autofirmado deja de conectar al actualizar | Es deliberado y corresponde a un major. El error dice qué hacer (apuntar `ca_bundle` a un bundle que lo valide, o destildar la verificación aceptando el riesgo). Debe ir en las notas de migración de 2.0.0, y hay que decidir si se acepta el default seguro o se invierte |
+| R-8 ◻ | El harness prueba el camino con la verificación **desactivada** (`verify_tls = 0`), porque los contenedores usan certificados autofirmados. El camino por defecto, que es el seguro, no está cubierto por ningún perfil | Agregar un perfil que extraiga el certificado del contenedor de NiFi y lo pase como `ca_bundle`, para ejercitar la verificación real |
+| R-9 | **Volumen del endpoint de métricas.** Medido: un NiFi **ocioso** ya emite 60 muestras (~14 KB) por poll; con `ALL_COMPONENTS` eso escala con cada procesador del flujo. Un flujo de 500 procesadores puede rondar 1 GB/día solo de métricas | Por eso `endpoint_flow_metrics` viene **apagado** por defecto, el default de estrategia es `ALL_PROCESS_GROUPS` (más acotado que el `ALL_COMPONENTS` de NiFi) y se exponen `metrics_registries` y `metrics_sample_filter`. La doc de instalación debe traer el cálculo antes de recomendar habilitarlo |
+| R-10 | **Retirar `nifi:api:site_to_site` es breaking.** Un input existente con ese endpoint habilitado deja de recolectarlo al actualizar | Deliberado en un major. Los datos ya indexados no se pierden ni se degradan: `INDEXED_EXTRACTIONS` corre en tiempo de indexación, así que los eventos históricos conservan sus campos. El input avisa una vez si encuentra el ajuste obsoleto. Debe ir en las notas de migración de 2.0.0 |
 | R-11 | **El camino push exige un NiFi sin autenticación.** El flow consulta su propia API sin credenciales, así que un NiFi con auth lo rechaza. Eso no estaba dicho en el plan y limita cuándo el push es viable | Documentado en `compatibility.md`. El perfil `nifi2-hec` usa un entrypoint de reemplazo (`provision/nifi/start-unsecured.sh`) porque el `start.sh` de la imagen **no puede** correr en HTTP: escribe `nifi.web.https.port` desde `${VAR:-8443}` y `:-` sustituye el default también para un valor vacío |
-| R-8 | El harness prueba el camino con la verificación **desactivada** (`verify_tls = 0`), porque los contenedores usan certificados autofirmados. El camino por defecto, que es el seguro, no está cubierto por ningún perfil | Agregar un perfil que extraiga el certificado del contenedor de NiFi y lo pase como `ca_bundle`, para ejercitar la verificación real |
-| R-6 | AppInspect nuevo sube warnings por encima de `MAX_WARNING = 8` y bloquea el release | B-17 baja 2; medir el conteo real en F1 y ajustar el umbral con justificación |
 
 ### Decisiones abiertas
 
@@ -596,9 +601,33 @@ El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el c
 |---|---|---|
 | **D-1** ✅ | Bulletins individuales | **Decidido (c): ambas, con polling por defecto** (Anibal Vasquez, 2026-08-24). Implementado en TA-5. |
 | **D-2** ✅ | `nifi:api:site_to_site` | **Decidido (a): retirado** (Anibal Vasquez, 2026-08-24). Se recolectaba en cada ciclo y ningún panel ni objeto del datamodel lo leía. Un input viejo que todavía traiga `endpoint_site_to_site` recibe un WARN diciendo que se ignora, en lugar de que desaparezca en silencio. |
-| **D-3** | Piso de NiFi soportado | (a) 1.16 (donde aparece `producer=json`); (b) 1.23 (lo que hoy se prueba); (c) solo 2.x + una 1.x de cortesía. **Recomendación: (a)**, con CI en 1.23.2 y 1.28.1. |
+| **D-3** ✅ | Piso de NiFi soportado | **Decidido (a): 1.16**, donde aparece `producer=json`. Publicado en §5 y en `doc/compatibility.md`; el CI corre 1.23.2 y 1.28.1. |
 | **D-4** ✅ | Aceleración del datamodel | **Resuelto (a): activada.** Es lo que los paneles ya suponían. `earliest_time` en 7 días; bajarlo o desactivarla es una línea, con el costo documentado en `datamodels.conf`. |
-| **D-5** | ¿1.2.4 de saneamiento antes de 2.0.0? | **Recomendación: sí.** F1 arregla un secreto expuesto y un gate de release roto; no debería esperar al resto del plan. |
+| **D-5** ✅ | ¿1.2.4 de saneamiento antes de 2.0.0? | **Resuelto por los hechos: no.** F1 se absorbió en 2.0.0 y nunca hubo 1.2.4. El apuro que justificaba el release intermedio se desinfló al confirmar que el token de B-1 era de un ambiente ya dado de baja. |
+
+---
+
+## 11. Pendiente para 2.1
+
+Estado al **2026-09-16**, verificado contra el código y no contra las marcas de
+este documento. Todo lo demás del plan está cerrado. **Nada de esto bloquea
+2.0.0, que ya salió.**
+
+| # | Qué falta | Cómo se verificó que sigue abierto |
+|---|---|---|
+| **B-14 / TA-7** | Mover el JWT del `.env` al KV store o a `storage/passwords`. El cursor de bulletins ya usa el `checkpoint_dir`; el token no. | `bin/nifi.py` sigue importando `dotenv` y escribiendo el token con `dotenv.set_key` |
+| **B-15 / TA-8** | Vendorizar `requests` y `urllib3` en `lib/`. | `nifi_TA_monitoring/lib/` contiene solo `splunklib` |
+| **B-24** | Vendorizar `deprecation`, o retirar `results.py` del `splunklib` vendorizado. | `import splunklib.results` → `ModuleNotFoundError: No module named 'deprecation'` |
+| **TA-4b** | Hacer `/system-diagnostics` opcional o de intervalo mayor en NiFi ≥2.0, donde las métricas ya cubren los tres repositorios. | La entrada de `endpoints` no tiene condición de versión ni de intervalo |
+| **R-8** | Un perfil del harness que extraiga el certificado del contenedor de NiFi y lo pase como `ca_bundle`, para ejercitar `verify_tls = 1`. | `tests/provision/splunk/inputs.conf.singleuser` usa `verify_tls = 0`: el camino **por defecto**, que es el seguro, no lo cubre ningún perfil |
+| **F0.3 / R-1 / R-9** | Medir la cardinalidad de `/flow/metrics` con un flujo no trivial. Es lo que sostiene la estimación de R-9 (≈1 GB/día con `ALL_COMPONENTS`), hoy extrapolada de un NiFi ocioso. | En `docs/plans/samples/` solo hay muestras de NiFi vacío |
+| **R-6** | Registrar el conteo real de warnings de AppInspect contra `MAX_WARNING = 8` y ajustar el umbral con justificación. | No hay ninguna medición anotada en este plan |
+| **DOC-3** ❌ | Recapturar los screenshots con la UI de NiFi 2.x. **No se hará desde acá**: es trabajo visual. 12 imágenes de 1.x siguen referenciadas en §4 de la doc, advertidas como tales. | — |
+
+**Prioridad sugerida:** B-14 y B-15 primero. El primero hace que el TA sobreviva
+a una reinstalación en lugar de pagar un 401 evitable en cada arranque en frío;
+el segundo lo independiza de qué traiga el Python de Splunk. R-8 es el que deja
+sin cubrir un camino que el propio 2.0.0 volvió el default.
 
 ---
 
@@ -659,4 +688,4 @@ Contenedores `apache/nifi:1.23.2` (HTTP sin auth, puerto 18080) y `apache/nifi:2
 
 Muestras versionadas en `docs/plans/samples/`: `nifi{1.23,2.11}-{metrics-all,flow-status,system-diagnostics}.json`.
 
-> Sigue pendiente: medición con un flujo no trivial (F0.3), importación del flow actual en 2.11.0 (F0.5) y prueba end-to-end TA→Splunk (F0.8/F2).
+> **Al 2026-09-16:** F0.5 (importación del flow en 2.11.0) y F0.8 (end-to-end TA→Splunk) se completaron después de escribir este anexo — ver §3.7 y F2. Sigue pendiente solo la medición con un flujo no trivial (F0.3), diferida a 2.1 (§11).
