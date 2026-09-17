@@ -182,3 +182,100 @@ class DiagnosticsReuseTest(NiFiScriptTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VersionCacheTest(NiFiScriptTestCase):
+    """Defect TA-4b, as it turned out to actually be.
+
+    The plan asked for /system-diagnostics to become optional on NiFi 2.x,
+    where the metrics endpoint already covers the three repositories. It
+    cannot be: the call is how the version is detected (TA-3), so it happens
+    whether or not the sourcetype is indexed. What can be avoided is paying
+    for it every cycle -- 1891 bytes a call, once a minute by default, on an
+    input that then throws the response away.
+    """
+
+    def setUp(self):
+        super().setUp()
+        import tempfile, shutil
+        self.checkpoints = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.checkpoints, ignore_errors=True)
+
+    def run_stream(self, diagnostics_enabled="0", responses=None):
+        inputs = mock.MagicMock()
+        inputs.inputs.popitem.return_value = (
+            "nifi://instance",
+            {"api_url": "http://nifi:8080/nifi-api", "auth_type": "none",
+             "host": "nifi", "endpoint_flow_status": "0",
+             # The bulletin board is on when the key is absent, and its poll
+             # would be counted as a call to /system-diagnostics if these
+             # assertions went by call count instead of by URL.
+             "endpoint_bulletin_board": "0",
+             "endpoint_system_diagnostics": diagnostics_enabled},
+        )
+        self.script._input_definition = mock.MagicMock()
+        self.script._input_definition.metadata = {
+            "session_key": "sk", "checkpoint_dir": self.checkpoints,
+        }
+        self.http.get.side_effect = responses or [
+            response(200, sample("nifi2.11-system-diagnostics.json"))
+        ]
+        writer = mock.MagicMock()
+        with mock.patch.object(self.nifi, "EventWriter", mock.MagicMock()):
+            self.script.stream_events(inputs, writer)
+        return writer
+
+    def diagnostics_calls(self):
+        """How many GETs went to /system-diagnostics, whatever else ran."""
+        return [c for c in self.http.get.call_args_list
+                if "system-diagnostics" in c.args[0]]
+
+    def seed_cache(self, age_seconds=0, version="2.11.0"):
+        import time
+        self.script._input_definition = mock.MagicMock()
+        self.script._input_definition.metadata = {
+            "session_key": "sk", "checkpoint_dir": self.checkpoints,
+        }
+        self.script._NiFiScript__write_checkpoint(
+            mock.MagicMock(), "nifi://instance", "version",
+            json.dumps({"at": time.time() - age_seconds,
+                        "info": {"niFiVersion": version, "javaVersion": "21"}}),
+        )
+
+    def test_the_version_is_written_to_the_checkpoint(self):
+        self.run_stream()
+        path = os.path.join(self.checkpoints, "nifi___instance.version")
+        self.assertTrue(os.path.isfile(path), os.listdir(self.checkpoints))
+        record = json.loads(open(path).read())
+        self.assertEqual(record["info"]["niFiVersion"], "2.11.0")
+
+    def test_a_fresh_cache_skips_the_call_when_nothing_indexes_it(self):
+        self.seed_cache()
+        self.run_stream(diagnostics_enabled="0", responses=[])
+
+        self.assertEqual(self.diagnostics_calls(), [])
+        self.assertEqual(self.script.nifi_version, (2, 11, 0))
+
+    def test_the_call_still_happens_when_the_endpoint_is_indexed(self):
+        """The response is needed as data, so the cache must not suppress it."""
+        self.seed_cache()
+        self.run_stream(diagnostics_enabled="1")
+
+        self.assertEqual(len(self.diagnostics_calls()), 1)
+
+    def test_a_stale_cache_is_refetched(self):
+        self.seed_cache(age_seconds=self.script.version_cache_seconds + 60)
+        self.run_stream(diagnostics_enabled="0")
+
+        self.assertEqual(len(self.diagnostics_calls()), 1)
+
+    def test_a_corrupt_cache_is_ignored(self):
+        self.script._input_definition = mock.MagicMock()
+        self.script._input_definition.metadata = {
+            "session_key": "sk", "checkpoint_dir": self.checkpoints,
+        }
+        self.script._NiFiScript__write_checkpoint(
+            mock.MagicMock(), "nifi://instance", "version", "not json")
+        self.run_stream(diagnostics_enabled="0")
+
+        self.assertEqual(len(self.diagnostics_calls()), 1)

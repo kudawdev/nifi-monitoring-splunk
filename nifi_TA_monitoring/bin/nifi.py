@@ -21,6 +21,7 @@ except ImportError as error:  # pragma: no cover - depends on the host Splunk
     )
     raise
 #import xml.etree.ElementTree as ElementTree
+import time
 import uuid
 import unicodedata
 import json
@@ -50,6 +51,11 @@ class NiFiScript(Script):
     # The token for this process's input. use_single_instance is false, so one
     # process serves one input and an instance attribute is the right scope.
     token_cache = None
+    # How long a detected NiFi version is trusted before /system-diagnostics
+    # is polled for it again. It only changes when NiFi is upgraded, and the
+    # call is otherwise pure waste on an input that does not index the
+    # sourcetype (defect TA-4b).
+    version_cache_seconds = 3600
     tls_verify = True
     nifi_version = None
 
@@ -156,6 +162,29 @@ class NiFiScript(Script):
 
     def __token_key(self, input_name):
         return unicodedata.normalize('NFKD', input_name).replace(' ', '')
+
+    def __cached_version(self, ew, input_name):
+        """The last detected version info, if it is still fresh.
+
+        Kept in the checkpoint dir rather than in memory: the modular input is
+        a process per cycle, so an in-memory cache would never survive to be
+        used.
+        """
+        raw = self.__read_checkpoint(ew, input_name, 'version')
+        if not raw:
+            return None
+        try:
+            record = json.loads(raw)
+            if time.time() - float(record.get('at', 0)) > self.version_cache_seconds:
+                return None
+            info = record.get('info') or {}
+            return info if info.get('niFiVersion') else None
+        except Exception:
+            return None
+
+    def __cache_version(self, ew, input_name, version_info):
+        self.__write_checkpoint(ew, input_name, 'version', json.dumps(
+            {'at': time.time(), 'info': version_info}))
 
     def __read_token(self, ew, session_key, input_name):
         """The stored JWT for this input.
@@ -682,14 +711,34 @@ class NiFiScript(Script):
                 EventWriter.log(ew, EventWriter.ERROR,'{} There was an error when encrypting/masking the password: {}'.format(self.pid, e))
             
         
-        # Detect the NiFi version before deciding what to collect. The response
-        # is kept so the system_diagnostics endpoint, when enabled, does not
-        # have to be fetched twice.
-        diagnostics = self.__get_request(ew, base_url, "/system-diagnostics", auth_type, username, iname, session_key)
-        version_info = self.version_info_of(diagnostics)
-        self.nifi_version = self.parse_version((version_info or {}).get('niFiVersion'))
+        # Detect the NiFi version before deciding what to collect.
+        #
+        # TA-4b asked for /system-diagnostics to become optional on NiFi 2.x,
+        # where the metrics endpoint already covers the three repositories.
+        # It cannot: the call is how the version is detected (TA-3), so it
+        # happens whether or not the sourcetype is indexed. What can be
+        # avoided is paying for it on every cycle. When the input does not
+        # index system_diagnostics and the version is already known and
+        # fresh, the call is skipped entirely; when it does index it, the
+        # response is reused so the endpoint is never fetched twice.
+        wants_diagnostics = input_item.get('endpoint_system_diagnostics') == '1'
+        cached = self.__cached_version(ew, input_name)
+        diagnostics = None
+        version_info = None
 
-        if self.nifi_version:
+        if wants_diagnostics or not cached:
+            diagnostics = self.__get_request(ew, base_url, "/system-diagnostics", auth_type, username, iname, session_key)
+            version_info = self.version_info_of(diagnostics)
+            self.nifi_version = self.parse_version((version_info or {}).get('niFiVersion'))
+            if version_info:
+                self.__cache_version(ew, input_name, version_info)
+        else:
+            version_info = cached
+            self.nifi_version = self.parse_version(cached.get('niFiVersion'))
+            EventWriter.log(ew, EventWriter.INFO, '{} Using the cached NiFi version {}; /system-diagnostics not polled this cycle'.format(
+                self.pid, cached.get('niFiVersion')))
+
+        if self.nifi_version and diagnostics is not None:
             EventWriter.log(ew, EventWriter.INFO, '{} Detected NiFi {} (Java {})'.format(
                 self.pid, version_info.get('niFiVersion'), version_info.get('javaVersion')))
             ew.write_event(Event(
