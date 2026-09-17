@@ -27,11 +27,69 @@ from support import env  # noqa: E402
 _UNVERIFIED = ssl._create_unverified_context()
 
 
+#: Which NiFi the next call goes to. A push profile with two instances has to
+#: install the flow in both -- there is no coordinator to replicate it, they
+#: are unrelated NiFis that happen to send to the same HEC.
+_PORT = None
+
+
 def base_url():
-    return "http://localhost:%s/nifi-api" % env("NIFI_HTTP_PORT", "38080")
+    return "http://localhost:%s/nifi-api" % (_PORT or env("NIFI_HTTP_PORT", "38080"))
 
 
-def call(path, body=None, method="GET", raw=None, content_type="application/json"):
+def instance_ports():
+    ports = [env("NIFI_HTTP_PORT", "38080")]
+    if int(env("INSTANCES", "1")) > 1:
+        ports.append(env("NIFI_B_HTTP_PORT", "38081"))
+    return ports
+
+
+class _CallFailed(Exception):
+    def __init__(self, status, message):
+        super().__init__(message)
+        self.status = status
+
+
+#: A cluster refuses to change its flow while any node is still joining, and
+#: it goes back to joining while it inherits a flow that has just changed --
+#: so this is not only a startup race. Every mutating call can land in that
+#: window, which is why the retry lives here rather than around one of them.
+#: Measured messages: HTTP 500 replicating the import to the other node, and
+#: HTTP 409 "Cluster is unable to service request to change flow: Node
+#: nifi:8080 is currently connecting".
+CLUSTER_SETTLING = "currently connecting"
+RETRIES = 12
+RETRY_WAIT = 10
+
+
+def call(path, body=None, method="GET", raw=None, content_type="application/json",
+         raise_for_status=True):
+    """Retries a request the cluster refuses while it is settling.
+
+    Only that: any other 4xx -- a malformed flow, a bad parameter -- fails at
+    once, and every attempt is printed even when a later one succeeds, so a
+    real problem shows up in the log instead of being smoothed away.
+    """
+    last = None
+    for attempt in range(1, RETRIES + 1):
+        try:
+            return _call_once(path, body, method, raw, content_type)
+        except _CallFailed as error:
+            last = error
+            transient = error.status >= 500 or (
+                error.status == 409 and CLUSTER_SETTLING in str(error))
+            if not transient:
+                if raise_for_status:
+                    raise SystemExit(str(error))
+                raise
+            print("    attempt %d: cluster still settling, retrying" % attempt)
+            time.sleep(RETRY_WAIT)
+    if raise_for_status:
+        raise SystemExit("gave up after %d attempts: %s" % (RETRIES, last))
+    raise last
+
+
+def _call_once(path, body=None, method="GET", raw=None, content_type="application/json"):
     headers = {"Accept": "application/json"}
     data = None
     if raw is not None:
@@ -40,8 +98,19 @@ def call(path, body=None, method="GET", raw=None, content_type="application/json
         data, headers["Content-Type"] = json.dumps(body).encode(), "application/json"
     request = urllib.request.Request(base_url() + path, data=data,
                                      headers=headers, method=method)
-    with urllib.request.urlopen(request, timeout=120, context=_UNVERIFIED) as response:
-        text = response.read().decode()
+    try:
+        with urllib.request.urlopen(request, timeout=120, context=_UNVERIFIED) as response:
+            text = response.read().decode()
+    except urllib.error.HTTPError as error:
+        # NiFi puts the reason in the body. Without it a 500 says nothing at
+        # all, which is how the first clustered run of this script ended.
+        detail = ""
+        try:
+            detail = error.read().decode()[:500]
+        except Exception:  # noqa: BLE001 - best effort
+            pass
+        raise _CallFailed(error.code, "%s %s -> HTTP %s %s\n%s" % (
+            method, path, error.code, error.reason, detail))
     return json.loads(text) if text else {}
 
 
@@ -68,8 +137,59 @@ def upload_flow(root, path):
                 content_type="multipart/form-data; boundary=%s" % boundary)
 
 
+def set_variables(group_id, values):
+    """The 1.x way of doing what a parameter context does in 2.x.
+
+    NiFi 1.x has no parameter context in this flow -- the variable registry is
+    what the processors reference -- and 2.x removed the registry entirely.
+    One flow artefact per line, one configuration mechanism per line: the same
+    split the plan describes for the flow files themselves.
+    """
+    for name, value in values:
+        group = call("/process-groups/%s" % group_id)
+        request = call("/process-groups/%s/variable-registry/update-requests" % group_id,
+                       method="POST", body={
+                           "processGroupRevision": group["revision"],
+                           "variableRegistry": {
+                               "processGroupId": group_id,
+                               "variables": [{"variable": {"name": name, "value": value}}],
+                           },
+                       })
+        request_id = request["request"]["requestId"]
+        for _ in range(60):
+            time.sleep(1)
+            state = call("/process-groups/%s/variable-registry/update-requests/%s"
+                         % (group_id, request_id))
+            if state["request"]["complete"]:
+                failure = state["request"].get("failureReason")
+                if failure:
+                    raise SystemExit("variable %s failed: %s" % (name, failure))
+                break
+        else:
+            raise SystemExit("variable %s did not apply" % name)
+
+
 def set_parameters(context_id, values):
-    """Fill in the parameter context, and wait for NiFi to apply it."""
+    """Fill in the parameter context, and wait for NiFi to apply it.
+
+    Retried as a whole, not through call(): the update is asynchronous, so a
+    cluster that is settling reports it inside a perfectly good HTTP 200 --
+    failureReason "Cluster is unable to service request to change flow: Node
+    nifi:8080 is currently connecting". An HTTP-level retry never sees it.
+    """
+    for attempt in range(1, RETRIES + 1):
+        failure = _set_parameters_once(context_id, values)
+        if failure is None:
+            return
+        if CLUSTER_SETTLING not in failure:
+            raise SystemExit("parameter update failed: %s" % failure)
+        print("    attempt %d: cluster still settling, retrying parameters" % attempt)
+        time.sleep(RETRY_WAIT)
+    raise SystemExit("the parameter update never completed: cluster kept settling")
+
+
+def _set_parameters_once(context_id, values):
+    """Returns None on success, or the failure reason NiFi reported."""
     context = call("/parameter-contexts/%s" % context_id)
     request = call("/parameter-contexts/%s/update-requests" % context_id, method="POST", body={
         "revision": context["revision"],
@@ -87,10 +207,7 @@ def set_parameters(context_id, values):
         time.sleep(2)
         state = call("/parameter-contexts/%s/update-requests/%s" % (context_id, request_id))
         if state["request"]["complete"]:
-            failure = state["request"].get("failureReason")
-            if failure:
-                raise SystemExit("parameter update failed: %s" % failure)
-            return
+            return state["request"].get("failureReason")
     raise SystemExit("parameter update did not complete")
 
 
@@ -118,14 +235,43 @@ def port_states(group_id):
 
 
 def main():
-    flow_file = os.path.join(REPO, "flow_definition", "nifi-2.x", "NiFiMonitoring.json")
+    global _PORT
+    ports = instance_ports()
+    for index, port in enumerate(ports, 1):
+        _PORT = port
+        if len(ports) > 1:
+            print("    instance %d of %d, on port %s" % (index, len(ports), port))
+        provision_one()
+    return 0
+
+
+def provision_one():
+    # One flow artefact per NiFi line: 2.x removed templates and the variable
+    # registry, so the 1.x file is not merely older, it is configured through
+    # a different mechanism.
+    major = env("NIFI_VERSION", "2.11.0").split(".")[0]
+    line = "nifi-1.x" if major == "1" else "nifi-2.x"
+    flow_file = os.path.join(REPO, "flow_definition", line, "NiFiMonitoring.json")
     if not os.path.isfile(flow_file):
         raise SystemExit("missing %s" % flow_file)
 
     root = call("/flow/process-groups/root")["processGroupFlow"]["id"]
     group = upload_flow(root, flow_file)
     group_id = group["id"]
-    print("    imported the flow as process group %s" % group_id)
+    print("    imported the %s flow as process group %s" % (line, group_id))
+
+    if major == "1":
+        set_variables(group_id, [
+            ("splunk_hec", "http://splunk:8088"),
+            ("splunk_hec_token", env("SPLUNK_HEC_TOKEN", "")),
+            ("nifi_api_url", "http://localhost:8080/nifi-api"),
+            ("nifi_path", "/opt/nifi/nifi-current/"),
+            ("processors_list", ""),
+            ("process_groups_list", ""),
+        ])
+        print("    variable registry filled in")
+        finish(group_id)
+        return
 
     context_id = call("/process-groups/%s" % group_id)["component"]["parameterContext"]["id"]
     # Inside the compose network Splunk answers on its service name, and the
@@ -134,12 +280,22 @@ def main():
     set_parameters(context_id, [
         ("splunk_hec", "http://splunk:8088", False),
         ("splunk_hec_token", env("SPLUNK_HEC_TOKEN", ""), True),
-        ("nifi_api_url", "http://localhost:8080/nifi-api", False),
+        # localhost only works on a single node. A clustered node binds to
+        # its own name so the others can reach it, so nothing answers on the
+        # loopback -- and the flow runs on whichever node is primary, which is
+        # not knowable in advance. The service name resolves from any node,
+        # and any node's API answers cluster-wide anyway.
+        ("nifi_api_url",
+         "http://nifi:8080/nifi-api" if env("CLUSTER", "0") == "1"
+         else "http://localhost:8080/nifi-api", False),
         ("processors_list", "", False),
         ("process_groups_list", "", False),
     ])
     print("    parameter context filled in")
+    finish(group_id)
 
+
+def finish(group_id):
     processors = processors_under(group_id)
     invalid = [p for p in processors if p["component"]["validationStatus"] != "VALID"]
     print("    %d processors, %d valid" % (len(processors), len(processors) - len(invalid)))

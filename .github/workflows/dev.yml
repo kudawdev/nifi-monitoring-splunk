@@ -87,7 +87,7 @@ jobs:
       fail-fast: false
       matrix:
         # Keep in step with the `ci.pull_request` list in tests/matrix.yml.
-        profile: [nifi1-legacy, nifi2-current]
+        profile: [nifi1-legacy, nifi2-current, cluster, nifi2-hec]
     steps:
       - uses: actions/checkout@v4
       - name: Run the ${{ matrix.profile }} profile

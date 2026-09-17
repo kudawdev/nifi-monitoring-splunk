@@ -14,6 +14,12 @@ set -eu
 
 SEED=/etc-seed
 SRC=/src
+# Which NiFi this forwarder sits next to. UF_HOST is what the events are
+# stamped with; UF_NODE, when set, adds an indexed `node` field so a cluster's
+# logs say which member they came from while still sharing one host (the
+# cluster is the instance -- decision C-1).
+UF_HOST="${UF_HOST:-nifi}"
+UF_NODE="${UF_NODE:-}"
 
 echo "seed-uf: installing the TA"
 mkdir -p "$SEED/apps"
@@ -25,8 +31,14 @@ find "$SEED/apps/nifi_TA_monitoring" -name '__pycache__' -type d -exec rm -rf {}
 # and two collectors would duplicate every API event.
 mkdir -p "$SEED/apps/nifi_TA_monitoring/local"
 echo "seed-uf: enabling the log monitors, leaving the modular input off"
-cp "$SRC/tests/provision/uf/inputs.conf" \
-   "$SEED/apps/nifi_TA_monitoring/local/inputs.conf"
+sed -e "s/^host = nifi$/host = $UF_HOST/" \
+    "$SRC/tests/provision/uf/inputs.conf" \
+    > "$SEED/apps/nifi_TA_monitoring/local/inputs.conf"
+if [ -n "$UF_NODE" ]; then
+    echo "seed-uf: tagging events with node=$UF_NODE"
+    sed -i "/^host = /a _meta = node::$UF_NODE" \
+        "$SEED/apps/nifi_TA_monitoring/local/inputs.conf"
+fi
 
 echo "seed-uf: pointing outputs at the indexer"
 mkdir -p "$SEED/system/local"

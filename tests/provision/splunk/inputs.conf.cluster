@@ -1,0 +1,26 @@
+# TA input for the cluster profile.
+#
+# The NiFi is unsecured, like the push profile's, but here the modular input
+# is the collector: the point is to prove the add-on reads a cluster, so it
+# has to be the one doing the reading.
+#
+# Nothing here asks for cluster data. The add-on detects that NiFi is
+# clustered from /flow/cluster/summary and collects the per-node sourcetypes
+# on its own -- an operator should not have to know, and this input is the
+# assertion that they do not.
+
+[nifi://nifi]
+api_url = http://nifi:8080/nifi-api/
+auth_type = none
+
+endpoint_flow_status = 1
+endpoint_system_diagnostics = 1
+
+# Same as the other pull profiles, and on a cluster it also exercises the
+# CLUSTER registry, which until now was offered as an input option that nobody
+# had ever pointed at a cluster.
+endpoint_flow_metrics = 1
+metrics_strategy = ALL_COMPONENTS
+host = nifi
+index = nifi
+interval = 60

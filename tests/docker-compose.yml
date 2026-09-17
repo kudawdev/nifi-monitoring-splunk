@@ -26,6 +26,9 @@ services:
       # When 1, the input verifies NiFi's certificate against the bundle the
       # provision-cert service exports.
       TLS_VERIFY: ${TLS_VERIFY:-0}
+      # When 1, installs the input for the cluster profile.
+      CLUSTER: ${CLUSTER:-0}
+      COLLECTION: ${COLLECTION:-pull}
     volumes:
       - splunk_etc:/etc-seed
       - ..:/src:ro
@@ -78,6 +81,18 @@ services:
     entrypoint: ${NIFI_ENTRYPOINT:-../scripts/start.sh}
     env_file:
       - ${NIFI_ENV_FILE:-./env/nifi-singleuser.env}
+    environment:
+      # Inert unless the profile is a cluster: the entrypoint only applies
+      # these when NIFI_CLUSTER_IS_NODE is true, and so does the image's own
+      # start.sh. No depends_on for ZooKeeper -- NiFi retries the connection,
+      # and a depends_on to a service gated behind a compose profile is not
+      # something to rely on.
+      NIFI_CLUSTER_IS_NODE: ${NIFI_CLUSTER_IS_NODE:-false}
+      NIFI_CLUSTER_NODE_PROTOCOL_PORT: "8082"
+      NIFI_ZK_CONNECT_STRING: "zookeeper:2181"
+      NIFI_ELECTION_MAX_WAIT: "20 secs"
+      NIFI_ELECTION_MAX_CANDIDATES: "2"
+      NIFI_SENSITIVE_PROPS_KEY: "harness-shared-sensitive-key"
     ports:
       - "${NIFI_HTTP_PORT:-38080}:8080"
       - "${NIFI_HTTPS_PORT:-38443}:8443"
@@ -91,7 +106,9 @@ services:
       # works for both the unsecured and the single-user profile.
       # Same reason as Splunk: a secured NiFi answers 401 here, and that
       # still proves the API is up.
-      test: ["CMD-SHELL", "curl -sk --max-time 5 http://localhost:8080/nifi-api/access/config || curl -sk --max-time 5 https://localhost:8443/nifi-api/access/config"]
+      # $(hostname), not localhost: a clustered node binds to its own name so
+      # other nodes can reach it, and then nothing answers on the loopback.
+      test: ["CMD-SHELL", "curl -sk --max-time 5 http://$(hostname):8080/nifi-api/access/config || curl -sk --max-time 5 http://localhost:8080/nifi-api/access/config || curl -sk --max-time 5 https://localhost:8443/nifi-api/access/config"]
       interval: 10s
       timeout: 5s
       retries: 60
@@ -120,6 +137,69 @@ services:
       start_period: 30s
     restart: "no"
 
+  # ZooKeeper for the cluster profile. NiFi can embed one, but a separate
+  # container is what a real cluster uses and keeps the nodes symmetric.
+  zookeeper:
+    profiles: ["cluster"]
+    image: zookeeper:3.9
+    environment:
+      ZOO_4LW_COMMANDS_WHITELIST: "*"
+
+  # Second node of the cluster. Not the same as nifi-b: that one is a separate
+  # instance, this one is a member of the same NiFi.
+  nifi-node2:
+    profiles: ["cluster"]
+    image: apache/nifi:${NIFI_VERSION:-2.11.0}
+    hostname: nifi-node2
+    entrypoint: /opt/nifi/harness/start-unsecured.sh
+    depends_on: [zookeeper]
+    environment: &cluster_node_env
+      NIFI_WEB_HTTP_PORT: "8080"
+      NIFI_CLUSTER_IS_NODE: "true"
+      NIFI_CLUSTER_NODE_PROTOCOL_PORT: "8082"
+      NIFI_ZK_CONNECT_STRING: "zookeeper:2181"
+      NIFI_ELECTION_MAX_WAIT: "20 secs"
+      NIFI_ELECTION_MAX_CANDIDATES: "2"
+      # Every node needs the same key or a clustered NiFi refuses to start.
+      NIFI_SENSITIVE_PROPS_KEY: "harness-shared-sensitive-key"
+    volumes:
+      - ./provision/nifi:/opt/nifi/harness:ro
+      - nifi_node2_logs:/opt/nifi/nifi-current/logs
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s --max-time 5 http://$(hostname):8080/nifi-api/access/config"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 180s
+
+  # The forwarder for the second NiFi. Which log volume it reads is the only
+  # difference between the multi-instance case (another instance) and the
+  # cluster case (another node of the same one); the host and node it stamps
+  # come from the profile.
+  forwarder2:
+    profiles: ["forwarder2"]
+    image: splunk/universalforwarder:${SPLUNK_VERSION:-9.4}
+    hostname: forwarder2
+    depends_on:
+      provision-uf2:
+        condition: service_completed_successfully
+      splunk:
+        condition: service_healthy
+    environment:
+      SPLUNK_START_ARGS: --accept-license
+      SPLUNK_GENERAL_TERMS: --accept-sgt-current-at-splunk-com
+      SPLUNK_PASSWORD: ${SPLUNK_PASSWORD:-Password123}
+    volumes:
+      - uf2_etc:/opt/splunkforwarder/etc
+      - ${UF2_LOG_VOLUME:-nifi_b_logs}:/opt/nifi/nifi-current/logs:ro
+      - ..:/src:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'splunkd.*start' > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 300s
+
   # A second, independent NiFi. Not a cluster node: the multi-instance profile
   # exists to cover what the app already claims -- centralising several
   # separate NiFi instances -- which no profile exercised. Deliberately a
@@ -131,16 +211,20 @@ services:
     hostname: nifi-b
     entrypoint: ${NIFI_ENTRYPOINT:-../scripts/start.sh}
     env_file:
-      - ./env/nifi-singleuser-b.env
+      - ${NIFI_B_ENV_FILE:-./env/nifi-singleuser-b.env}
     ports:
       - "${NIFI_B_HTTPS_PORT:-38444}:8443"
+      - "${NIFI_B_HTTP_PORT:-38081}:8080"
     volumes:
       - nifi_b_logs:/opt/nifi/nifi-current/logs
       - nifi_b_conf:/opt/nifi/nifi-current/conf
       - nifi_b_state:/opt/nifi/nifi-current/state
       - ./provision/nifi:/opt/nifi/harness:ro
     healthcheck:
-      test: ["CMD-SHELL", "curl -sk --max-time 5 https://localhost:8443/nifi-api/access/config"]
+      # Both schemes: this NiFi is HTTPS with single-user auth in the pull
+      # profile and plain HTTP in the push one, because a flow calling its own
+      # API has no credentials to present.
+      test: ["CMD-SHELL", "curl -sk --max-time 5 https://localhost:8443/nifi-api/access/config || curl -s --max-time 5 http://localhost:8080/nifi-api/access/config"]
       interval: 10s
       timeout: 5s
       retries: 60
@@ -152,8 +236,27 @@ services:
   provision-uf:
     profiles: ["forwarder"]
     image: busybox:1.37
+    environment:
+      UF_HOST: ${UF_HOST:-nifi}
     volumes:
       - uf_etc:/etc-seed
+      - ..:/src:ro
+      - ./provision:/provision:ro
+    command: sh /provision/seed-uf-etc.sh
+    restart: "no"
+
+  # A forwarder per NiFi, which is what a real deployment has: the agent runs
+  # on the machine whose files it reads. The second one exists for the
+  # profiles with a second NiFi -- another instance (multi) or another cluster
+  # node (cluster) -- and reads that node's log volume.
+  provision-uf2:
+    profiles: ["forwarder2"]
+    image: busybox:1.37
+    environment:
+      UF_HOST: ${UF2_HOST:-nifi}
+      UF_NODE: ${UF2_NODE:-}
+    volumes:
+      - uf2_etc:/etc-seed
       - ..:/src:ro
       - ./provision:/provision:ro
     command: sh /provision/seed-uf-etc.sh
@@ -198,6 +301,8 @@ volumes:
   splunk_etc:
   splunk_var:
   uf_etc:
+  uf2_etc:
+  nifi_node2_logs:
   nifi_logs:
   nifi_conf:
   nifi_state:

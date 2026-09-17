@@ -14,6 +14,9 @@ profiles:
     nifi_version: "1.23.2"
     splunk_version: "9.4"
     nifi_auth: none
+    # Every pull profile ships logs too: the strategy is pull + forwarder,
+    # and covering only its API half is covering half a strategy.
+    forwarder: true
 
   nifi1-last:
     description: >
@@ -22,6 +25,9 @@ profiles:
     nifi_version: "1.28.1"
     splunk_version: "10.4"
     nifi_auth: singleuser
+    # Every pull profile ships logs too: the strategy is pull + forwarder,
+    # and covering only its API half is covering half a strategy.
+    forwarder: true
 
   nifi2-current:
     description: >
@@ -48,6 +54,64 @@ profiles:
     nifi_version: "2.0.0"
     splunk_version: "10.4"
     nifi_auth: singleuser
+    # Every pull profile ships logs too: the strategy is pull + forwarder,
+    # and covering only its API half is covering half a strategy.
+    forwarder: true
+
+  cluster:
+    description: >
+      A two-node NiFi cluster behind one input. Not the same as
+      multi-instance: there the two NiFis are unrelated, here they are
+      members of one. Unsecured, for the same reason the nifi2-hec profile
+      is: a secured cluster needs a certificate per node, which is a
+      different exercise from proving the add-on reads a cluster.
+    nifi_version: "2.11.0"
+    splunk_version: "10.4"
+    nifi_auth: none2x
+    cluster: true
+    # Every pull profile ships logs too: the strategy is pull + forwarder,
+    # and covering only its API half is covering half a strategy.
+    forwarder: true
+
+  multi-hec:
+    description: >
+      Two independent NiFis, each pushing to the same HEC. Both unsecured,
+      because the flow calls its own API with no credentials -- a push profile
+      cannot have one authenticated instance and one not. What this covers
+      that a single push profile does not is that two flows feeding one HEC
+      stay distinguishable by host.
+    nifi_version: "2.11.0"
+    nifi_b_version: "2.11.0"
+    splunk_version: "10.4"
+    nifi_auth: none2x
+    instances: 2
+    collection: hec
+
+  nifi1-hec:
+    description: >
+      The push strategy against the 1.x line, which is a different artefact
+      and a different mechanism: 2.x removed both templates and the variable
+      registry, so flow_definition/nifi-1.x is configured through variables
+      where the 2.x one uses a parameter context. Nothing exercised that file
+      until now.
+    nifi_version: "1.28.1"
+    splunk_version: "10.4"
+    nifi_auth: none
+    collection: hec
+
+  cluster-hec:
+    description: >
+      The push strategy against a cluster. This is the combination the flow
+      used to get wrong: NiFi replicates a flow to every node, so with the
+      default executionNode = ALL each node polled the API and sent its own
+      copy -- N nodes, N times the events and N times the licence. The API
+      sources now run on the primary node only, and this profile is what
+      proves it.
+    nifi_version: "2.11.0"
+    splunk_version: "10.4"
+    nifi_auth: none2x
+    cluster: true
+    collection: hec
 
   multi-instance:
     description: >
@@ -62,6 +126,9 @@ profiles:
     splunk_version: "10.4"
     nifi_auth: singleuser
     instances: 2
+    # Every pull profile ships logs too: the strategy is pull + forwarder,
+    # and covering only its API half is covering half a strategy.
+    forwarder: true
 
   nifi2-hec:
     description: >
@@ -75,9 +142,13 @@ profiles:
 
 ci:
   # Runs on every pull request: one profile per NiFi major.
+  # One per strategy and per architecture: enough to catch a regression in
+  # any of them without running the whole matrix on every change.
   pull_request:
     - nifi1-legacy
     - nifi2-current
+    - cluster
+    - nifi2-hec
   # Runs before a release.
   release:
     - nifi1-legacy
@@ -86,3 +157,7 @@ ci:
     - nifi2-current
     - nifi2-hec
     - multi-instance
+    - cluster
+    - cluster-hec
+    - nifi1-hec
+    - multi-hec

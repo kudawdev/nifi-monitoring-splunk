@@ -495,17 +495,25 @@ tests/
 
 ### 8.4 Matriz propuesta para CI
 
-Hay **dos estrategias recomendadas** (D-6) y cada una tiene un perfil que la cubre **entera, API y logs**. El resto de los perfiles son regresión de versión: su trabajo es probar que el TA sigue hablando con cada NiFi soportado, no cubrir una estrategia.
+Dos ejes independientes: la **estrategia** es cómo salen los datos de NiFi, el **escenario** es qué NiFi hay del otro lado — versión y arquitectura. Cada estrategia se cubre **entera** (API y logs), en cada arquitectura.
 
-| Perfil | NiFi | Splunk | Auth | Qué cubre |
-|---|---|---|---|---|
-| `nifi2-current` | 2.11.0 | 10.4 | singleuser | **El despliegue recomendado, completo:** modular input para la API, **Universal Forwarder** para los archivos de log y **verificación del certificado** de NiFi contra un bundle exportado (R-8) |
-| `nifi2-hec` | 2.11.0 | 10.4 | **none2x** | **Estrategia push, completa:** el flow reconstruido lleva API por `InvokeHTTP` y logs por `TailFile`, todo al HEC |
-| `nifi1-legacy` | 1.23.2 | 9.4 | none | regresión: la 1.x más vieja soportada, sin auth |
-| `nifi1-last` | 1.28.1 | 10.4 | singleuser | regresión: la última 1.x, con token |
-| `nifi2-first` | 2.0.0 | 10.4 | singleuser | regresión: la primera 2.x |
+| Escenario | NiFi | Pull + forwarder | Push (flow definition) |
+|---|---|---|---|
+| Standalone, sin auth | 1.23.2 | `nifi1-legacy` | — |
+| Standalone, con token | 1.28.1 | `nifi1-last` | **`nifi1-hec`** |
+| Standalone, con token | 2.0.0 | `nifi2-first` | — |
+| Standalone | 2.11.0 | `nifi2-current` *(+ verificación TLS)* | `nifi2-hec` |
+| **Multi-instancia** (2 NiFi independientes) | 2.11.0 | `multi-instance` | **`multi-hec`** |
+| **Cluster** (2 nodos + ZooKeeper) | 2.11.0 | `cluster` | **`cluster-hec`** |
 
-En PR corren `nifi1-legacy` y `nifi2-current`; la matriz completa en el workflow de release.
+Los dos huecos son el mismo artefacto ya cubierto: el flow de 1.x lo prueba `nifi1-hec` y el de 2.x los otros tres.
+
+**Todos los perfiles de pull llevan forwarder**, y donde hay dos NiFi hay **dos forwarders** — que es el despliegue real, el agente va en la máquina cuyos archivos lee. En cluster ambos estampan el cluster como `host` y el nodo en un campo `node` (C-1); en multi-instancia el segundo es su propio host.
+
+En pull request corren cuatro — uno por estrategia y por arquitectura: `nifi1-legacy`, `nifi2-current`, `cluster` y `nifi2-hec`. La matriz completa en release.
+
+**Lo que destapó ampliarla.** Tres defectos del producto — la duplicación del flow en cluster, el `site_to_site` que el flow 1.x seguía mandando, y `roles` indexado como `roles{}` y por lo tanto no buscable — y seis del harness, casi todos de la misma familia: healthchecks, esperas y provisioning escritos cuando el modo de auth y el esquema iban siempre juntos. El más instructivo fue un `sed` que **busybox ignora en silencio**, sin error y sin cambio, que dejaba un perfil push recolectando por los dos caminos a la vez.
+
 
 ---
 

@@ -260,16 +260,37 @@ class BulletinPollingTest(IntegrationTestCase):
         self.assertGreater(count, 0, "the bulletin board was never polled")
 
     def test_any_bulletin_indexed_carries_the_datamodel_fields(self):
+        """Level and category are always there; the source name is not.
+
+        A cluster emits framework bulletins of category "Clustering" that
+        describe the cluster rather than a component, and those legitimately
+        have no sourceName. Asserting it on an arbitrary bulletin passed only
+        because no profile had ever produced one -- so the field is required
+        of bulletins that name a component, and merely allowed of the rest.
+        """
         rows = search(
             self.splunk,
             'index=nifi sourcetype="nifi:api:bulletin_board" '
-            "| head 1 | table bulletinLevel, bulletinCategory, bulletinSourceName",
+            "| head 10 | table bulletinLevel, bulletinCategory, bulletinSourceName",
         )
         if not rows:
             self.skipTest("no bulletins were produced by this NiFi")
-        for field in ("bulletinLevel", "bulletinCategory", "bulletinSourceName"):
-            with self.subTest(field=field):
-                self.assertIn(field, rows[0])
+        for row in rows:
+            with self.subTest(category=row.get("bulletinCategory")):
+                self.assertIn("bulletinLevel", row)
+                self.assertIn("bulletinCategory", row)
+
+        # Not a list of framework categories to exclude: a cluster emits
+        # "Clustering" and "Primary Node" and there is no reason to believe
+        # that is all of them. The rule is whether the bulletin names a
+        # component, which is exactly what having the field means.
+        named = [r for r in rows if r.get("bulletinSourceName")]
+        if not named:
+            self.skipTest(
+                "only framework bulletins, which describe the instance rather "
+                "than a component: categories seen were %s"
+                % sorted({r.get("bulletinCategory") for r in rows}))
+        self.assertTrue(named[0]["bulletinSourceName"])
 
 
 class FlowMetricsTest(IntegrationTestCase):
@@ -538,11 +559,10 @@ class ForwarderPathTest(IntegrationTestCase):
 
     #: nifi-deprecation.log is created empty and only written when something
     #: deprecated is used, so a clean instance legitimately has nothing to
-    #: send. It is asserted separately.
+    #: send. It is asserted separately, and so is the bootstrap log.
     EXPECTED = [
         "nifi:log:app",
         "nifi:log:user",
-        "nifi:log:bootstrap",
         "nifi:log:request",
     ]
 
@@ -573,6 +593,29 @@ class ForwarderPathTest(IntegrationTestCase):
         for sourcetype in self.EXPECTED:
             with self.subTest(sourcetype=sourcetype):
                 self.assertIn(sourcetype, seen)
+
+    def test_the_bootstrap_log_arrives_when_the_entrypoint_writes_one(self):
+        """Measured, not assumed: nifi-bootstrap.log is 0 bytes under the
+        unsecured entrypoint.
+
+        That entrypoint ends in `nifi.sh run`, which keeps NiFi in the
+        foreground and sends the bootstrap messages to stdout; the image's own
+        start.sh launches it in the background and waits, which is what fills
+        the file. So the sourcetype is a property of how NiFi was started, not
+        of the add-on, and requiring it everywhere would fail a profile for
+        something it does not control.
+        """
+        entrypoint = env("NIFI_ENTRYPOINT", "")
+        if "start-unsecured" in entrypoint:
+            self.skipTest(
+                "this profile runs NiFi in the foreground, which leaves "
+                "nifi-bootstrap.log empty")
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:bootstrap" | stats count by sourcetype',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows, "no nifi:log:bootstrap events arrived")
 
     def test_the_shipped_monitor_paths_match_the_container(self):
         """Defect B-21: the stanzas pointed at /opt/nifi/logs/, which is not
@@ -680,6 +723,107 @@ class ForwarderPathTest(IntegrationTestCase):
                 "nifi-deprecation.log is empty on a clean instance; the "
                 "stanza itself is covered by the unit tests")
         self.assertGreater(count, 0)
+
+
+class ClusterTest(IntegrationTestCase):
+    """A NiFi cluster read through one input.
+
+    Section 11.3 of the plan: the cluster is the instance and the node is a
+    dimension (decision C-1), so `host` keeps meaning what the operator
+    configured and `node` says which member an event describes. Nothing in the
+    input asks for any of this -- the add-on detects that NiFi is clustered
+    and collects it -- which is what these assertions are really checking.
+    """
+
+    cluster = True
+    collection = "pull"
+
+    NODES = 2
+
+    def test_every_node_is_reported(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:cluster_nodes" '
+            '| stats count by node',
+            minimum=self.NODES, timeout=420,
+        )
+        self.assertEqual(len(rows), self.NODES,
+                         "expected %d nodes, got %s" % (self.NODES, [r["node"] for r in rows]))
+
+    def test_the_cluster_is_reported_whole(self):
+        """The number an operator actually wants: connected out of total."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:cluster_nodes" '
+            '| stats latest(clusterConnectedNodeCount) as connected, '
+            'latest(clusterNodeCount) as total',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows)
+        self.assertEqual(int(rows[0]["connected"]), self.NODES)
+        self.assertEqual(int(rows[0]["total"]), self.NODES)
+
+    def test_exactly_one_node_coordinates(self):
+        """Two coordinators means a split cluster; none means it has not
+        finished electing."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:cluster_nodes" roles=*Coordinator* '
+            '| stats dc(node) as coordinators',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows)
+        self.assertEqual(int(rows[0]["coordinators"]), 1)
+
+    def test_diagnostics_arrive_per_node(self):
+        """Finding (a) of section 11.3: the aggregate hid the node that is
+        running out of heap. Each node's snapshot has the same shape as the
+        aggregate, so the datamodel fields work unchanged."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:node_diagnostics" '
+            '| stats count by node',
+            minimum=self.NODES, timeout=420,
+        )
+        self.assertEqual(len(rows), self.NODES)
+
+    def test_per_node_diagnostics_carry_the_aggregate_fields(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:node_diagnostics" '
+            '| head 1 | table node, '
+            '"systemDiagnostics.aggregateSnapshot.heapUtilization", '
+            '"systemDiagnostics.aggregateSnapshot.totalThreads"',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows)
+        row = rows[0]
+        self.assertTrue(row.get("node"))
+        self.assertTrue(row.get("systemDiagnostics.aggregateSnapshot.heapUtilization"),
+                        "the per-node snapshot did not extract like the aggregate")
+
+    def test_the_host_still_names_the_cluster_not_the_node(self):
+        """Decision C-1. If `host` became the node, every existing panel would
+        start reporting one NiFi as two."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:*" | stats dc(host) as hosts',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows)
+        self.assertEqual(int(rows[0]["hosts"]), 1)
+
+    def test_bulletins_name_the_node_they_came_from(self):
+        """Finding (c): FIELDALIAS-bulletin_node went two releases without a
+        cluster to validate it against."""
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:bulletin_board" '
+            '| where isnotnull(bulletinNodeAddress) | stats count')
+        self.assertTrue(rows, "the search returned nothing at all")
+        if int(rows[0]["count"]) == 0:
+            self.skipTest("this cluster produced no bulletins to check")
+        self.assertGreater(int(rows[0]["count"]), 0)
 
 
 class TlsVerificationTest(IntegrationTestCase):
@@ -882,6 +1026,47 @@ class PushPathTest(IntegrationTestCase):
                            "nifi:log:app"):
             with self.subTest(sourcetype=sourcetype):
                 self.assertIn(sourcetype, seen)
+
+    def test_the_flow_does_not_duplicate_itself_across_nodes(self):
+        """The defect this profile exists for.
+
+        NiFi replicates a flow to every node, so with the default
+        executionNode = ALL each node polled the cluster-wide API and pushed
+        its own copy: two nodes meant two of every event and twice the licence
+        bill, with nothing in the data to show it. The API sources are pinned
+        to the primary node, and what that has to look like from here is one
+        event per poll rather than one per node per poll.
+        """
+        if not self.profile_cluster:
+            self.skipTest("a single node cannot duplicate across nodes")
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:flow_status" '
+            '| bin _time span=10s | stats count by _time '
+            '| stats max(count) as worst',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows)
+        self.assertLessEqual(
+            int(rows[0]["worst"]), 1,
+            "%s flow_status events in one 10s bucket: the flow is running on "
+            "more than one node" % rows[0]["worst"],
+        )
+
+    def test_the_logs_still_come_from_every_node(self):
+        """The other half of the same fix. Pinning the API sources must not
+        pin the log tailer: log files are the one thing that really is per
+        node, so every node has to tail its own."""
+        if not self.profile_cluster:
+            self.skipTest("a single node has only its own logs")
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:app" | stats dc(host) as hosts, count',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows)
+        self.assertGreater(int(rows[0]["count"]), 0,
+                           "no log events arrived: the tailer was pinned too")
 
     def test_the_flow_does_not_send_the_retired_sourcetype(self):
         """site_to_site was retired from the TA (D-2). The flow must match, or

@@ -53,7 +53,14 @@ def instance_urls():
     """
     urls = [base_url()]
     if int(env("INSTANCES", "1")) > 1:
-        urls.append(base_url(env("NIFI_B_HTTPS_PORT", "38444")))
+        # The second instance follows the first's scheme, so its port has to
+        # as well: the push profiles run both NiFis on plain HTTP, and asking
+        # for the HTTPS port there reaches a published port with nothing
+        # behind it -- which shows up as a connection reset, not as a refusal.
+        second = (env("NIFI_B_HTTPS_PORT", "38444")
+                  if env("NIFI_AUTH") == "singleuser"
+                  else env("NIFI_B_HTTP_PORT", "38081"))
+        urls.append(base_url(second))
     return urls
 
 
@@ -117,6 +124,38 @@ def describe(token, url=None):
         )
 
 
+def wait_for_cluster(deadline):
+    """Block until every node is CONNECTED, twice in a row.
+
+    Not /flow/cluster/summary: its connectedNodeCount counts a node that is
+    still joining, so the cluster reports 2 / 2 while it will still refuse to
+    change the flow -- "Cluster is unable to service request to change flow:
+    Node nifi:8080 is currently connecting", which is how the first clustered
+    push run failed. /controller/cluster gives each node's real status.
+
+    Twice in a row because the status flips through CONNECTED while a node is
+    still settling; one reading is not evidence that it has stopped moving.
+    """
+    stable = 0
+    while time.time() < deadline:
+        try:
+            nodes = json.loads(request(base_url() + "/controller/cluster"))["cluster"]["nodes"]
+            states = [n.get("status") for n in nodes]
+            if len(nodes) >= 2 and all(s == "CONNECTED" for s in states):
+                stable += 1
+                if stable >= 2:
+                    print("    cluster: %d nodes CONNECTED" % len(nodes))
+                    return True
+            else:
+                stable = 0
+                print("    still forming: %s" % states)
+        except Exception as error:  # noqa: BLE001 - keep polling while it forms
+            stable = 0
+            print("    still forming: %s" % error)
+        time.sleep(5)
+    return False
+
+
 def main():
     deadline = time.time() + TIMEOUT_SECONDS
     last_error = None
@@ -129,6 +168,9 @@ def main():
                 token = get_token(url) if env("NIFI_AUTH") == "singleuser" else None
                 print("    %s at %s" % (describe(token, url), url))
                 pending.remove(url)
+            if env("CLUSTER", "0") == "1" and not wait_for_cluster(deadline):
+                print("the cluster did not form within the timeout", file=sys.stderr)
+                return 1
             return 0
         except (urllib.error.URLError, urllib.error.HTTPError, OSError, KeyError,
                 ValueError) as error:

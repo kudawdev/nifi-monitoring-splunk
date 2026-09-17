@@ -58,6 +58,14 @@ EOF
 AUTH="${NIFI_AUTH:-none}"
 echo "seed: configuring the TA input for auth=$AUTH"
 INPUT_SRC="$SRC/tests/provision/splunk/inputs.conf.$AUTH"
+# The cluster profile runs unsecured NiFi like the push profile does, but it
+# collects through the modular input, so it needs the input enabled.
+# ...but only when the add-on is the collector. A clustered profile that
+# pushes keeps the disabled input of its auth mode: both paths at once
+# duplicates every event.
+if [ "${CLUSTER:-0}" = "1" ] && [ "${COLLECTION:-pull}" != "hec" ]; then
+    INPUT_SRC="$SRC/tests/provision/splunk/inputs.conf.cluster"
+fi
 if [ ! -f "$INPUT_SRC" ]; then
     echo "seed: FATAL no input template for auth mode '$AUTH'" >&2
     exit 1
@@ -82,6 +90,23 @@ if [ "${INSTANCES:-1}" -gt 1 ]; then
     printf '\n' >> "$SEED/apps/nifi_TA_monitoring/local/inputs.conf"
     cat "$SRC/tests/provision/splunk/inputs.conf.multi" \
         >> "$SEED/apps/nifi_TA_monitoring/local/inputs.conf"
+fi
+
+# A push profile must not also poll: both paths at once duplicates every
+# event. This runs LAST, after any extra stanza has been appended -- an
+# earlier version ran before that and left the second instance's input
+# enabled, so a two-instance push profile collected through both paths.
+#
+# Idempotent by construction: strip whatever `disabled` lines are there and
+# put one under every stanza. A `grep -q` guard is not enough, because a
+# template that already carries one made the whole step a no-op.
+if [ "${COLLECTION:-pull}" = "hec" ]; then
+    echo "seed: push profile, disabling every TA input"
+    # `a` rather than a `0,/re/s//&\n/` substitution: this runs in busybox,
+    # whose sed ignores that form silently -- no error, no change.
+    sed -i "/^disabled = /d" "$SEED/apps/nifi_TA_monitoring/local/inputs.conf"
+    sed -i "/^\[nifi:\/\//a disabled = 1" \
+        "$SEED/apps/nifi_TA_monitoring/local/inputs.conf"
 fi
 
 echo "seed: seeding the instance lookup"

@@ -177,6 +177,50 @@ class PushProfileTest(unittest.TestCase):
     def test_there_is_a_push_profile(self):
         self.assertTrue(self.push_profiles(), "no profile covers the push path")
 
+    def cluster_profiles(self):
+        return {n: p for n, p in self.data["profiles"].items() if p.get("cluster")}
+
+    def test_there_is_a_cluster_profile(self):
+        """Section 11.3: cluster is a supported topology, so it needs a profile
+        rather than a paragraph saying it is out of scope."""
+        self.assertTrue(self.cluster_profiles(), "no profile runs a NiFi cluster")
+
+    def test_a_cluster_profile_collects_through_each_strategy(self):
+        """Cluster is an architecture, not a strategy: it has to be covered by
+        both. The pull one proves the add-on reads a cluster; the push one
+        proves the flow does not run on every node at once."""
+        collections = {p.get("collection", "pull")
+                       for p in self.cluster_profiles().values()}
+        self.assertIn("pull", collections)
+        self.assertIn("hec", collections)
+
+    def test_the_cluster_profile_is_in_the_release_matrix(self):
+        for name in self.cluster_profiles():
+            with self.subTest(profile=name):
+                self.assertIn(name, self.data["ci"]["release"])
+
+    def test_the_cluster_env_reaches_compose(self):
+        for name in self.cluster_profiles():
+            with self.subTest(profile=name):
+                env = matrix.env_for(name)
+                self.assertIn("CLUSTER=1", env)
+                self.assertIn("NIFI_CLUSTER_IS_NODE=true", env)
+                self.assertIn("cluster", env)
+        for name, profile in self.data["profiles"].items():
+            if not profile.get("cluster"):
+                with self.subTest(profile=name):
+                    self.assertIn("CLUSTER=0", matrix.env_for(name))
+                    self.assertIn("NIFI_CLUSTER_IS_NODE=false", matrix.env_for(name))
+
+    def test_the_cluster_input_does_not_ask_for_cluster_data(self):
+        """Detection is the add-on's job: an operator should not have to know
+        their NiFi is clustered to get per-node data."""
+        text = open(os.path.join(
+            TESTS_DIR, "provision", "splunk", "inputs.conf.cluster")).read()
+        self.assertNotIn("cluster_nodes", text)
+        self.assertNotIn("node_diagnostics", text)
+        self.assertNotIn("disabled = 1", text)
+
     def tls_profiles(self):
         return {n: p for n, p in self.data["profiles"].items()
                 if p.get("tls_verify")}
@@ -216,10 +260,14 @@ class PushProfileTest(unittest.TestCase):
             self.multi_profiles(),
             "no profile brings up more than one NiFi instance")
 
-    def test_the_multi_instance_profile_mixes_versions(self):
-        """Two identical NiFis would not prove that version autodetection is
-        per input rather than per installation."""
+    def test_the_multi_instance_pull_profile_mixes_versions(self):
+        """Only the pull one. There the point is that version autodetection is
+        per input rather than per installation, which two identical NiFis
+        would not prove; the push one is about two flows reaching one HEC, and
+        the versions are beside that."""
         for name, profile in self.multi_profiles().items():
+            if profile.get("collection", "pull") == "hec":
+                continue
             with self.subTest(profile=name):
                 self.assertIn("nifi_b_version", profile)
                 self.assertNotEqual(
@@ -234,7 +282,10 @@ class PushProfileTest(unittest.TestCase):
         for name in self.multi_profiles():
             with self.subTest(profile=name):
                 env = matrix.env_for(name)
-                self.assertIn("COMPOSE_PROFILES=multi", env)
+                # A profile can carry several compose profiles now, so match
+                # the entry rather than the whole line.
+                line = [l for l in env.splitlines() if l.startswith("COMPOSE_PROFILES=")][0]
+                self.assertIn("multi", line.split("=", 1)[1].split(","))
                 self.assertIn("INSTANCES=2", env)
                 self.assertIn("NIFI_B_VERSION=", env)
         for name, profile in self.data["profiles"].items():
@@ -297,13 +348,20 @@ class PushProfileTest(unittest.TestCase):
                     self.assertIn("FORWARDER=0", matrix.env_for(name))
 
     def test_the_push_profile_disables_the_ta_input(self):
-        """Both paths at once duplicates every event."""
-        for name, profile in self.push_profiles().items():
-            with self.subTest(profile=name):
-                text = open(os.path.join(
-                    TESTS_DIR, "provision", "splunk",
-                    "inputs.conf.%s" % profile["nifi_auth"])).read()
-                self.assertIn("disabled = 1", text)
+        """Both paths at once duplicates every event.
+
+        Asserted against the seed rather than the templates: which auth mode a
+        profile uses and who collects are unrelated, and baking the disable
+        into one auth template only held while push meant exactly one profile.
+        """
+        seed = open(os.path.join(
+            TESTS_DIR, "provision", "seed-splunk-etc.sh")).read()
+        self.assertIn('COLLECTION:-pull}" = "hec"', seed)
+        self.assertIn("disabled = 1", seed)
+        # And the rule has to be written in a form busybox's sed honours: the
+        # substitution form fails there silently, which is a push profile
+        # quietly collecting through both paths.
+        self.assertNotIn("0,/^\\[nifi", seed)
 
     def test_the_push_profile_runs_nifi_unauthenticated(self):
         """The flow calls its own API with no credentials, so an
