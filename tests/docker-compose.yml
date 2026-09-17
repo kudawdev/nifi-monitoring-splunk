@@ -21,6 +21,8 @@ services:
     environment:
       # Selects which inputs.conf template to install.
       NIFI_AUTH: ${NIFI_AUTH:-none}
+      # Above one, a second input stanza is appended.
+      INSTANCES: ${INSTANCES:-1}
     volumes:
       - splunk_etc:/etc-seed
       - ..:/src:ro
@@ -90,6 +92,32 @@ services:
       retries: 60
       start_period: 180s
 
+  # A second, independent NiFi. Not a cluster node: the multi-instance profile
+  # exists to cover what the app already claims -- centralising several
+  # separate NiFi instances -- which no profile exercised. Deliberately a
+  # different version from `nifi`, so version autodetection (TA-3) is proven
+  # to work per input rather than per installation.
+  nifi-b:
+    profiles: ["multi"]
+    image: apache/nifi:${NIFI_B_VERSION:-1.28.1}
+    hostname: nifi-b
+    entrypoint: ${NIFI_ENTRYPOINT:-../scripts/start.sh}
+    env_file:
+      - ./env/nifi-singleuser-b.env
+    ports:
+      - "${NIFI_B_HTTPS_PORT:-38444}:8443"
+    volumes:
+      - nifi_b_logs:/opt/nifi/nifi-current/logs
+      - nifi_b_conf:/opt/nifi/nifi-current/conf
+      - nifi_b_state:/opt/nifi/nifi-current/state
+      - ./provision/nifi:/opt/nifi/harness:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sk --max-time 5 https://localhost:8443/nifi-api/access/config"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 180s
+
   # Same seeding trick as `provision`, for the forwarder's etc/. Installs the
   # TA so the profile exercises the monitor stanzas as shipped rather than a
   # bespoke inputs.conf.
@@ -145,3 +173,6 @@ volumes:
   nifi_logs:
   nifi_conf:
   nifi_state:
+  nifi_b_logs:
+  nifi_b_conf:
+  nifi_b_state:

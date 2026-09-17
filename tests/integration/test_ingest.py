@@ -174,9 +174,12 @@ class VersionDetectionTest(IntegrationTestCase):
     """
 
     def test_the_detected_version_is_indexed(self):
+        # Pinned to the primary host: the multi-instance profile indexes a
+        # version_info per instance, and `head 1` over both would pick
+        # whichever happened to be written last.
         rows = wait_for_events(
             self.splunk,
-            'index=nifi sourcetype="nifi:api:version_info" '
+            'index=nifi sourcetype="nifi:api:version_info" host=nifi '
             "| head 1 | table niFiVersion, javaVersion",
             minimum=1,
         )
@@ -185,18 +188,29 @@ class VersionDetectionTest(IntegrationTestCase):
 
     def test_the_detected_version_matches_the_profile(self):
         """A mismatch means the harness and the TA disagree about what is
-        running, which would make every other assertion suspect."""
+        running, which would make every other assertion suspect.
+
+        Asserted per host rather than over the whole index: the
+        multi-instance profile runs two NiFis of different versions on
+        purpose, and collapsing them into one set would either fail here or,
+        worse, hide which input reported what.
+        """
         rows = wait_for_events(
             self.splunk,
             'index=nifi sourcetype="nifi:api:version_info" '
-            "| stats values(niFiVersion) as versions",
-            minimum=1,
+            "| stats values(niFiVersion) as versions by host",
+            minimum=self.profile_instances,
         )
         self.assertTrue(rows)
-        versions = rows[0]["versions"]
-        if isinstance(versions, str):
-            versions = [versions]
-        self.assertEqual(list(versions), [self.nifi_version])
+        expected = {"nifi": self.nifi_version}
+        if self.profile_instances > 1:
+            expected["nifi-b"] = env("NIFI_B_VERSION")
+        for row in rows:
+            with self.subTest(host=row["host"]):
+                versions = row["versions"]
+                if isinstance(versions, str):
+                    versions = [versions]
+                self.assertEqual(list(versions), [expected[row["host"]]])
 
     def test_system_diagnostics_is_not_fetched_twice(self):
         """Version detection reuses the diagnostics response, so enabling the
@@ -666,6 +680,106 @@ class ForwarderPathTest(IntegrationTestCase):
                 "nifi-deprecation.log is empty on a clean instance; the "
                 "stanza itself is covered by the unit tests")
         self.assertGreater(count, 0)
+
+
+class MultiInstanceTest(IntegrationTestCase):
+    """Several independent NiFi instances behind one TA.
+
+    The app's stated purpose is centralising visibility across several NiFi
+    instances, and until this profile existed nothing exercised it: every
+    other profile has one instance, one input and one lookup row. Two inputs
+    also mean two processes, because the modular input declares
+    use_single_instance = false, which is the concurrency the old .env token
+    storage could not survive (defect B-14).
+    """
+
+    instances = 2
+    collection = "pull"
+
+    HOSTS = ["nifi", "nifi-b"]
+
+    def test_every_instance_produces_events(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:flow_status" | stats count by host',
+            minimum=len(self.HOSTS), timeout=420,
+        )
+        seen = {row["host"] for row in rows}
+        for host in self.HOSTS:
+            with self.subTest(host=host):
+                self.assertIn(host, seen)
+
+    def test_the_instances_are_told_apart_by_version(self):
+        """The profile runs different NiFi versions on purpose: autodetection
+        (TA-3) has to be per input, not per installation. Identical versions
+        here would prove nothing."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:version_info" '
+            '| stats values(niFiVersion) as version by host',
+            minimum=len(self.HOSTS), timeout=420,
+        )
+        versions = {row["host"]: str(row["version"]) for row in rows}
+        for host in self.HOSTS:
+            with self.subTest(host=host):
+                self.assertIn(host, versions)
+        self.assertNotEqual(
+            versions["nifi"], versions["nifi-b"],
+            "both inputs report %r, so the version is not being detected per "
+            "input" % versions["nifi"],
+        )
+
+    def test_neither_input_steals_the_other_token(self):
+        """The defect this profile was built to catch. Two processes renewing
+        a token at once used to rewrite one shared .env non-atomically; the
+        symptom is one input authenticating fine while the other loops on 401
+        long after its cold start."""
+        rows = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" '
+            '"Error HTTP request" "status_code: 401" '
+            '| stats count by _time | stats count as bursts')
+        self.assertTrue(rows, "the search returned nothing at all")
+        # One 401 per input per cold start is by design; more than a handful
+        # means they are fighting over the stored token.
+        self.assertLessEqual(
+            int(rows[0]["bursts"]), 2 * len(self.HOSTS),
+            "%s separate 401s across %d inputs: the token is being clobbered"
+            % (rows[0]["bursts"], len(self.HOSTS)),
+        )
+
+    def test_each_instance_keeps_its_own_lookup_row(self):
+        """Without a row per host the app cannot group them, and the lookup
+        falls back to default_match = standalone."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:flow_status" '
+            '| stats values(cluster) as cluster by host',
+            minimum=len(self.HOSTS), timeout=420,
+        )
+        for row in rows:
+            with self.subTest(host=row["host"]):
+                self.assertNotEqual(
+                    str(row["cluster"]), "standalone",
+                    "%s did not match the instance lookup" % row["host"],
+                )
+
+    def test_the_overview_lists_every_instance(self):
+        """The panel an operator opens first has to show both, or centralising
+        them is a claim with nothing behind it."""
+        import re as _re
+        text = open(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "..", "nifi_monitoring", "default", "data", "ui", "views",
+            "nifi_overview.xml")).read()
+        text = _re.sub(r"<!--.*?-->", "", text, flags=_re.S)
+        query = _re.findall(r"<query>(.*?)</query>", text, _re.S)[0]
+        query = query.replace("&gt;", ">").replace("&lt;", "<").replace("&amp;", "&").strip()
+        rows = wait_for_events(self.splunk, query, minimum=len(self.HOSTS), timeout=420)
+        seen = {row["host"] for row in rows}
+        for host in self.HOSTS:
+            with self.subTest(host=host):
+                self.assertIn(host, seen)
 
 
 class PushPathTest(IntegrationTestCase):

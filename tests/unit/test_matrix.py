@@ -177,6 +177,58 @@ class PushProfileTest(unittest.TestCase):
     def test_there_is_a_push_profile(self):
         self.assertTrue(self.push_profiles(), "no profile covers the push path")
 
+    def multi_profiles(self):
+        return {n: p for n, p in self.data["profiles"].items()
+                if int(p.get("instances", 1)) > 1}
+
+    def test_there_is_a_multi_instance_profile(self):
+        """The app's premise is centralising several NiFi instances; without a
+        profile for it that claim has no coverage at all."""
+        self.assertTrue(
+            self.multi_profiles(),
+            "no profile brings up more than one NiFi instance")
+
+    def test_the_multi_instance_profile_mixes_versions(self):
+        """Two identical NiFis would not prove that version autodetection is
+        per input rather than per installation."""
+        for name, profile in self.multi_profiles().items():
+            with self.subTest(profile=name):
+                self.assertIn("nifi_b_version", profile)
+                self.assertNotEqual(
+                    profile["nifi_b_version"], profile["nifi_version"])
+
+    def test_the_multi_instance_profile_is_in_the_release_matrix(self):
+        for name in self.multi_profiles():
+            with self.subTest(profile=name):
+                self.assertIn(name, self.data["ci"]["release"])
+
+    def test_the_multi_instance_env_reaches_compose(self):
+        for name in self.multi_profiles():
+            with self.subTest(profile=name):
+                env = matrix.env_for(name)
+                self.assertIn("COMPOSE_PROFILES=multi", env)
+                self.assertIn("INSTANCES=2", env)
+                self.assertIn("NIFI_B_VERSION=", env)
+        for name, profile in self.data["profiles"].items():
+            if int(profile.get("instances", 1)) == 1:
+                with self.subTest(profile=name):
+                    self.assertIn("INSTANCES=1", matrix.env_for(name))
+
+    def test_the_second_instance_has_its_own_input_and_lookup_row(self):
+        extra = open(os.path.join(
+            TESTS_DIR, "provision", "splunk", "inputs.conf.multi")).read()
+        self.assertIn("[nifi://nifi-b]", extra)
+        self.assertIn("host = nifi-b", extra)
+        # In its own file, not appended to instance.csv: the overview panel
+        # lists every configured instance and reports one that sends nothing
+        # as Down, so a stray row is a phantom instance on every other profile.
+        lookup = open(os.path.join(
+            TESTS_DIR, "provision", "splunk", "instance-multi.csv")).read()
+        self.assertIn("nifi-b", lookup)
+        base = open(os.path.join(
+            TESTS_DIR, "provision", "splunk", "instance.csv")).read()
+        self.assertNotIn("nifi-b", base)
+
     def forwarder_profiles(self):
         return {n: p for n, p in self.data["profiles"].items()
                 if p.get("forwarder")}

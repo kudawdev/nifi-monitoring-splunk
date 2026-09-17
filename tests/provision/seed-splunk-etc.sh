@@ -65,6 +65,15 @@ fi
 mkdir -p "$SEED/apps/nifi_TA_monitoring/local"
 cp "$INPUT_SRC" "$SEED/apps/nifi_TA_monitoring/local/inputs.conf"
 
+# More than one instance means a second input stanza appended to the same
+# file. INSTANCES comes from the compose file.
+if [ "${INSTANCES:-1}" -gt 1 ]; then
+    echo "seed: adding the second instance input"
+    printf '\n' >> "$SEED/apps/nifi_TA_monitoring/local/inputs.conf"
+    cat "$SRC/tests/provision/splunk/inputs.conf.multi" \
+        >> "$SEED/apps/nifi_TA_monitoring/local/inputs.conf"
+fi
+
 echo "seed: seeding the instance lookup"
 mkdir -p "$SEED/apps/nifi_monitoring/lookups"
 cp "$SRC/tests/provision/splunk/instance.csv" \

@@ -38,10 +38,23 @@ def env(name, default=None):
     return os.environ.get(name, default)
 
 
-def base_url():
+def base_url(port=None):
     if env("NIFI_AUTH") == "singleuser":
-        return "https://localhost:%s/nifi-api" % env("NIFI_HTTPS_PORT", "38443")
-    return "http://localhost:%s/nifi-api" % env("NIFI_HTTP_PORT", "38080")
+        return "https://localhost:%s/nifi-api" % (port or env("NIFI_HTTPS_PORT", "38443"))
+    return "http://localhost:%s/nifi-api" % (port or env("NIFI_HTTP_PORT", "38080"))
+
+
+def instance_urls():
+    """Every NiFi the profile brings up.
+
+    The multi-instance profile runs a second, independent node, and waiting
+    only for the first would let the assertions start against a NiFi that is
+    still booting -- which shows up as an empty index rather than as an error.
+    """
+    urls = [base_url()]
+    if int(env("INSTANCES", "1")) > 1:
+        urls.append(base_url(env("NIFI_B_HTTPS_PORT", "38444")))
+    return urls
 
 
 def request(url, data=None, token=None, form=False, accept="application/json"):
@@ -63,10 +76,10 @@ def request(url, data=None, token=None, form=False, accept="application/json"):
         return response.read().decode()
 
 
-def get_token():
+def get_token(url=None):
     """Exercise the same login the TA uses, so a broken auth profile fails here."""
     return request(
-        base_url() + "/access/token",
+        (url or base_url()) + "/access/token",
         data={
             "username": env("NIFI_USERNAME", "admin"),
             "password": env(
@@ -78,12 +91,13 @@ def get_token():
     ).strip()
 
 
-def describe(token):
+def describe(token, url=None):
     """Report the NiFi version, from VERSION_INFO on 2.x or diagnostics on 1.x."""
+    url = url or base_url()
     try:
         payload = json.loads(
             request(
-                base_url() + "/flow/metrics/json?includedRegistries=VERSION_INFO",
+                url + "/flow/metrics/json?includedRegistries=VERSION_INFO",
                 token=token,
             )
         )
@@ -95,7 +109,7 @@ def describe(token):
         )
     except Exception:
         # VERSION_INFO returns 404 before NiFi 2.0; fall back to diagnostics.
-        payload = json.loads(request(base_url() + "/system-diagnostics", token=token))
+        payload = json.loads(request(url + "/system-diagnostics", token=token))
         info = payload["systemDiagnostics"]["aggregateSnapshot"].get("versionInfo", {})
         return "NiFi %s on Java %s" % (
             info.get("niFiVersion", "?"),
@@ -107,11 +121,14 @@ def main():
     deadline = time.time() + TIMEOUT_SECONDS
     last_error = None
     attempt = 0
+    pending = list(instance_urls())
     while time.time() < deadline:
         attempt += 1
         try:
-            token = get_token() if env("NIFI_AUTH") == "singleuser" else None
-            print("    %s at %s" % (describe(token), base_url()))
+            for url in list(pending):
+                token = get_token(url) if env("NIFI_AUTH") == "singleuser" else None
+                print("    %s at %s" % (describe(token, url), url))
+                pending.remove(url)
             return 0
         except (urllib.error.URLError, urllib.error.HTTPError, OSError, KeyError,
                 ValueError) as error:

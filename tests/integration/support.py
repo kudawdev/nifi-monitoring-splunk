@@ -114,6 +114,9 @@ class IntegrationTestCase(unittest.TestCase):
     #: True for a class that needs the Universal Forwarder profile.
     forwarder = None
 
+    #: Minimum number of NiFi instances a class needs.
+    instances = None
+
     @classmethod
     def setUpClass(cls):
         try:
@@ -127,12 +130,18 @@ class IntegrationTestCase(unittest.TestCase):
         cls.nifi_version = env("NIFI_VERSION", "unknown")
         cls.profile_collection = env("COLLECTION", "pull")
         cls.profile_forwarder = env("FORWARDER", "0") == "1"
+        cls.profile_instances = int(env("INSTANCES", "1"))
 
     def setUp(self):
         if self.collection and self.collection != self.profile_collection:
             raise unittest.SkipTest(
                 "this profile collects through the %s path, not %s"
                 % (self.profile_collection, self.collection)
+            )
+        if self.instances and self.profile_instances < self.instances:
+            raise unittest.SkipTest(
+                "this profile brings up %d NiFi instance(s), not %d"
+                % (self.profile_instances, self.instances)
             )
         if self.forwarder and not self.profile_forwarder:
             raise unittest.SkipTest(

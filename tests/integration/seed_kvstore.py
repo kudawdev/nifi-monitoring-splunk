@@ -19,11 +19,16 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from support import TESTS_DIR, connect  # noqa: E402
+from support import TESTS_DIR, connect, env  # noqa: E402
 
 COLLECTION = "instance"
 APP = "nifi_monitoring"
 SOURCE = os.path.join(TESTS_DIR, "provision", "splunk", "instance.csv")
+#: Extra rows, loaded only when the profile runs more than one instance. They
+#: are not harmless on a single-instance stack: the overview panel lists every
+#: configured instance and reports one that sends nothing as Down, so a stray
+#: row shows up as a phantom instance that is permanently down.
+SOURCE_MULTI = os.path.join(TESTS_DIR, "provision", "splunk", "instance-multi.csv")
 
 
 def wait_for_kvstore(service, timeout=300, interval=5):
@@ -67,8 +72,14 @@ def main():
         )
         return 1
 
-    with open(SOURCE) as handle:
-        rows = list(csv.DictReader(handle))
+    sources = [SOURCE]
+    if int(env("INSTANCES", "1")) > 1:
+        sources.append(SOURCE_MULTI)
+
+    rows = []
+    for source in sources:
+        with open(source) as handle:
+            rows.extend(csv.DictReader(handle))
 
     for row in rows:
         record = {k: v for k, v in row.items() if v not in (None, "")}

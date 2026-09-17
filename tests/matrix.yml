@@ -45,6 +45,20 @@ profiles:
     splunk_version: "10.4"
     nifi_auth: singleuser
 
+  multi-instance:
+    description: >
+      Two independent NiFi instances -- not a cluster -- polled by two inputs
+      of the same TA. The app's whole premise is centralising several NiFi
+      instances, and no profile covered it: every other one has a single
+      instance, a single input and a single lookup row. The two run different
+      NiFi versions on purpose, so version autodetection is proven to be per
+      input rather than per installation.
+    nifi_version: "2.11.0"
+    nifi_b_version: "1.28.1"
+    splunk_version: "10.4"
+    nifi_auth: singleuser
+    instances: 2
+
   nifi2-hec:
     description: >
       The push path: the monitoring flow runs inside NiFi and sends to
@@ -67,3 +81,4 @@ ci:
     - nifi2-first
     - nifi2-current
     - nifi2-hec
+    - multi-instance
