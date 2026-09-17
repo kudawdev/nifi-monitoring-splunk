@@ -510,3 +510,42 @@ class DocumentationTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NodeDiagnosticsStanzaTest(unittest.TestCase):
+    """nifi:api:node_diagnostics must stay a copy of nifi:api:system_diagnostics.
+
+    The per-node snapshots have the same shape as the aggregate -- measured
+    against a real two-node cluster -- so the add-on wraps each one back under
+    systemDiagnostics.aggregateSnapshot and reuses the whole extraction. That
+    only holds while the two stanzas agree, and props.conf has no inheritance
+    between sourcetypes, so they are duplicated and this is what keeps them
+    from drifting.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.props = conf(os.path.join(TA, "default", "props.conf"))
+
+    def aliases(self, stanza):
+        return {k: v for k, v in self.props[stanza].items()
+                if k.startswith("FIELDALIAS-")}
+
+    def test_both_stanzas_exist(self):
+        self.assertIn("nifi:api:system_diagnostics", self.props)
+        self.assertIn("nifi:api:node_diagnostics", self.props)
+
+    def test_the_field_aliases_are_identical(self):
+        self.assertEqual(
+            self.aliases("nifi:api:node_diagnostics"),
+            self.aliases("nifi:api:system_diagnostics"),
+            "the per-node stanza has drifted from the aggregate one",
+        )
+
+    def test_the_parsing_settings_match(self):
+        for key in ("INDEXED_EXTRACTIONS", "KV_MODE", "LINE_BREAKER", "DATETIME_CONFIG"):
+            with self.subTest(setting=key):
+                self.assertEqual(
+                    self.props["nifi:api:node_diagnostics"].get(key),
+                    self.props["nifi:api:system_diagnostics"].get(key),
+                )

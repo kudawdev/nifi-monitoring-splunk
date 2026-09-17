@@ -2270,6 +2270,681 @@
         }
       ],
       "lineage": "Request_Log"
+    },
+    {
+      "objectName": "Node_Diagnostics",
+      "displayName": "Node Diagnostics",
+      "parentName": "BaseEvent",
+      "comment": "",
+      "fields": [
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.freeSpaceBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.freeSpaceBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.totalSpaceBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.totalSpaceBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.usedSpaceBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.usedSpaceBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.freeSpaceBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.freeSpaceBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.totalSpaceBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.totalSpaceBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.usedSpaceBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.usedSpaceBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.freeHeapBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.freeHeapBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.freeNonHeapBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.freeNonHeapBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.maxHeapBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.maxHeapBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.maxNonHeapBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.maxNonHeapBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.freeSpaceBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.freeSpaceBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.totalSpaceBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.totalSpaceBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.usedSpaceBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.usedSpaceBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.totalHeapBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.totalHeapBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.totalNonHeapBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.totalNonHeapBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.usedHeapBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.usedHeapBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.usedNonHeapBytes",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.usedNonHeapBytes",
+          "comment": ""
+        },
+        {
+          "fieldName": "cluster",
+          "owner": "System_Diagnostics",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "cluster",
+          "comment": ""
+        },
+        {
+          "fieldName": "_time",
+          "owner": "BaseEvent",
+          "type": "timestamp",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "_time",
+          "comment": ""
+        },
+        {
+          "fieldName": "host",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "host",
+          "comment": ""
+        },
+        {
+          "fieldName": "source",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "source",
+          "comment": ""
+        },
+        {
+          "fieldName": "sourcetype",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "sourcetype",
+          "comment": ""
+        },
+        {
+          "fieldName": "node",
+          "owner": "Node_Diagnostics",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "node",
+          "comment": "",
+          "fieldType": "auto"
+        },
+        {
+          "fieldName": "nodeId",
+          "owner": "Node_Diagnostics",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "nodeId",
+          "comment": "",
+          "fieldType": "auto"
+        },
+        {
+          "fieldName": "apiPort",
+          "owner": "Node_Diagnostics",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "apiPort",
+          "comment": "",
+          "fieldType": "auto"
+        }
+      ],
+      "calculations": [
+        {
+          "outputFields": [
+            {
+              "fieldName": "ContentRepositoryusedPercent",
+              "owner": "System_Diagnostics",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "ContentRepositoryusedPercent",
+              "comment": ""
+            }
+          ],
+          "calculationID": "3ak86a3jemg",
+          "owner": "System_Diagnostics",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "if(isnotnull('systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.usedSpaceBytes'),round(('systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.usedSpaceBytes'*100)/'systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.totalSpaceBytes',2),\"no\")"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "FlowRepositoryusedPercent",
+              "owner": "System_Diagnostics",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "FlowRepositoryusedPercent",
+              "comment": ""
+            }
+          ],
+          "calculationID": "gcjynvjl1m8",
+          "owner": "System_Diagnostics",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "if(isnotnull('systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.usedSpaceBytes'),round(('systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.usedSpaceBytes'*100)/'systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.totalSpaceBytes',2),\"no\")"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "ProvenanceRepositoryusedPercent",
+              "owner": "System_Diagnostics",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "ProvenanceRepositoryusedPercent",
+              "comment": ""
+            }
+          ],
+          "calculationID": "86mgdn9drnf",
+          "owner": "System_Diagnostics",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "if(isnotnull('systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.usedSpaceBytes'),round(('systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.usedSpaceBytes'*100)/'systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.totalSpaceBytes',2),\"no\")"
+        }
+      ],
+      "constraints": [
+        {
+          "search": "`index_nifi` sourcetype=\"nifi:api:node_diagnostics\"",
+          "owner": "System_Diagnostics"
+        }
+      ],
+      "lineage": "System_Diagnostics"
+    },
+    {
+      "objectName": "Cluster_Nodes",
+      "displayName": "Cluster Nodes",
+      "parentName": "BaseEvent",
+      "comment": "",
+      "fields": [
+        {
+          "fieldName": "_time",
+          "owner": "BaseEvent",
+          "type": "timestamp",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "_time",
+          "comment": ""
+        },
+        {
+          "fieldName": "host",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "host",
+          "comment": ""
+        },
+        {
+          "fieldName": "node",
+          "owner": "Cluster_Nodes",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "node",
+          "comment": "",
+          "fieldType": "auto"
+        },
+        {
+          "fieldName": "nodeId",
+          "owner": "Cluster_Nodes",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "nodeId",
+          "comment": "",
+          "fieldType": "auto"
+        },
+        {
+          "fieldName": "address",
+          "owner": "Cluster_Nodes",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "address",
+          "comment": "",
+          "fieldType": "auto"
+        },
+        {
+          "fieldName": "apiPort",
+          "owner": "Cluster_Nodes",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "apiPort",
+          "comment": "",
+          "fieldType": "auto"
+        },
+        {
+          "fieldName": "status",
+          "owner": "Cluster_Nodes",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "status",
+          "comment": "",
+          "fieldType": "auto"
+        },
+        {
+          "fieldName": "roles",
+          "owner": "Cluster_Nodes",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "roles",
+          "comment": "",
+          "fieldType": "auto"
+        },
+        {
+          "fieldName": "heartbeat",
+          "owner": "Cluster_Nodes",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "heartbeat",
+          "comment": "",
+          "fieldType": "auto"
+        },
+        {
+          "fieldName": "nodeStartTime",
+          "owner": "Cluster_Nodes",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "nodeStartTime",
+          "comment": "",
+          "fieldType": "auto"
+        },
+        {
+          "fieldName": "activeThreadCount",
+          "owner": "Cluster_Nodes",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "activeThreadCount",
+          "comment": "",
+          "fieldType": "auto"
+        },
+        {
+          "fieldName": "bytesQueued",
+          "owner": "Cluster_Nodes",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "bytesQueued",
+          "comment": "",
+          "fieldType": "auto"
+        },
+        {
+          "fieldName": "flowFilesQueued",
+          "owner": "Cluster_Nodes",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "flowFilesQueued",
+          "comment": "",
+          "fieldType": "auto"
+        },
+        {
+          "fieldName": "queued",
+          "owner": "Cluster_Nodes",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "queued",
+          "comment": "",
+          "fieldType": "auto"
+        },
+        {
+          "fieldName": "clusterNodeCount",
+          "owner": "Cluster_Nodes",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "clusterNodeCount",
+          "comment": "",
+          "fieldType": "auto"
+        },
+        {
+          "fieldName": "clusterConnectedNodeCount",
+          "owner": "Cluster_Nodes",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "clusterConnectedNodeCount",
+          "comment": "",
+          "fieldType": "auto"
+        }
+      ],
+      "calculations": [
+        {
+          "outputFields": [
+            {
+              "fieldName": "ContentRepositoryusedPercent",
+              "owner": "System_Diagnostics",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "ContentRepositoryusedPercent",
+              "comment": ""
+            }
+          ],
+          "calculationID": "3ak86a3jemg",
+          "owner": "System_Diagnostics",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "if(isnotnull('systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.usedSpaceBytes'),round(('systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.usedSpaceBytes'*100)/'systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.totalSpaceBytes',2),\"no\")"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "FlowRepositoryusedPercent",
+              "owner": "System_Diagnostics",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "FlowRepositoryusedPercent",
+              "comment": ""
+            }
+          ],
+          "calculationID": "gcjynvjl1m8",
+          "owner": "System_Diagnostics",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "if(isnotnull('systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.usedSpaceBytes'),round(('systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.usedSpaceBytes'*100)/'systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.totalSpaceBytes',2),\"no\")"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "ProvenanceRepositoryusedPercent",
+              "owner": "System_Diagnostics",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "ProvenanceRepositoryusedPercent",
+              "comment": ""
+            }
+          ],
+          "calculationID": "86mgdn9drnf",
+          "owner": "System_Diagnostics",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "if(isnotnull('systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.usedSpaceBytes'),round(('systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.usedSpaceBytes'*100)/'systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.totalSpaceBytes',2),\"no\")"
+        }
+      ],
+      "constraints": [
+        {
+          "search": "`index_nifi` sourcetype=\"nifi:api:cluster_nodes\"",
+          "owner": "System_Diagnostics"
+        }
+      ],
+      "lineage": "System_Diagnostics"
     }
   ],
   "objectNameList": [
@@ -2284,6 +2959,8 @@
     "Flow_Metrics",
     "Bulletin_Board",
     "Version_Info",
-    "Request_Log"
+    "Request_Log",
+    "Node_Diagnostics",
+    "Cluster_Nodes"
   ]
 }

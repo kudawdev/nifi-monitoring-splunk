@@ -58,6 +58,10 @@ class NiFiScript(Script):
     version_cache_seconds = 3600
     tls_verify = True
     nifi_version = None
+    # Whether this NiFi is a cluster node. Detected alongside the version and
+    # cached with it: it is a static property of the deployment, so it does
+    # not deserve a call per cycle (decision C-5).
+    clustered = None
 
     # NiFi component identifiers are UUIDs; a mistyped or truncated id is the
     # most common configuration error and otherwise only shows up as a 404
@@ -182,9 +186,11 @@ class NiFiScript(Script):
         except Exception:
             return None
 
-    def __cache_version(self, ew, input_name, version_info):
+    def __cache_version(self, ew, input_name, version_info, clustered=False):
+        record = dict(version_info)
+        record['_clustered'] = bool(clustered)
         self.__write_checkpoint(ew, input_name, 'version', json.dumps(
-            {'at': time.time(), 'info': version_info}))
+            {'at': time.time(), 'info': record}))
 
     def __read_token(self, ew, session_key, input_name):
         """The stored JWT for this input.
@@ -286,6 +292,54 @@ class NiFiScript(Script):
             params.append(('sampleName', sample_filter))
 
         return '&'.join('{}={}'.format(key, quote(value, safe='')) for key, value in params)
+
+    @staticmethod
+    def cluster_nodes_of(payload):
+        """One record per node out of /controller/cluster.
+
+        Each carries address, status, roles (Primary Node / Cluster
+        Coordinator), heartbeat and its own queue and thread counts, which is
+        what answers "is my cluster whole, and which node coordinates".
+        """
+        try:
+            nodes = json.loads(payload)['cluster']['nodes']
+        except (TypeError, ValueError, KeyError):
+            return None
+        return nodes or []
+
+    @staticmethod
+    def node_snapshots_of(payload):
+        """The per-node diagnostics out of /system-diagnostics?nodewise=true.
+
+        Each snapshot has the same shape as aggregateSnapshot -- measured, not
+        assumed -- so the 17 fields the datamodel already declares work per
+        node with no extra extraction (decision C-4). The node's address is
+        folded in so an event says which node it describes.
+        """
+        try:
+            diagnostics = json.loads(payload)['systemDiagnostics']
+        except (TypeError, ValueError, KeyError):
+            return None
+        out = []
+        for entry in diagnostics.get('nodeSnapshots') or []:
+            snapshot = entry.get('snapshot')
+            if not snapshot:
+                continue
+            out.append({
+                'node': entry.get('address'),
+                'nodeId': entry.get('nodeId'),
+                'apiPort': entry.get('apiPort'),
+                'systemDiagnostics': {'aggregateSnapshot': snapshot},
+            })
+        return out
+
+    @staticmethod
+    def is_clustered(payload):
+        """Whether /flow/cluster/summary says this NiFi is a cluster node."""
+        try:
+            return bool(json.loads(payload)['clusterSummary']['clustered'])
+        except (TypeError, ValueError, KeyError):
+            return None
 
     @staticmethod
     def flatten_samples(payload):
@@ -730,11 +784,14 @@ class NiFiScript(Script):
             diagnostics = self.__get_request(ew, base_url, "/system-diagnostics", auth_type, username, iname, session_key)
             version_info = self.version_info_of(diagnostics)
             self.nifi_version = self.parse_version((version_info or {}).get('niFiVersion'))
+            summary = self.__get_request(ew, base_url, "/flow/cluster/summary", auth_type, username, iname, session_key)
+            self.clustered = bool(self.is_clustered(summary))
             if version_info:
-                self.__cache_version(ew, input_name, version_info)
+                self.__cache_version(ew, input_name, version_info, self.clustered)
         else:
             version_info = cached
             self.nifi_version = self.parse_version(cached.get('niFiVersion'))
+            self.clustered = bool(cached.get('_clustered'))
             EventWriter.log(ew, EventWriter.INFO, '{} Using the cached NiFi version {}; /system-diagnostics not polled this cycle'.format(
                 self.pid, cached.get('niFiVersion')))
 
@@ -747,8 +804,13 @@ class NiFiScript(Script):
                 data=json.dumps(version_info),
                 host=input_item.get("host")
             ))
-        else:
+        elif not self.nifi_version:
             EventWriter.log(ew, EventWriter.WARN, '{} Could not detect the NiFi version from /system-diagnostics; version-dependent endpoints will be skipped'.format(self.pid))
+
+        if self.clustered:
+            EventWriter.log(ew, EventWriter.INFO, '{} NiFi reports it is clustered; collecting per-node data'.format(self.pid))
+            self.__collect_cluster(ew, base_url, auth_type, username, iname,
+                                   session_key, input_name, input_item)
 
         for ep in self.endpoints:
             if not self.__supported(ep, ew):
@@ -860,6 +922,48 @@ class NiFiScript(Script):
             ew.write_event(event)
         except Exception as e:
             EventWriter.log(ew, EventWriter.ERROR, "{} There was an error requesting custom endpoint '{}': {}".format(self.pid, custom['path'], e))
+
+    def __collect_cluster(self, ew, base_url, auth_type, username, iname,
+                          session_key, input_name, input_item):
+        """Per-node data, which only exists on a cluster.
+
+        Two sourcetypes, both one event per node (decision C-1: the cluster is
+        the instance and the node is a dimension, so `host` keeps meaning the
+        thing the operator configured and `node` says which member it is).
+
+        `/controller/cluster` answers whether the cluster is whole and which
+        node coordinates; the per-node diagnostics come from the nodewise form
+        of an endpoint already being called, so they cost one extra request,
+        not one per node.
+        """
+        host = input_item.get("host")
+
+        nodes_raw = self.__get_request(ew, base_url, "/controller/cluster", auth_type,
+                                       username, iname, session_key)
+        nodes = self.cluster_nodes_of(nodes_raw)
+        if nodes is None:
+            EventWriter.log(ew, EventWriter.WARN, '{} Could not read /controller/cluster'.format(self.pid))
+        else:
+            connected = sum(1 for n in nodes if n.get('status') == 'CONNECTED')
+            EventWriter.log(ew, EventWriter.INFO, '{} Cluster: {} of {} nodes connected'.format(
+                self.pid, connected, len(nodes)))
+            for node in nodes:
+                event = dict(node)
+                event['node'] = node.get('address')
+                event['clusterNodeCount'] = len(nodes)
+                event['clusterConnectedNodeCount'] = connected
+                ew.write_event(Event(sourcetype="nifi:api:cluster_nodes",
+                                     stanza=input_name, data=json.dumps(event), host=host))
+
+        wise_raw = self.__get_request(ew, base_url, "/system-diagnostics?nodewise=true",
+                                      auth_type, username, iname, session_key)
+        snapshots = self.node_snapshots_of(wise_raw)
+        if not snapshots:
+            EventWriter.log(ew, EventWriter.WARN, '{} No per-node diagnostics returned'.format(self.pid))
+            return
+        for snapshot in snapshots:
+            ew.write_event(Event(sourcetype="nifi:api:node_diagnostics",
+                                 stanza=input_name, data=json.dumps(snapshot), host=host))
 
     def __collect_flow_metrics(self, ew, base_url, path, sourcetype, auth_type,
                                username, iname, session_key, input_name, input_item):

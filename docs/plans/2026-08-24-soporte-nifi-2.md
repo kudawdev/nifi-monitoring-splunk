@@ -669,24 +669,40 @@ Cubierto por el perfil **`multi-instance`**: dos NiFi independientes — **no un
 cluster** — de versiones distintas a propósito (2.11.0 y 1.28.1), para probar
 que la autodetección de versión (TA-3) es **por input** y no por instalación.
 
-### 11.3 Cluster — no soportado, con piezas escritas sin ejercitar
+### 11.3 Cluster — a soportar (spike del 2026-09-17)
 
-| # | Qué hay que resolver | Evidencia |
+La primera versión de esta sección decía que no se implementaba porque había
+que decidir qué significa "instancia" cuando son tres máquinas. **Se decidió
+soportarlo.** Para no comprometerse con un modelo adivinado, se levantó primero
+un cluster de dos nodos y se midió qué devuelve realmente la API.
+
+#### Lo que costó levantarlo (tres trampas específicas de cluster)
+
+| # | Síntoma | Causa |
 |---|---|---|
-| a | **`/system-diagnostics` cambia de forma.** El objeto `System_Diagnostics` tiene 22 campos, **17 bajo `systemDiagnostics.aggregateSnapshot.*` y cero bajo `nodeSnapshots`**. En un cluster ese endpoint trae además el detalle por nodo. Los paneles mostrarían el agregado — no quedarían vacíos — pero **no habría forma de ver un nodo individual**, que es justo lo que importa cuando uno de tres se queda sin heap | `NIFI.json`, objeto `System_Diagnostics` |
-| b | **El `host` colapsa.** El TA pollea un endpoint y estampa el `host` del input, así que tres nodos contra el coordinador se ven como **una** instancia. Sin resolver esto ningún panel puede desagregar por nodo | `inputs.conf.spec`, campo `host` |
-| c | **`FIELDALIAS-bulletin_node`** para `bulletin.nodeAddress` es el **único de los 8 FIELDALIAS de bulletins sin validar**; el propio archivo dice que solo se puebla en un cluster | `props.conf:185` |
-| d | **El registry `CLUSTER`** de `/flow/metrics` se expone como opción del input y nunca se pidió contra un cluster real: no se sabe qué métricas trae ni si el aplanado las maneja | `nifi.py:169` |
-| e | **`nifi:api:controller_cluster` se retiró en 2.0.0** (TA-6) porque nada lo producía. Era el único sourcetype con nombre de cluster y se fue sin reemplazo. Si se encara cluster, esa decisión hay que revisarla | TA-6, D-2 |
+| 1 | Los nodos arrancan y **salen con código 0** sin escribir nada útil | `Clustered Configuration Found: Shared Sensitive Properties Key [nifi.sensitive.props.key] required`. Un nodo suelto no la necesita; un cluster sí, **y con el mismo valor en todos los nodos** |
+| 2 | `/controller/cluster` responde **HTTP 500** con `URI [http://0.0.0.0:8080/...]` | NiFi construye la URI de replicación desde el **web host**, no desde `nifi.cluster.node.address`. `0.0.0.0` — correcto en un nodo suelto — hace que el coordinador se llame a sí mismo a una dirección inválida. El nodo debe bindear a un nombre que los otros resuelvan |
+| 3 | — | El cluster corre **sin seguridad** en el harness por la misma razón que el puerto web: un cluster seguro exige un certificado por nodo, que es otro ejercicio distinto de probar que el TA lo lee |
 
-**No se implementa, y la razón no es el harness.** Un cluster de dos nodos con
-ZooKeeper embebido es factible con `NIFI_CLUSTER_IS_NODE` y
-`NIFI_ZK_CONNECT_STRING`. Lo caro es el modelo de datos: objetos por nodo, el
-`host` por nodo, y decidir qué significa "instancia" cuando son tres máquinas.
-Eso es una decisión de producto, no una tarea de test, y conviene tomarla con
-un cliente real delante en lugar de adivinar. Queda como hueco documentado.
+#### Lo que devuelve la API (medido, no supuesto)
 
----
+**`/controller/cluster`** — un objeto por nodo con `address`, `apiPort`, `nodeId`, `status` (CONNECTED/DISCONNECTED), `roles` (**Primary Node**, **Cluster Coordinator**), `heartbeat`, `nodeStartTime`, `activeThreadCount`, `bytesQueued`, `flowFilesQueued`, `queued` y `events`. Es la respuesta a "¿está entero mi cluster y quién coordina?".
+
+**`/system-diagnostics?nodewise=true`** — devuelve `aggregateSnapshot` **y** `nodeSnapshots[]`, y cada `snapshot` por nodo **tiene exactamente la misma forma que el agregado** (verificado comparando las claves). Eso es lo que hace barato el soporte: los 17 campos que el datamodel ya declara bajo `aggregateSnapshot` sirven tal cual por nodo.
+
+**Registry `CLUSTER` de `/flow/metrics`** — hallazgo (d) resuelto: **funciona y es diminuto**, 4 muestras — `cluster_is_clustered`, `cluster_is_connected_to_cluster`, `cluster_total_node_count` y `cluster_connected_node_count` con la etiqueta `connected_nodes = "2 / 2"`.
+
+**Bulletins** — hallazgo (c) resuelto: `nodeAddress` **se puebla** (`nifi-2:8080`), tanto en la entrada como dentro de `bulletin`. El `FIELDALIAS-bulletin_node` que llevaba dos versiones sin validar es correcto, y ahora hay cómo probarlo.
+
+#### Las decisiones de modelo, y por qué
+
+| # | Decisión | Razón |
+|---|---|---|
+| **C-1** | **El cluster es la instancia; el nodo es una dimensión.** Un input, un `host`, y un campo `node` en los eventos por nodo | La API responde cluster-wide desde cualquier nodo, y el operador configura "mi cluster" una vez. Mantiene el significado de `host` y no rompe un solo panel existente |
+| **C-2** | **Un endpoint nuevo, no dos.** `/controller/cluster` da la lista completa de nodos con su estado, así que conectados/total se deriva; no hace falta `/flow/cluster/summary` aparte | Menos superficie, y el dato que importa — qué nodo falta — solo está en la lista |
+| **C-3** | **`nifi:api:cluster_nodes`**, un evento por nodo | Resucita lo que se retiró en TA-6 (`controller_cluster`), esta vez **con un productor real** |
+| **C-4** | **`nifi:api:node_diagnostics`**, un evento por nodo, reutilizando la extracción de `system_diagnostics` | Misma forma medida: cero trabajo de extracción, y resuelve el hallazgo (a) — ver un nodo individual |
+| **C-5** | **`clustered` se detecta junto con la versión y se cachea igual** | Es una propiedad estática del despliegue; no merece una llamada por ciclo |
 
 ## 12. Hallazgos de los dashboards
 
