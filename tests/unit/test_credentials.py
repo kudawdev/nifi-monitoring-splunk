@@ -5,10 +5,16 @@ credential into splunkd.log on every request, and __get_password returned
 None without a word when no stored credential matched the username.
 """
 
+import os
 import unittest
 import unittest.mock as mock
 
 from support import NiFiScriptTestCase, load_nifi_module, response
+
+TA_BIN = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "nifi_TA_monitoring", "bin",
+)
 
 JWT = (
     "eyJraWQiOiJhYjAyM2RhNC1hNTA5LTRjYTAtYTc2ZSJ9."
@@ -156,3 +162,117 @@ class UnauthenticatedModeTest(NiFiScriptTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TokenStorageTest(NiFiScriptTestCase):
+    """Defect B-14: the JWT used to be written to a .env inside the app.
+
+    That file was lost on every reinstall, dotenv.find_dotenv() walked up from
+    the working directory and could pick up an unrelated one under
+    $SPLUNK_HOME, and -- the reason it blocks more than one instance --
+    use_single_instance is false, so every input's process rewrote that same
+    file non-atomically.
+    """
+
+    def stored(self, realm=None, username=None, password=None):
+        entry = mock.MagicMock()
+        entry.realm = realm
+        entry.username = username
+        entry.content.clear_password = password
+        return entry
+
+    def test_the_module_no_longer_writes_a_dotenv(self):
+        """A source check: the file was created at import time, so nothing that
+        exercises the class would notice its return."""
+        source = open(
+            os.path.join(TA_BIN, "nifi.py"), encoding="utf-8"
+        ).read()
+        self.assertNotIn("import dotenv", source)
+        self.assertNotIn("set_key", source)
+        self.assertNotIn("load_dotenv", source)
+
+    def passwords(self, *entries):
+        """storage_passwords is both iterable and has create/delete, which a
+        plain list is not."""
+        collection = mock.MagicMock()
+        collection.__iter__ = lambda _self: iter(entries)
+        return collection
+
+    def test_the_token_is_stored_under_its_own_realm(self):
+        service = mock.MagicMock()
+        service.storage_passwords = self.passwords()
+
+        with mock.patch.object(self.nifi.client, "connect", return_value=service):
+            self.script._NiFiScript__write_token(
+                mock.MagicMock(), "session-key", "prod", "NEW-TOKEN"
+            )
+
+        service.storage_passwords.create.assert_called_once_with(
+            "NEW-TOKEN", "prod", self.script.token_realm
+        )
+
+    def test_the_stored_token_is_read_back(self):
+        service = mock.MagicMock()
+        service.storage_passwords = [
+            self.stored(realm=self.script.token_realm, username="prod",
+                        password="STORED-TOKEN"),
+        ]
+
+        with mock.patch.object(self.nifi.client, "connect", return_value=service):
+            result = self.script._NiFiScript__read_token(
+                mock.MagicMock(), "session-key", "prod"
+            )
+
+        self.assertEqual(result, "STORED-TOKEN")
+
+    def test_another_inputs_token_is_not_returned(self):
+        """The point of moving off the shared .env: one instance must not read
+        or overwrite another's token."""
+        service = mock.MagicMock()
+        service.storage_passwords = [
+            self.stored(realm=self.script.token_realm, username="staging",
+                        password="STAGING-TOKEN"),
+        ]
+
+        with mock.patch.object(self.nifi.client, "connect", return_value=service):
+            result = self.script._NiFiScript__read_token(
+                mock.MagicMock(), "session-key", "prod"
+            )
+
+        self.assertIsNone(result)
+
+    def test_the_token_is_read_once_per_process(self):
+        """Without the cache this would be a storage/passwords round trip per
+        endpoint per cycle, which is worse than the file it replaces."""
+        service = mock.MagicMock()
+        service.storage_passwords = [
+            self.stored(realm=self.script.token_realm, username="prod",
+                        password="STORED-TOKEN"),
+        ]
+
+        with mock.patch.object(self.nifi.client, "connect",
+                               return_value=service) as connect:
+            for _ in range(3):
+                self.script._NiFiScript__read_token(
+                    mock.MagicMock(), "session-key", "prod"
+                )
+
+        self.assertEqual(connect.call_count, 1)
+
+    def test_a_token_entry_is_not_mistaken_for_the_credential(self):
+        """Both live in storage/passwords. An input named like the NiFi user
+        would otherwise hand the JWT back as the password."""
+        self.use_real_get_password()
+        service = mock.MagicMock()
+        service.storage_passwords = [
+            self.stored(realm=self.script.token_realm, username="admin",
+                        password="A-JWT"),
+            self.stored(realm=None, username="admin", password="the-password"),
+        ]
+
+        with mock.patch.object(self.nifi.client, "connect", return_value=service):
+            result = self.script._NiFiScript__get_password(
+                mock.MagicMock(), "session-key", "admin"
+            )
+
+        self.assertEqual(result, "the-password")

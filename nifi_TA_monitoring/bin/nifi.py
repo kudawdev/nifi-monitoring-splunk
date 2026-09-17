@@ -3,7 +3,6 @@ import os
 import re
 import requests
 import urllib3
-import dotenv
 #import xml.etree.ElementTree as ElementTree
 import uuid
 import unicodedata
@@ -13,13 +12,6 @@ from urllib.parse import quote
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))
 import splunklib.client as client
 from splunklib.modularinput import EventWriter, Argument, Scheme, Event, Script
-
-if dotenv.find_dotenv() == '':
-    with open(os.path.join(os.path.dirname(__file__), ".env"), 'w'):
-        pass
-
-dotenv_file = dotenv.find_dotenv()
-dotenv.load_dotenv(dotenv_file)
 
 class NiFiScript(Script):
 
@@ -35,6 +27,12 @@ class NiFiScript(Script):
             {"name":"endpoint_flow_metrics", "sourcetype":"nifi:api:flow_metrics", "path":"/flow/metrics/json", "min_version":(1, 16, 0)}
         ]
     pid = 'Nifi Log pid="{}"'.format(uuid.uuid4())
+    # Realm for the JWT in storage/passwords, so it cannot be confused with the
+    # NiFi credential, which is stored with no realm.
+    token_realm = "nifi_TA_monitoring:token"
+    # The token for this process's input. use_single_instance is false, so one
+    # process serves one input and an instance attribute is the right scope.
+    token_cache = None
     tls_verify = True
     nifi_version = None
 
@@ -138,6 +136,48 @@ class NiFiScript(Script):
                 handle.write(str(value))
         except Exception as error:
             EventWriter.log(ew, EventWriter.WARN, '{} Could not write checkpoint {}: {}'.format(self.pid, name, error))
+
+    def __token_key(self, input_name):
+        return unicodedata.normalize('NFKD', input_name).replace(' ', '')
+
+    def __read_token(self, ew, session_key, input_name):
+        """The stored JWT for this input.
+
+        It used to live in a .env inside the app directory, which lost it on
+        every reinstall and, because dotenv.find_dotenv() walks up from the
+        working directory, could pick up an unrelated file under $SPLUNK_HOME.
+        Worse for more than one instance: every input's process wrote that same
+        file non-atomically, so two renewing at once could clobber each other.
+
+        Cached for the life of the process, which also makes this cheaper than
+        what it replaces -- that reloaded the .env on every request.
+        """
+        if self.token_cache is not None:
+            return self.token_cache
+        key = self.__token_key(input_name)
+        try:
+            service = client.connect(token=session_key)
+            for stored in service.storage_passwords:
+                if stored.realm == self.token_realm and stored.username == key:
+                    self.token_cache = stored.content.clear_password
+                    return self.token_cache
+        except Exception as error:
+            EventWriter.log(ew, EventWriter.WARN, '{} Could not read the stored token: {}'.format(self.pid, error))
+        return None
+
+    def __write_token(self, ew, session_key, input_name, token):
+        """Store the renewed JWT, replacing whatever was there."""
+        key = self.__token_key(input_name)
+        self.token_cache = token
+        try:
+            service = client.connect(token=session_key)
+            for stored in service.storage_passwords:
+                if stored.realm == self.token_realm and stored.username == key:
+                    service.storage_passwords.delete(username=key, realm=self.token_realm)
+                    break
+            service.storage_passwords.create(token, key, self.token_realm)
+        except Exception as error:
+            EventWriter.log(ew, EventWriter.WARN, '{} Could not store the renewed token: {}'.format(self.pid, error))
 
     @staticmethod
     def bulletins_of(payload):
@@ -877,8 +917,7 @@ class NiFiScript(Script):
             # storage/passwords call per endpoint per cycle in auth_type=none,
             # and an error logged for a credential that mode never stores.
             password = self.__get_password(ew, session_key, username)
-            dotenv.load_dotenv(dotenv_file)
-            token = os.environ.get(unicodedata.normalize('NFKD',input_name).replace(' ',''), "unknown")
+            token = self.__read_token(ew, session_key, input_name) or "unknown"
             EventWriter.log(ew, EventWriter.INFO, '{} Request base_url:{} path:{}, auth_type:{}, username:{}, input_name:{}, token:{}'.format(self.pid, base_url, path, auth_type, username, input_name, self.__redact(token)))
             
             url = self.__urljoin(base_url, path)
@@ -896,7 +935,7 @@ class NiFiScript(Script):
                     if not token:
                         EventWriter.log(ew, EventWriter.ERROR, '{} Token renewal failed, aborting request - url: {}'.format(self.pid, url))
                         return None
-                    dotenv.set_key(dotenv_file, unicodedata.normalize('NFKD',input_name).replace(' ',''), token)
+                    self.__write_token(ew, session_key, input_name, token)
                     req_args["headers"] = {'Content-Type': 'application/json', 'Accept':'application/json', 'Authorization': 'Bearer {}'.format(token)}
                     response = requests.get(url, **req_args)
                     if response.status_code >= 400:
@@ -965,6 +1004,10 @@ class NiFiScript(Script):
         
         # Retrieve the password from the storage/passwords endpoint 
         for storage_password in service.storage_passwords:
+            # The token lives in storage/passwords too, under its own realm; an
+            # input named like the NiFi user would otherwise match here.
+            if storage_password.realm == self.token_realm:
+                continue
             if storage_password.username == username:
                 return storage_password.content.clear_password
 

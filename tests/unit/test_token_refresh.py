@@ -60,10 +60,7 @@ class TokenRefreshTest(NiFiScriptTestCase):
 
         self.get_request("EXPIRED-TOKEN", input_name="prod")
 
-        self.dotenv.set_key.assert_called_once()
-        args = self.dotenv.set_key.call_args.args
-        self.assertEqual(args[1], "prod")
-        self.assertEqual(args[2], "NEW-TOKEN")
+        self.assertEqual(self.stored_tokens, ["NEW-TOKEN"])
 
     def test_unauthenticated_mode_sends_no_authorization_header(self):
         self.http.get.side_effect = [response(200, "payload")]

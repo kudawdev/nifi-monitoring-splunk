@@ -1,9 +1,13 @@
 """Test harness for the TA's modular input.
 
 bin/nifi.py is a Splunk modular input: importing it pulls in `requests`,
-`urllib3`, `dotenv` and `splunklib.client`, and its module body touches the
-filesystem looking for a .env file. None of that is available (or wanted) in a
+`urllib3` and `splunklib.client`, none of which is available (or wanted) in a
 unit test, so the imports are stubbed before the module is loaded.
+
+The JWT used to live in a .env file, which is why this harness once stubbed
+`dotenv` and drove the token through os.environ. It now lives in
+storage/passwords (defect B-14), so the token is injected by setting the
+script's cache instead.
 
 Uses only the standard library so the suite runs anywhere, including inside
 the kudaw/appinspect container used by CI.
@@ -22,8 +26,8 @@ TA_DIR = os.path.abspath(
 def load_nifi_module():
     """Import nifi_TA_monitoring/bin/nifi.py with its runtime deps stubbed.
 
-    Returns (module, stubs) where stubs holds the mocks for `requests` and
-    `dotenv` so tests can drive and inspect them.
+    Returns (module, stubs) where stubs holds the mock for `requests` so tests
+    can drive and inspect it.
     """
     for path in (os.path.join(TA_DIR, "lib"), os.path.join(TA_DIR, "bin")):
         if path not in sys.path:
@@ -32,14 +36,9 @@ def load_nifi_module():
     stub_requests = mock.MagicMock()
     stub_urllib3 = mock.MagicMock()
     stub_urllib3.exceptions.InsecureRequestWarning = Warning
-    stub_dotenv = mock.MagicMock()
-    # keep the module body from creating a .env inside the app directory
-    stub_dotenv.find_dotenv.return_value = "/tmp/nifi-ta-unittest.env"
-
     stubs = {
         "requests": stub_requests,
         "urllib3": stub_urllib3,
-        "dotenv": stub_dotenv,
         "splunklib.client": mock.MagicMock(),
     }
     with mock.patch.dict(sys.modules, stubs):
@@ -47,7 +46,7 @@ def load_nifi_module():
             del sys.modules["nifi"]
         import nifi
 
-    return nifi, {"requests": stub_requests, "dotenv": stub_dotenv}
+    return nifi, {"requests": stub_requests}
 
 
 def response(status_code, text="body"):
@@ -69,9 +68,7 @@ class NiFiScriptTestCase(unittest.TestCase):
 
     def setUp(self):
         self.http = self.stubs["requests"]
-        self.dotenv = self.stubs["dotenv"]
         self.http.reset_mock(return_value=True, side_effect=True)
-        self.dotenv.reset_mock()
         self.script = self.nifi.NiFiScript()
         self.event_writer = mock.MagicMock()
         self._password_patcher = mock.patch.object(
@@ -90,8 +87,21 @@ class NiFiScriptTestCase(unittest.TestCase):
         self._stop_password_patcher()
 
     def get_request(self, stored_token, input_name="instance", auth_type="basic"):
-        """Call the private __get_request with `stored_token` as cached token."""
-        with mock.patch.dict("os.environ", {input_name: stored_token}, clear=False):
+        """Call the private __get_request with `stored_token` already stored.
+
+        The token now comes from storage/passwords rather than a .env, so it is
+        seeded through the process cache and the write is captured instead of
+        hitting Splunk.
+        """
+        self.script.token_cache = stored_token
+        self.stored_tokens = []
+        with mock.patch.object(
+            self.nifi.NiFiScript, "_NiFiScript__write_token",
+            side_effect=lambda ew, key, name, token: (
+                self.stored_tokens.append(token),
+                setattr(self.script, "token_cache", token),
+            ),
+        ):
             return self.script._NiFiScript__get_request(
                 self.event_writer,
                 "http://nifi:8080/nifi-api",

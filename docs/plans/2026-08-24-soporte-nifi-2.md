@@ -340,7 +340,7 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 | TA-4b ◻ | **Pendiente (2.1).** En NiFi ≥2.0 los repositorios llegan por métricas (`nifi_*_repo_*_space_bytes`): hacer `/system-diagnostics` opcional o de intervalo mayor, sin romper 1.x. |
 | TA-5 ✅ | **Hecho.** Polling de `/flow/bulletin-board` → `nifi:api:bulletin_board`, habilitado por defecto, con `?after=<id>` y cursor en el `checkpoint_dir`. `props.conf` mapea la forma del board a los nombres que ya usa el datamodel, para que ambas fuentes alimenten los mismos paneles. |
 | TA-6 ✅ | **Hecho.** `nifi:api:controller_cluster` retirado (nada lo producía) y `nifi:api:site_to_site` retirado por D-2. |
-| TA-7 ◐ | **Parcial (el resto va a 2.1, §11):** el cursor de bulletins ya usa el `checkpoint_dir` de Splunk. Falta mover el token. Sustituir el estado en `.env` por el KV store de Splunk o `storage/passwords` (B-14). **Medido en el run del 2026-08-24:** el `.env` vive dentro del directorio de la app, así que se pierde al reinstalarla o recrear el contenedor, y cada arranque en frío paga un 401 evitable. Al no haber token cacheado, pedirlo proactivamente antes de la primera request en lugar de provocar el 401. |
+| TA-7 ◐ | **Parcial.** El cursor de bulletins y el token ya están fuera del `.env` (B-14, 2026-09-17); queda solo pedir el token **proactivamente** antes de la primera request en lugar de provocar el 401 de arranque en frío. Texto original: el cursor de bulletins ya usa el `checkpoint_dir` de Splunk. Falta mover el token. Sustituir el estado en `.env` por el KV store de Splunk o `storage/passwords` (B-14). **Medido en el run del 2026-08-24:** el `.env` vive dentro del directorio de la app, así que se pierde al reinstalarla o recrear el contenedor, y cada arranque en frío paga un 401 evitable. Al no haber token cacheado, pedirlo proactivamente antes de la primera request en lugar de provocar el 401. |
 | TA-8 ◐ | **Parcial.** B-4, B-5 y B-16 corregidos; **B-15 (vendorizar `requests`/`urllib3`) diferido a 2.1** — §11. |
 | TA-9 ✅ | **Hecho.** `nifi_manager.xml` e `inputs.conf.spec` exponen los 18 parámetros del input, incluidos `metrics_registries`, `metrics_strategy`, `metrics_sample_filter`, `endpoint_bulletin_board`, `custom_endpoints`, `verify_tls` y `ca_bundle`. |
 | TA-10 ✅ | **Hecho, corregido el 2026-09-16.** `python.required` junto a `python.version`, que se conserva para Splunk 8.2–9.1. El valor era `python3` y **AppInspect no lo acepta**: `python.required` solo admite `3.9` o `3.13` (`PYTHON_REQUIRED_VALUES`), y Splunk 10.2 deprecó todo lo anterior a 3.13. Ahora es `python.required = 3.13`; `python.version` sigue en `python3`, que es su propio conjunto de valores. |
@@ -406,7 +406,7 @@ Catalogados durante la lectura del repositorio del 2026-08-24. Severidad: **A** 
 | B-11 ✅ | C | `AGENTS.md` / `CLAUDE.md` | Dice versión 1.2.2; las apps están en 1.2.3. También afirma que `main.yml`/`testing.yml` corren por push — los tres son `workflow_dispatch`. **Resuelto el 2026-09-16.** `AGENTS.md` reescrito: 2.0.0, Splunk 9.0–10.x, los dos caminos de datos con sus endpoints reales, el harness de `tests/` tal como es hoy, y los defectos que siguen vigentes (B-14, B-24) señalados donde se los encuentra. |
 | B-12 ✅ | C | `mkdocs.yml` | `current_version: 1.0`. **Resuelto.** `current_version: 2.0`. |
 | B-13 ✅ | **A** | `tests/nifi123-splunk91-nifi_login.yml` | `NIFI_WEB_PROXY_HOST: '<URL_BASE>:9443'` sin reemplazar → NiFi rechaza por host header. `SINGLE_USER_CREDENTIALS_PASSWORD: 'Password'` tiene 8 caracteres y NiFi exige 12: ignora las credenciales y genera aleatorias. **El modo login no funciona como está escrito.** Además mapea `443:9443` (puerto privilegiado) y no monta `../:/tmp/test` ni instala las apps auxiliares. **Resuelto** en F2. Los composes por combinación desaparecieron: hay un solo compose parametrizado por perfil, con provisioning declarativo. |
-| B-14 ◻ | **B** | `bin/nifi.py` | Persiste el token JWT en claro en un `.env` dentro de `bin/`. `dotenv.find_dotenv()` busca desde el CWD hacia arriba: en un modular input eso es `$SPLUNK_HOME`, y puede enganchar un `.env` ajeno. **Pendiente — diferido a 2.1 (§11).** |
+| B-14 ✅ | **B** | `bin/nifi.py` | Persistía el token JWT en claro en un `.env` dentro de `bin/`. `dotenv.find_dotenv()` busca desde el CWD hacia arriba: en un modular input eso es `$SPLUNK_HOME`, y podía enganchar un `.env` ajeno. **Resuelto el 2026-09-17:** el token vive en `storage/passwords` con realm propio (`nifi_TA_monitoring:token`), cacheado en memoria por proceso — lo que además es **más barato** que el `load_dotenv()` por request que reemplaza. `dotenv` salió de las dependencias. **Lo que precipitó el arreglo no fue la reinstalación sino la concurrencia:** con `use_single_instance = false` hay un proceso por input, y todos reescribían ese mismo archivo sin atomicidad, así que dos instancias renovando a la vez podían pisarse el token. Era el bloqueante real de correr varias instancias contra un mismo Splunk. |
 | B-15 ◻ | **B** | `bin/nifi.py` | `import requests` / `import urllib3` sin vendorizar en `lib/` — depende de que el Python de Splunk los traiga. Frágil entre versiones de Splunk. **Pendiente — diferido a 2.1 (§11).** |
 | B-16 ✅ | C | `bin/nifi.py:__get_password` | Devuelve `None` silenciosamente si no encuentra el usuario en `storage/passwords`. **Resuelto** (TA-8). Ahora loguea un ERROR accionable antes de devolver `None`. |
 | B-17 ✅ | **B** | `app.conf` (ambas) | Falta la stanza `[id]` con `name`/`version`: agregarla baja 2 warnings de AppInspect (`check_for_valid_package_id`, `check_version_is_valid_semver`). Relevante porque el gate es `MAX_WARNING = 8` y AppInspect 4.2.x sumó `check_collections_conf` (+1, y `nifi_monitoring` tiene `collections.conf`). |
@@ -621,7 +621,7 @@ release de 2.0.0**, que aún no se publicó: falta mergear `nifi-2` y correr
 
 | # | Qué falta | Cómo se verificó que sigue abierto |
 |---|---|---|
-| **B-14 / TA-7** | Mover el JWT del `.env` al KV store o a `storage/passwords`. El cursor de bulletins ya usa el `checkpoint_dir`; el token no. | `bin/nifi.py` sigue importando `dotenv` y escribiendo el token con `dotenv.set_key` |
+| **TA-7** (resto) | Pedir el token proactivamente en el arranque en frío, en lugar de provocar un 401 y renovar. B-14 ya cerró la parte del almacenamiento. | El harness mide exactamente un 401 por input por arranque, por diseño |
 | **B-15 / TA-8** | Vendorizar `requests` y `urllib3` en `lib/`. | `nifi_TA_monitoring/lib/` contiene solo `splunklib` |
 | **B-24** | Vendorizar `deprecation`, o retirar `results.py` del `splunklib` vendorizado. | `import splunklib.results` → `ModuleNotFoundError: No module named 'deprecation'` |
 | **TA-4b** | Hacer `/system-diagnostics` opcional o de intervalo mayor en NiFi ≥2.0, donde las métricas ya cubren los tres repositorios. | La entrada de `endpoints` no tiene condición de versión ni de intervalo |
@@ -629,10 +629,9 @@ release de 2.0.0**, que aún no se publicó: falta mergear `nifi-2` y correr
 | **F0.3 / R-1 / R-9** | Medir la cardinalidad de `/flow/metrics` con un flujo no trivial. Es lo que sostiene la estimación de R-9 (≈1 GB/día con `ALL_COMPONENTS`), hoy extrapolada de un NiFi ocioso. | En `docs/plans/samples/` solo hay muestras de NiFi vacío |
 | **DOC-3** ❌ | Recapturar los screenshots con la UI de NiFi 2.x. **No se hará desde acá**: es trabajo visual. 12 imágenes de 1.x siguen referenciadas en §4 de la doc, advertidas como tales. | — |
 
-**Prioridad sugerida:** B-14 y B-15 primero. El primero hace que el TA sobreviva
-a una reinstalación en lugar de pagar un 401 evitable en cada arranque en frío;
-el segundo lo independiza de qué traiga el Python de Splunk. R-8 es el que deja
-sin cubrir un camino que el propio 2.0.0 volvió el default.
+**Prioridad sugerida:** B-15 primero, que independiza al TA de qué Python traiga
+Splunk. R-8 le sigue: deja sin cubrir un camino que el propio 2.0.0 volvió el
+default. B-14 salió de esta lista el 2026-09-17.
 
 ---
 
