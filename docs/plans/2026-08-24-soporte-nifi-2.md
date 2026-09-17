@@ -645,12 +645,12 @@ casos que se comportan distinto, y decía en §1 que el cluster está fuera de
 alcance — lo cual es cierto pero incompleto, porque **hay soporte a medias ya
 escrito**, que es peor que no tener ninguno: parece que anda.
 
-### 12.1 Una sola instancia — soportada y verificada
+### 11.1 Una sola instancia — soportada y verificada
 
 Es lo que cubren todos los perfiles de §8.4. No falta nada de topología; lo
 pendiente es de producto y está en §13 y en los hallazgos de dashboards.
 
-### 12.2 Múltiples instancias independientes — soportada, y ahora verificada
+### 11.2 Múltiples instancias independientes — soportada, y ahora verificada
 
 `AGENTS.md` dice que la app *"centraliza la visibilidad sobre múltiples
 instancias de NiFi"*, y la arquitectura acompaña: un stanza `[nifi://<name>]`
@@ -669,7 +669,7 @@ Cubierto por el perfil **`multi-instance`**: dos NiFi independientes — **no un
 cluster** — de versiones distintas a propósito (2.11.0 y 1.28.1), para probar
 que la autodetección de versión (TA-3) es **por input** y no por instalación.
 
-### 12.3 Cluster — no soportado, con piezas escritas sin ejercitar
+### 11.3 Cluster — no soportado, con piezas escritas sin ejercitar
 
 | # | Qué hay que resolver | Evidencia |
 |---|---|---|
