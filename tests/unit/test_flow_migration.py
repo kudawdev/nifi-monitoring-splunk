@@ -224,3 +224,56 @@ class OperatorGuidanceTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PrimaryNodeExecutionTest(unittest.TestCase):
+    """In a cluster NiFi replicates the flow to every node.
+
+    With the default executionNode = ALL each node polls the cluster-wide REST
+    API and sends its own copy to the HEC: N nodes means N times the events
+    and N times the licence bill, with nothing in the data to say so. Only the
+    API *sources* are pinned to the primary node -- pinning a processor fed by
+    a connection would strand whatever is queued on the other nodes, because
+    queues are per node.
+
+    ReadLogsNifi must stay on ALL: log files are the one thing that really is
+    per node, so every node has to tail its own.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        with open(SHIPPED) as handle:
+            cls.flow = json.load(handle)
+
+    def test_the_api_sources_run_on_the_primary_node_only(self):
+        pinned = {p["name"] for p in processors(self.flow)
+                  if p.get("executionNode") == "PRIMARY"}
+        self.assertEqual(
+            pinned,
+            {"GetHTTP-flow_status", "GetHTTP-system_diagnostics", "GenerateFlowFile"},
+        )
+
+    def test_the_log_tailer_runs_everywhere(self):
+        tailers = [p for p in processors(self.flow)
+                   if p.get("type", "").endswith(".TailFile")]
+        self.assertTrue(tailers, "the flow no longer tails any log")
+        for processor in tailers:
+            with self.subTest(processor=processor["name"]):
+                self.assertNotEqual(
+                    processor.get("executionNode"), "PRIMARY",
+                    "each node has its own log files, so this must run on all")
+
+    def test_nothing_downstream_is_pinned(self):
+        """A pinned processor behind a connection never drains the queues the
+        other nodes built up."""
+        destinations = set()
+        for group in walk(self.flow["flowContents"]):
+            for connection in group.get("connections") or []:
+                destinations.add((connection.get("destination") or {}).get("id"))
+        for processor in processors(self.flow):
+            if processor.get("executionNode") != "PRIMARY":
+                continue
+            if processor.get("type", "").endswith(".GenerateFlowFile"):
+                continue  # timer-driven regardless of what is wired into it
+            with self.subTest(processor=processor.get("name")):
+                self.assertNotIn(processor["identifier"], destinations)

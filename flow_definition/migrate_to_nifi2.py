@@ -295,6 +295,46 @@ def rewrite_references(node, names, report, seen):
     return node
 
 
+#: Sources that poll the cluster-wide REST API. In a cluster NiFi replicates
+#: the flow to every node, so with the default executionNode = ALL each node
+#: polls and sends its own copy: N nodes means N times the events and N times
+#: the licence, with nothing to indicate it.
+#:
+#: Only *sources* are marked. Setting PRIMARY on a processor fed by a
+#: connection would strand whatever is queued on the other nodes, because
+#: queues are per node.
+#:
+#: ReadLogsNifi is deliberately NOT here: log files are the one thing that is
+#: genuinely per node, so its TailFile has to run everywhere.
+PRIMARY_ONLY_SOURCES = (
+    "GetHTTP-flow_status",
+    "GetHTTP-system_diagnostics",
+    "GenerateFlowFile",
+)
+
+
+def restrict_to_primary(root, report):
+    """Make the API pollers run on the primary node only."""
+    changed = 0
+    for group in walk_groups(root):
+        group_name = group.get("name") or ""
+        # The GenerateFlowFile pair lives in the history subgroups, whose names
+        # begin with GetHTTP-. Scoping by group name keeps a GenerateFlowFile
+        # added to the logs branch later from being caught by accident.
+        api_group = group_name.startswith("GetHTTP-")
+        for processor in group.get("processors") or []:
+            name = processor.get("name")
+            if name not in PRIMARY_ONLY_SOURCES:
+                continue
+            if name == "GenerateFlowFile" and not api_group:
+                continue
+            if processor.get("executionNode") != "PRIMARY":
+                processor["executionNode"] = "PRIMARY"
+                changed += 1
+                report.append("executionNode PRIMARY: %s (%s)" % (name, group_name))
+    return changed
+
+
 def main(argv):
     if len(argv) != 2:
         raise SystemExit(__doc__.strip().splitlines()[2].strip())
@@ -318,6 +358,8 @@ def main(argv):
             group.pop("variables", None)
 
     drop_retired(root, report)
+
+    restrict_to_primary(root, report)
 
     converted_ids = set()
     for group in walk_groups(root):
