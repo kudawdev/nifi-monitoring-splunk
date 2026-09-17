@@ -15,6 +15,36 @@ El piso es NiFi 1.16 porque es donde aparece `/flow/metrics/json`. Las
 instancias 1.x anteriores funcionan sin el endpoint de métricas; esa
 combinación no está cubierta por el CI.
 
+## Cluster y múltiples instancias
+
+| Topología | Soportada | Qué configurás |
+|---|---|---|
+| Una instancia | sí | un input |
+| Varias instancias independientes | sí | un input y una fila del lookup `instance` por cada una |
+| Un cluster de NiFi | sí | **un solo input**, apuntado a cualquier nodo |
+
+Para la app un cluster es **una** instancia, no varias. Apuntá el input a
+cualquier nodo: NiFi responde a nivel cluster desde todos. El add-on detecta
+por su cuenta que está hablando con un cluster y recolecta además los datos
+por nodo — no hay nada que habilitar.
+
+Eso significa que los eventos conservan el `host` que configuraste, que es el
+cluster, y llevan un campo `node` que dice a qué miembro describen. Las
+búsquedas y paneles existentes no se ven afectados; la fila **Cluster** del
+tablero **Nifi TA Monitoring** muestra los miembros, sus roles y el heap por
+nodo, porque el agregado esconde justo al nodo que se está quedando sin heap.
+
+Dos cosas que solo existen en un cluster:
+
+- **Los bulletins traen el nodo que los emitió**, y los de framework
+  (categorías como *Clustering* o *Primary Node*) describen al cluster y no a
+  un componente, así que no tienen nombre de origen.
+- **En el camino push el flujo corre solo en el nodo primario** para lo que
+  consulta la API, así que un cluster no manda una copia por nodo. El tailing
+  de logs sigue corriendo en todos, porque los archivos de log sí son de cada
+  nodo. Viene resuelto en el flujo que se distribuye; no hay nada que
+  configurar.
+
 ## Dos formas de ingresar los datos
 
 Elige una. Usar las dos duplica cada evento.

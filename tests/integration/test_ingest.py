@@ -813,6 +813,30 @@ class ClusterTest(IntegrationTestCase):
         self.assertTrue(rows)
         self.assertEqual(int(rows[0]["hosts"]), 1)
 
+    def test_the_cluster_panels_return_a_row_per_node(self):
+        """Finding D-D of section 12 says APP-3 added four datamodel objects
+        that no dashboard queries. Adding two more and no panel would have
+        repeated it, so the panels are asserted the same way the data is."""
+        import re as _re
+        views = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "..", "nifi_monitoring", "default", "data", "ui", "views",
+            "nifi_internal_monitoring.xml")
+        text = _re.sub(r"<!--.*?-->", "", open(views).read(), flags=_re.S)
+        queries = [q.replace("&gt;", ">").replace("&lt;", "<").replace("&amp;", "&").strip()
+                   for q in _re.findall(r"<query>(.*?)</query>", text, _re.S)]
+        for objeto in ("Cluster_Nodes", "Node_Diagnostics"):
+            with self.subTest(object=objeto):
+                panel = [q for q in queries if objeto in q]
+                self.assertTrue(panel, "no panel queries %s" % objeto)
+                rows = wait_for_events(self.splunk, panel[0],
+                                       minimum=self.NODES, timeout=420)
+                self.assertEqual(
+                    len(rows), self.NODES,
+                    "%s panel returned %d rows for %d nodes"
+                    % (objeto, len(rows), self.NODES))
+                self.assertTrue(rows[0].get("node"), "the panel does not name the node")
+
     def test_bulletins_name_the_node_they_came_from(self):
         """Finding (c): FIELDALIAS-bulletin_node went two releases without a
         cluster to validate it against."""

@@ -2279,7 +2279,7 @@
       "fields": [
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.freeSpaceBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2291,7 +2291,7 @@
         },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.totalSpaceBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2303,7 +2303,7 @@
         },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.usedSpaceBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2315,7 +2315,7 @@
         },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.freeSpaceBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2327,7 +2327,7 @@
         },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.totalSpaceBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2339,7 +2339,7 @@
         },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.usedSpaceBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2351,7 +2351,7 @@
         },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.freeHeapBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2363,7 +2363,7 @@
         },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.freeNonHeapBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2375,7 +2375,7 @@
         },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.maxHeapBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2387,7 +2387,7 @@
         },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.maxNonHeapBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2399,7 +2399,7 @@
         },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.freeSpaceBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2411,7 +2411,7 @@
         },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.totalSpaceBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2423,7 +2423,7 @@
         },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.usedSpaceBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2435,7 +2435,7 @@
         },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.totalHeapBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2447,7 +2447,7 @@
         },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.totalNonHeapBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2459,7 +2459,7 @@
         },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.usedHeapBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2471,7 +2471,7 @@
         },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.usedNonHeapBytes",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "number",
           "fieldSearch": "",
           "required": false,
@@ -2483,7 +2483,7 @@
         },
         {
           "fieldName": "cluster",
-          "owner": "System_Diagnostics",
+          "owner": "Node_Diagnostics",
           "type": "string",
           "fieldSearch": "",
           "required": false,
@@ -2652,10 +2652,10 @@
       "constraints": [
         {
           "search": "`index_nifi` sourcetype=\"nifi:api:node_diagnostics\"",
-          "owner": "System_Diagnostics"
+          "owner": "Node_Diagnostics"
         }
       ],
-      "lineage": "System_Diagnostics"
+      "lineage": "Node_Diagnostics"
     },
     {
       "objectName": "Cluster_Nodes",
@@ -2663,6 +2663,30 @@
       "parentName": "BaseEvent",
       "comment": "",
       "fields": [
+        {
+          "fieldName": "sourcetype",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "sourcetype",
+          "comment": ""
+        },
+        {
+          "fieldName": "source",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "source",
+          "comment": ""
+        },
         {
           "fieldName": "_time",
           "owner": "BaseEvent",
@@ -2941,10 +2965,10 @@
       "constraints": [
         {
           "search": "`index_nifi` sourcetype=\"nifi:api:cluster_nodes\"",
-          "owner": "System_Diagnostics"
+          "owner": "Cluster_Nodes"
         }
       ],
-      "lineage": "System_Diagnostics"
+      "lineage": "Cluster_Nodes"
     }
   ],
   "objectNameList": [

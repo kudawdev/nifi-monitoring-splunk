@@ -102,6 +102,63 @@
   </row>
   <row>
     <panel>
+      <title>Cluster</title>
+      <!-- Only fills in when the NiFi being polled is a cluster: the add-on
+           detects that itself and collects nifi:api:cluster_nodes, so an
+           operator configures nothing. On a standalone instance the panel is
+           empty, which is the right answer to "is my cluster whole". -->
+      <table>
+        <title>Cluster members</title>
+        <search>
+          <query>| tstats latest(_time) as last_seen,
+    latest(Cluster_Nodes.status) as status,
+    latest(Cluster_Nodes.roles) as roles,
+    latest(Cluster_Nodes.activeThreadCount) as threads,
+    latest(Cluster_Nodes.queued) as queued,
+    latest(Cluster_Nodes.clusterConnectedNodeCount) as connected,
+    latest(Cluster_Nodes.clusterNodeCount) as total
+  from datamodel=NIFI.Cluster_Nodes by host, Cluster_Nodes.node
+| rename Cluster_Nodes.* as *
+| eval health = if(status == "CONNECTED", "OK", status)
+| eval cluster = connected . " / " . total . " connected"
+| eval last_seen = strftime(last_seen, "%Y-%m-%d %H:%M:%S")
+| table host, node, health, roles, threads, queued, cluster, last_seen
+| sort host, node</query>
+          <earliest>-60m@m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="rowNumbers">false</option>
+      </table>
+    </panel>
+    <panel>
+      <title>Per-node resources</title>
+      <!-- The aggregate hides the node that is running out of heap, which is
+           the one thing worth seeing in a cluster. -->
+      <table>
+        <title>Heap and threads by node</title>
+        <search>
+          <query>| tstats
+    latest(Node_Diagnostics.systemDiagnostics.aggregateSnapshot.heapUtilization) as heap,
+    latest(Node_Diagnostics.systemDiagnostics.aggregateSnapshot.totalThreads) as threads,
+    latest(Node_Diagnostics.systemDiagnostics.aggregateSnapshot.usedHeapBytes) as used_heap,
+    latest(Node_Diagnostics.systemDiagnostics.aggregateSnapshot.maxHeapBytes) as max_heap
+  from datamodel=NIFI.Node_Diagnostics by host, Node_Diagnostics.node
+| rename Node_Diagnostics.* as *
+| eval "Used Heap GB" = round(used_heap / 1073741824, 2),
+       "Max Heap GB" = round(max_heap / 1073741824, 2)
+| table host, node, heap, "Used Heap GB", "Max Heap GB", threads
+| sort host, node</query>
+          <earliest>-60m@m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="rowNumbers">false</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
       <chart>
         <title>HTTP Status Response</title>
         <search>

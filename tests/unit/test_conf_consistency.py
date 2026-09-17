@@ -549,3 +549,78 @@ class NodeDiagnosticsStanzaTest(unittest.TestCase):
                     self.props["nifi:api:node_diagnostics"].get(key),
                     self.props["nifi:api:system_diagnostics"].get(key),
                 )
+
+
+class DatamodelObjectShapeTest(unittest.TestCase):
+    """Guards the copy-paste failure mode of adding a datamodel object.
+
+    Cluster_Nodes and Node_Diagnostics were built by copying
+    System_Diagnostics, whose shape they share. Changing objectName and the
+    constraint is not enough: Splunk resolves the hierarchy through `lineage`,
+    so an object that still carries the one it was copied from answers from
+    the wrong place. It does not error -- it returns other events' fields. The
+    first version of the cluster panel reported a node whose status was 404,
+    which is an HTTP status from the request log.
+
+    Inherited fields are the other half: host, _time, source and sourcetype
+    belong to BaseEvent, and rewriting their owner to the new object is the
+    obvious over-correction.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        with open(os.path.join(
+                APP, "default", "data", "models", "NIFI.json")) as handle:
+            cls.model = json.load(handle)
+
+    def objects(self):
+        return {o["objectName"]: o for o in self.model["objects"]}
+
+    def test_every_root_object_owns_its_lineage(self):
+        for name, obj in self.objects().items():
+            if obj.get("parentName") != "BaseEvent":
+                continue  # a child's lineage is dotted, and that is correct
+            with self.subTest(object=name):
+                self.assertEqual(obj.get("lineage"), name)
+
+    def test_every_child_object_names_its_parent_in_its_lineage(self):
+        for name, obj in self.objects().items():
+            parent = obj.get("parentName")
+            if parent in (None, "BaseEvent"):
+                continue
+            with self.subTest(object=name):
+                self.assertEqual(obj.get("lineage"), "%s.%s" % (parent, name))
+
+    def test_inherited_fields_keep_their_owner(self):
+        inherited = {"host", "_time", "source", "sourcetype"}
+        for name, obj in self.objects().items():
+            for field in obj.get("fields", []):
+                if field["fieldName"] not in inherited:
+                    continue
+                with self.subTest(object=name, field=field["fieldName"]):
+                    self.assertEqual(field.get("owner"), "BaseEvent")
+
+    def test_every_object_owns_its_constraints(self):
+        """The third back-reference a copied object carries, and the one that
+        actually broke: splunkd attributes a constraint to the object named in
+        its `owner`, so a copy that keeps the original's name loads with no
+        constraints at all and matches every event in the index. On disk it
+        looks right; only splunkd shows the empty list."""
+        for name, obj in self.objects().items():
+            for constraint in obj.get("constraints", []):
+                with self.subTest(object=name):
+                    # The lineage, not the bare name: a child object owns its
+                    # constraint under the dotted form, and the two coincide
+                    # only for objects hanging straight off BaseEvent.
+                    self.assertEqual(constraint.get("owner"), obj.get("lineage"))
+
+    def test_every_object_owns_the_fields_it_declares(self):
+        inherited = {"host", "_time", "source", "sourcetype"}
+        for name, obj in self.objects().items():
+            owners = {f.get("owner") for f in obj.get("fields", [])
+                      if f["fieldName"] not in inherited}
+            with self.subTest(object=name):
+                self.assertLessEqual(
+                    owners - {name, obj.get("parentName")}, set(),
+                    "%s declares fields owned by something else: %s"
+                    % (name, owners))

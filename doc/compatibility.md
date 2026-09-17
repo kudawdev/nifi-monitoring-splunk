@@ -15,6 +15,35 @@ The floor is NiFi 1.16 because that is where `/flow/metrics/json` appears.
 Older 1.x instances work without the flow-metrics endpoint; that combination
 is not covered by CI.
 
+## Cluster and multiple instances
+
+| Topology | Supported | What you configure |
+|---|---|---|
+| One instance | yes | one input |
+| Several independent instances | yes | one input each, one row each in the `instance` lookup |
+| A NiFi cluster | yes | **one input**, pointed at any node |
+
+A cluster is one instance to the app, not several. Point the input at any
+node: NiFi answers cluster-wide from all of them. The add-on works out on its
+own that it is talking to a cluster and collects the per-node data as well --
+there is nothing to enable.
+
+That means events keep the `host` you configured, which is the cluster, and
+carry a `node` field saying which member they describe. Existing searches and
+panels are unaffected; the Cluster row of the **Nifi TA Monitoring** dashboard
+shows members, roles and per-node heap, because the aggregate hides the node
+that is running out of it.
+
+Two things only a cluster has:
+
+- **Bulletins carry the node that raised them**, and framework bulletins
+  (categories like *Clustering* or *Primary Node*) describe the cluster rather
+  than a component, so they have no source name.
+- **On the push path the flow runs on the primary node only** for the parts
+  that poll the API, so a cluster does not send one copy per node. Log tailing
+  still runs everywhere, because log files are per node. This is handled by
+  the flow as distributed; nothing to configure.
+
 ## Two ways to get data in
 
 Pick one. Running both duplicates every event.
