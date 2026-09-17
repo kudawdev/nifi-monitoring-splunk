@@ -217,6 +217,32 @@ Importar el flow probaba que **carga**. Ejecutarlo probó otras cuatro cosas, to
 
 **Resultado verificado:** 972 `nifi:log:app`, 25 `nifi:log:user`, 3 `nifi:api:flow_status` y 3 `nifi:api:system_diagnostics` llegados por el HEC, con **cero** ejecuciones del modular input (sin duplicación entre caminos) y **cero** eventos de `site_to_site`.
 
+### 3.9 Cardinalidad de `/flow/metrics` con un flujo real (F0.3)
+
+Medido el **2026-09-17** contra NiFi 2.11.0 con el propio flujo de monitoreo cargado y corriendo: **37 procesadores, 52 conexiones, 8 process groups**. El spike original solo había medido un NiFi vacío, que es justo donde la diferencia entre las dos estrategias no se ve.
+
+| | Muestras/poll | Payload HTTP | **Indexado** | **A 1 poll/min** |
+|---|---:|---:|---:|---:|
+| NiFi ocioso (referencia) | 60 | 16,9 KB | — | — |
+| `ALL_PROCESS_GROUPS` (default del TA) | **219** | 76,3 KB | 63,3 KB | **89 MB/día** |
+| `ALL_COMPONENTS` (default de NiFi) | **1449** | 592,4 KB | 518,7 KB | **729 MB/día** |
+
+**Escalado medido:** 37,5 muestras por procesador con `ALL_COMPONENTS`; 22,7 por process group con `ALL_PROCESS_GROUPS`. El aplanado del TA produce **367 bytes indexados por evento**.
+
+| Procesadores | Eventos/poll | Indexado |
+|---:|---:|---:|
+| 100 | 3814 | **1,9 GB/día** |
+| 500 | 18 830 | **9,3 GB/día** |
+| 1000 | 37 601 | **18,5 GB/día** |
+
+**Tres conclusiones que cambian la recomendación:**
+
+1. **R-9 se quedó corta ≈×9.** Decía ≈1 GB/día a 500 procesadores; son **9,3**. La decisión de distribuirlo apagado era correcta, pero por un margen mucho mayor del que el plan creía.
+2. **`includedRegistries` no sirve para acotar volumen.** El registry `NIFI` es **1416 de 1449 muestras (98%)**: filtrar los otros cinco no ahorra nada. Lo que sí ahorra es la estrategia — `ALL_PROCESS_GROUPS` recorta un **85%** — y `sampleName`.
+3. **`sampleName` sí acota, y de forma predecible:** `nifi_amount.*` deja 739 de 1449 (51%), `nifi_processing_performance.*` deja 95 (7%), `nifi_jvm.*` deja 16 (1%). Es la palanca para un cliente que solo quiere performance por componente.
+
+La doc de instalación debe traer esta tabla antes de recomendar encender el endpoint.
+
 ## 4. Decisión de arquitectura: el método de obtención
 
 ### 4.1 Comparación de los cuatro métodos disponibles
@@ -491,7 +517,7 @@ En PR corren `nifi1-legacy` y `nifi2-current`; la matriz completa en el workflow
 |---|---|---|---|
 | F0.1 | Levantar `1.23.2` y `2.11.0` | ✅ | 1.23.2 en HTTP sin auth; 2.11.0 en HTTPS single-user |
 | F0.2 | Capturar `/flow/metrics/json` de ambas | ✅ | muestras en `docs/plans/samples/` |
-| F0.3 | Medir cardinalidad y efecto de los filtros | ⚠️ parcial | medido en NiFi **vacío** (§3.5d). Falta medir con un flujo no trivial, que es donde `ALL_COMPONENTS` vs `ALL_PROCESS_GROUPS` importa — **diferido a 2.1 (§12)** |
+| F0.3 | Medir cardinalidad y efecto de los filtros | ✅ | **Cerrada el 2026-09-17** contra el flujo de monitoreo real (37 procesadores, 52 conexiones, 8 process groups) corriendo dentro de NiFi 2.11.0. Ver §3.9 |
 | F0.4 | `POST /access/token` contra 2.11.0 | ✅ | JWT válido, 8 h de vida; los 5 endpoints del TA responden 200 |
 | F0.5 | Importar el flow actual en 2.11.0 | ✅ | **Hecho.** El import deja 5 procesadores inválidos y pierde las 6 variables sin reportarlo. Ver §3.7 |
 | F0.6 | Modo HTTP sin auth en el contenedor 2.x | ✅ | **Hecho.** El **421** se resuelve con `NIFI_WEB_PROXY_HOST`, y la receta de HTTP puro es el entrypoint de reemplazo `provision/nifi/start-unsecured.sh` del perfil `nifi2-hec`. Ver §3.8 y R-11 |
@@ -594,8 +620,8 @@ El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el c
 | ~~R-5~~ | **Retirado.** El token pertenecía a un Splunk de prueba ya dado de baja; no había producción que proteger. | — |
 | R-6 ✅ | AppInspect nuevo sube warnings por encima de `MAX_WARNING = 8` y bloquea el release | **Medido el 2026-09-16 con `kudaw/appinspect:latest`: 5 y 7 warnings, bajo el umbral de 8.** B-17 hizo su trabajo y no hay que tocar `MAX_WARNING`. El riesgo estaba mal apuntado: lo que bloqueaba el release no era el conteo de warnings sino un **failure**, `check_for_datamodel_acceleration` (ver D-4) |
 | R-7 | **Activar la verificación TLS por defecto (B-23) es un breaking change.** Un input existente contra un NiFi con certificado autofirmado deja de conectar al actualizar | Es deliberado y corresponde a un major. El error dice qué hacer (apuntar `ca_bundle` a un bundle que lo valide, o destildar la verificación aceptando el riesgo). Debe ir en las notas de migración de 2.0.0, y hay que decidir si se acepta el default seguro o se invierte |
-| R-8 ✅ | **Resuelto el 2026-09-17.** El perfil `nifi2-current` exporta el certificado que NiFi genera para sí mismo y se lo pasa al TA como `ca_bundle`, con `verify_tls = 1` — que es lo que hace un operador con una CA privada. Verificado antes de construirlo: el certificado trae `SAN DNS:localhost, DNS:nifi` y el TA conecta a `https://nifi:8443`, así que el nombre coincide; con el bundle la llamada da 401 (TLS validó) y con el bundle por defecto da `SSLError`. Una de las tres assertions consulta el input por `| rest` y exige `verify_tls = 1`, porque sin eso las otras dos pasarían igual si el seed dejara la verificación apagada en silencio. Texto original: El harness prueba el camino con la verificación **desactivada** (`verify_tls = 0`), porque los contenedores usan certificados autofirmados. El camino por defecto, que es el seguro, no está cubierto por ningún perfil | Agregar un perfil que extraiga el certificado del contenedor de NiFi y lo pase como `ca_bundle`, para ejercitar la verificación real |
-| R-9 | **Volumen del endpoint de métricas.** Medido: un NiFi **ocioso** ya emite 60 muestras (~14 KB) por poll; con `ALL_COMPONENTS` eso escala con cada procesador del flujo. Un flujo de 500 procesadores puede rondar 1 GB/día solo de métricas | Por eso `endpoint_flow_metrics` viene **apagado** por defecto, el default de estrategia es `ALL_PROCESS_GROUPS` (más acotado que el `ALL_COMPONENTS` de NiFi) y se exponen `metrics_registries` y `metrics_sample_filter`. La doc de instalación debe traer el cálculo antes de recomendar habilitarlo |
+| R-8 ✅ | **Resuelto el 2026-09-17.** El perfil `nifi2-current` exporta el certificado que NiFi genera para sí mismo y se lo pasa al TA como `ca_bundle`, con `verify_tls = 1` — que es lo que hace un operador con una CA privada. Verificado antes de construirlo: el certificado trae `SAN DNS:localhost, DNS:nifi` y el TA conecta a `https://nifi:8443`, así que el nombre coincide; con el bundle la llamada da 401 (TLS validó) y con el bundle por defecto da `SSLError`. Una de las tres assertions consulta el input por la REST API de Splunk y exige `verify_tls = 1`, porque sin eso las otras dos pasarían igual si el seed dejara la verificación apagada en silencio. Texto original: El harness prueba el camino con la verificación **desactivada** (`verify_tls = 0`), porque los contenedores usan certificados autofirmados. El camino por defecto, que es el seguro, no está cubierto por ningún perfil | Agregar un perfil que extraiga el certificado del contenedor de NiFi y lo pase como `ca_bundle`, para ejercitar la verificación real |
+| R-9 | **Volumen del endpoint de métricas.** La estimación original — "un flujo de 500 procesadores puede rondar 1 GB/día" — estaba extrapolada de un NiFi ocioso y **se quedó corta por un factor de ≈9**. Medido contra un flujo real (§3.9): **9,3 GB/día indexados** con `ALL_COMPONENTS` a 500 procesadores, y 18,5 GB/día a 1000. El riesgo es mayor de lo que este plan declaraba | Por eso `endpoint_flow_metrics` viene **apagado** por defecto, el default de estrategia es `ALL_PROCESS_GROUPS` (más acotado que el `ALL_COMPONENTS` de NiFi) y se exponen `metrics_registries` y `metrics_sample_filter`. La doc de instalación debe traer el cálculo antes de recomendar habilitarlo |
 | R-10 | **Retirar `nifi:api:site_to_site` es breaking.** Un input existente con ese endpoint habilitado deja de recolectarlo al actualizar | Deliberado en un major. Los datos ya indexados no se pierden ni se degradan: `INDEXED_EXTRACTIONS` corre en tiempo de indexación, así que los eventos históricos conservan sus campos. El input avisa una vez si encuentra el ajuste obsoleto. Debe ir en las notas de migración de 2.0.0 |
 | R-11 | **El camino push exige un NiFi sin autenticación.** El flow consulta su propia API sin credenciales, así que un NiFi con auth lo rechaza. Eso no estaba dicho en el plan y limita cuándo el push es viable | Documentado en `compatibility.md`. El perfil `nifi2-hec` usa un entrypoint de reemplazo (`provision/nifi/start-unsecured.sh`) porque el `start.sh` de la imagen **no puede** correr en HTTP: escribe `nifi.web.https.port` desde `${VAR:-8443}` y `:-` sustituye el default también para un valor vacío |
 
@@ -672,13 +698,12 @@ release de 2.0.0**, que aún no se publicó: falta mergear `nifi-2` y correr
 | # | Qué falta | Cómo se verificó que sigue abierto |
 |---|---|---|
 | **TA-7** (resto) | Pedir el token proactivamente en el arranque en frío, en lugar de provocar un 401 y renovar. B-14 ya cerró la parte del almacenamiento. | El harness mide exactamente un 401 por input por arranque, por diseño |
-| **F0.3 / R-1 / R-9** | Medir la cardinalidad de `/flow/metrics` con un flujo no trivial. Es lo que sostiene la estimación de R-9 (≈1 GB/día con `ALL_COMPONENTS`), hoy extrapolada de un NiFi ocioso. | En `docs/plans/samples/` solo hay muestras de NiFi vacío |
 | **DOC-3** ❌ | Recapturar los screenshots con la UI de NiFi 2.x. **No se hará desde acá**: es trabajo visual. 12 imágenes de 1.x siguen referenciadas en §4 de la doc, advertidas como tales. | — |
 
-**Prioridad sugerida:** F0.3, que es medición y no código — el perfil `nifi2-hec`
-ya instala un flujo de 37 procesadores contra el cual medir. Salieron de esta
-lista el 2026-09-17: B-14, B-24, TA-4b y R-8 (resueltos) y B-15 (**retirado**:
-la medición mostró que no era un defecto).
+**Queda poco, y nada de código de producto.** El resto de TA-7 es una mejora de
+arranque en frío; DOC-3 está rechazado con motivo. Salieron de esta lista el
+2026-09-17: B-14, B-24, TA-4b, R-8 y F0.3 (resueltos) y B-15 (**retirado**: la
+medición mostró que no era un defecto).
 
 ---
 
