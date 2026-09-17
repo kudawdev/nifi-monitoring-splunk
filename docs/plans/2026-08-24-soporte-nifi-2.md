@@ -473,7 +473,7 @@ Hay **dos estrategias recomendadas** (D-6) y cada una tiene un perfil que la cub
 
 | Perfil | NiFi | Splunk | Auth | Qué cubre |
 |---|---|---|---|---|
-| `nifi2-current` | 2.11.0 | 10.4 | singleuser | **Estrategia pull + forwarder, completa:** modular input para la API y un **Universal Forwarder** para los archivos de log |
+| `nifi2-current` | 2.11.0 | 10.4 | singleuser | **El despliegue recomendado, completo:** modular input para la API, **Universal Forwarder** para los archivos de log y **verificación del certificado** de NiFi contra un bundle exportado (R-8) |
 | `nifi2-hec` | 2.11.0 | 10.4 | **none2x** | **Estrategia push, completa:** el flow reconstruido lleva API por `InvokeHTTP` y logs por `TailFile`, todo al HEC |
 | `nifi1-legacy` | 1.23.2 | 9.4 | none | regresión: la 1.x más vieja soportada, sin auth |
 | `nifi1-last` | 1.28.1 | 10.4 | singleuser | regresión: la última 1.x, con token |
@@ -594,7 +594,7 @@ El harness no funcionó de entrada. Nueve defectos, ninguno visible leyendo el c
 | ~~R-5~~ | **Retirado.** El token pertenecía a un Splunk de prueba ya dado de baja; no había producción que proteger. | — |
 | R-6 ✅ | AppInspect nuevo sube warnings por encima de `MAX_WARNING = 8` y bloquea el release | **Medido el 2026-09-16 con `kudaw/appinspect:latest`: 5 y 7 warnings, bajo el umbral de 8.** B-17 hizo su trabajo y no hay que tocar `MAX_WARNING`. El riesgo estaba mal apuntado: lo que bloqueaba el release no era el conteo de warnings sino un **failure**, `check_for_datamodel_acceleration` (ver D-4) |
 | R-7 | **Activar la verificación TLS por defecto (B-23) es un breaking change.** Un input existente contra un NiFi con certificado autofirmado deja de conectar al actualizar | Es deliberado y corresponde a un major. El error dice qué hacer (apuntar `ca_bundle` a un bundle que lo valide, o destildar la verificación aceptando el riesgo). Debe ir en las notas de migración de 2.0.0, y hay que decidir si se acepta el default seguro o se invierte |
-| R-8 ◻ | El harness prueba el camino con la verificación **desactivada** (`verify_tls = 0`), porque los contenedores usan certificados autofirmados. El camino por defecto, que es el seguro, no está cubierto por ningún perfil | Agregar un perfil que extraiga el certificado del contenedor de NiFi y lo pase como `ca_bundle`, para ejercitar la verificación real |
+| R-8 ✅ | **Resuelto el 2026-09-17.** El perfil `nifi2-current` exporta el certificado que NiFi genera para sí mismo y se lo pasa al TA como `ca_bundle`, con `verify_tls = 1` — que es lo que hace un operador con una CA privada. Verificado antes de construirlo: el certificado trae `SAN DNS:localhost, DNS:nifi` y el TA conecta a `https://nifi:8443`, así que el nombre coincide; con el bundle la llamada da 401 (TLS validó) y con el bundle por defecto da `SSLError`. Una de las tres assertions consulta el input por `| rest` y exige `verify_tls = 1`, porque sin eso las otras dos pasarían igual si el seed dejara la verificación apagada en silencio. Texto original: El harness prueba el camino con la verificación **desactivada** (`verify_tls = 0`), porque los contenedores usan certificados autofirmados. El camino por defecto, que es el seguro, no está cubierto por ningún perfil | Agregar un perfil que extraiga el certificado del contenedor de NiFi y lo pase como `ca_bundle`, para ejercitar la verificación real |
 | R-9 | **Volumen del endpoint de métricas.** Medido: un NiFi **ocioso** ya emite 60 muestras (~14 KB) por poll; con `ALL_COMPONENTS` eso escala con cada procesador del flujo. Un flujo de 500 procesadores puede rondar 1 GB/día solo de métricas | Por eso `endpoint_flow_metrics` viene **apagado** por defecto, el default de estrategia es `ALL_PROCESS_GROUPS` (más acotado que el `ALL_COMPONENTS` de NiFi) y se exponen `metrics_registries` y `metrics_sample_filter`. La doc de instalación debe traer el cálculo antes de recomendar habilitarlo |
 | R-10 | **Retirar `nifi:api:site_to_site` es breaking.** Un input existente con ese endpoint habilitado deja de recolectarlo al actualizar | Deliberado en un major. Los datos ya indexados no se pierden ni se degradan: `INDEXED_EXTRACTIONS` corre en tiempo de indexación, así que los eventos históricos conservan sus campos. El input avisa una vez si encuentra el ajuste obsoleto. Debe ir en las notas de migración de 2.0.0 |
 | R-11 | **El camino push exige un NiFi sin autenticación.** El flow consulta su propia API sin credenciales, así que un NiFi con auth lo rechaza. Eso no estaba dicho en el plan y limita cuándo el push es viable | Documentado en `compatibility.md`. El perfil `nifi2-hec` usa un entrypoint de reemplazo (`provision/nifi/start-unsecured.sh`) porque el `start.sh` de la imagen **no puede** correr en HTTP: escribe `nifi.web.https.port` desde `${VAR:-8443}` y `:-` sustituye el default también para un valor vacío |
@@ -672,13 +672,13 @@ release de 2.0.0**, que aún no se publicó: falta mergear `nifi-2` y correr
 | # | Qué falta | Cómo se verificó que sigue abierto |
 |---|---|---|
 | **TA-7** (resto) | Pedir el token proactivamente en el arranque en frío, en lugar de provocar un 401 y renovar. B-14 ya cerró la parte del almacenamiento. | El harness mide exactamente un 401 por input por arranque, por diseño |
-| **R-8** | Un perfil del harness que extraiga el certificado del contenedor de NiFi y lo pase como `ca_bundle`, para ejercitar `verify_tls = 1`. | `tests/provision/splunk/inputs.conf.singleuser` usa `verify_tls = 0`: el camino **por defecto**, que es el seguro, no lo cubre ningún perfil |
 | **F0.3 / R-1 / R-9** | Medir la cardinalidad de `/flow/metrics` con un flujo no trivial. Es lo que sostiene la estimación de R-9 (≈1 GB/día con `ALL_COMPONENTS`), hoy extrapolada de un NiFi ocioso. | En `docs/plans/samples/` solo hay muestras de NiFi vacío |
 | **DOC-3** ❌ | Recapturar los screenshots con la UI de NiFi 2.x. **No se hará desde acá**: es trabajo visual. 12 imágenes de 1.x siguen referenciadas en §4 de la doc, advertidas como tales. | — |
 
-**Prioridad sugerida:** R-8, que deja sin cubrir un camino que el propio 2.0.0
-volvió el default. Salieron de esta lista el 2026-09-17: B-14 (resuelto), B-24
-(resuelto) y B-15 (**retirado**: la medición mostró que no era un defecto).
+**Prioridad sugerida:** F0.3, que es medición y no código — el perfil `nifi2-hec`
+ya instala un flujo de 37 procesadores contra el cual medir. Salieron de esta
+lista el 2026-09-17: B-14, B-24, TA-4b y R-8 (resueltos) y B-15 (**retirado**:
+la medición mostró que no era un defecto).
 
 ---
 

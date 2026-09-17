@@ -36,6 +36,10 @@ profiles:
     # Brings up the universalforwarder service. Without it the pull strategy
     # is only half covered: the API half, never the logs.
     forwarder: true
+    # Verifies NiFi's certificate against an exported CA bundle instead of
+    # skipping verification. 2.0.0 made this the default (B-23) and no
+    # profile exercised it (R-8).
+    tls_verify: true
 
   nifi2-first:
     description: >

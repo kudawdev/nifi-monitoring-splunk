@@ -65,6 +65,16 @@ fi
 mkdir -p "$SEED/apps/nifi_TA_monitoring/local"
 cp "$INPUT_SRC" "$SEED/apps/nifi_TA_monitoring/local/inputs.conf"
 
+# The tlsverify profile turns verification on and points the input at the
+# bundle exported from NiFi. Rewritten rather than appended: a duplicated key
+# in the same stanza is legal but reads as a mistake.
+if [ "${TLS_VERIFY:-0}" = "1" ]; then
+    echo "seed: verifying NiFi's certificate against the exported bundle"
+    sed -i \
+        -e "s|^verify_tls = 0|verify_tls = 1\nca_bundle = /opt/nifi-certs/nifi.pem|" \
+        "$SEED/apps/nifi_TA_monitoring/local/inputs.conf"
+fi
+
 # More than one instance means a second input stanza appended to the same
 # file. INSTANCES comes from the compose file.
 if [ "${INSTANCES:-1}" -gt 1 ]; then

@@ -117,6 +117,9 @@ class IntegrationTestCase(unittest.TestCase):
     #: Minimum number of NiFi instances a class needs.
     instances = None
 
+    #: True for a class that needs TLS verification turned on.
+    tls_verify = None
+
     @classmethod
     def setUpClass(cls):
         try:
@@ -131,6 +134,7 @@ class IntegrationTestCase(unittest.TestCase):
         cls.profile_collection = env("COLLECTION", "pull")
         cls.profile_forwarder = env("FORWARDER", "0") == "1"
         cls.profile_instances = int(env("INSTANCES", "1"))
+        cls.profile_tls_verify = env("TLS_VERIFY", "0") == "1"
 
     def setUp(self):
         if self.collection and self.collection != self.profile_collection:
@@ -142,6 +146,11 @@ class IntegrationTestCase(unittest.TestCase):
             raise unittest.SkipTest(
                 "this profile brings up %d NiFi instance(s), not %d"
                 % (self.profile_instances, self.instances)
+            )
+        if self.tls_verify and not self.profile_tls_verify:
+            raise unittest.SkipTest(
+                "this profile skips TLS verification, so there is nothing to "
+                "verify a certificate against"
             )
         if self.forwarder and not self.profile_forwarder:
             raise unittest.SkipTest(

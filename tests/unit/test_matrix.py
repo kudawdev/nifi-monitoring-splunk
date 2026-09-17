@@ -177,6 +177,34 @@ class PushProfileTest(unittest.TestCase):
     def test_there_is_a_push_profile(self):
         self.assertTrue(self.push_profiles(), "no profile covers the push path")
 
+    def tls_profiles(self):
+        return {n: p for n, p in self.data["profiles"].items()
+                if p.get("tls_verify")}
+
+    def test_a_profile_verifies_the_certificate(self):
+        """2.0.0 made verification the default; without a profile for it the
+        only covered path is the one operators are told not to use."""
+        self.assertTrue(
+            self.tls_profiles(),
+            "no profile runs with verify_tls = 1 (defect R-8)")
+
+    def test_the_tls_profile_is_authenticated(self):
+        """There is no certificate to verify against a plain-HTTP NiFi."""
+        for name, profile in self.tls_profiles().items():
+            with self.subTest(profile=name):
+                self.assertEqual(profile["nifi_auth"], "singleuser")
+
+    def test_the_tls_env_reaches_compose(self):
+        for name in self.tls_profiles():
+            with self.subTest(profile=name):
+                env = matrix.env_for(name)
+                self.assertIn("TLS_VERIFY=1", env)
+                self.assertIn("tlsverify", env)
+        for name, profile in self.data["profiles"].items():
+            if not profile.get("tls_verify"):
+                with self.subTest(profile=name):
+                    self.assertIn("TLS_VERIFY=0", matrix.env_for(name))
+
     def multi_profiles(self):
         return {n: p for n, p in self.data["profiles"].items()
                 if int(p.get("instances", 1)) > 1}

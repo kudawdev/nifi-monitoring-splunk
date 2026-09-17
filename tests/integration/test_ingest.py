@@ -682,6 +682,67 @@ class ForwarderPathTest(IntegrationTestCase):
         self.assertGreater(count, 0)
 
 
+class TlsVerificationTest(IntegrationTestCase):
+    """Defect R-8: the add-on's default is to verify NiFi's certificate, and
+    no profile exercised it.
+
+    2.0.0 turned verification on by default (B-23) and called it a breaking
+    change, but every harness profile set verify_tls = 0 because the
+    containers use self-signed certificates -- so the only path under test was
+    the one a real deployment is told not to use. The certificate NiFi issues
+    for itself is exported and handed to the add-on as a CA bundle, which is
+    what an operator does with a private CA.
+    """
+
+    tls_verify = True
+    collection = "pull"
+
+    def test_events_arrive_with_verification_on(self):
+        """The whole assertion in one line: if the handshake were rejected,
+        nothing would be indexed at all."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:flow_status" | stats count',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows)
+        self.assertGreater(
+            int(rows[0]["count"]), 0,
+            "no events with verify_tls = 1: the certificate was rejected")
+
+    def test_no_certificate_error_is_logged(self):
+        """Events could still arrive while a cycle fails intermittently, and a
+        certificate problem names itself in the log."""
+        rows = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" '
+            '(CERTIFICATE_VERIFY_FAILED OR SSLError OR "certificate verify failed") '
+            '| stats count')
+        self.assertTrue(rows, "the search returned nothing at all")
+        self.assertEqual(
+            int(rows[0]["count"]), 0,
+            "%s certificate errors logged" % rows[0]["count"])
+
+    def test_the_input_really_has_verification_on(self):
+        """Guards against the assertion above passing because the seed quietly
+        left verify_tls at 0."""
+        job = self.splunk.jobs.create(
+            "| rest /servicesNS/nobody/nifi_TA_monitoring/data/inputs/nifi "
+            "| table title, verify_tls, ca_bundle",
+            exec_mode="normal")
+        import time as _t
+        deadline = _t.time() + 60
+        while not job.is_done() and _t.time() < deadline:
+            _t.sleep(2)
+        import json as _json
+        rows = _json.loads(job.results(output_mode="json").read().decode())["results"]
+        self.assertTrue(rows, "the input is not registered")
+        for row in rows:
+            with self.subTest(input=row.get("title")):
+                self.assertEqual(str(row.get("verify_tls")), "1")
+                self.assertTrue(row.get("ca_bundle"), "no ca_bundle configured")
+
+
 class MultiInstanceTest(IntegrationTestCase):
     """Several independent NiFi instances behind one TA.
 
