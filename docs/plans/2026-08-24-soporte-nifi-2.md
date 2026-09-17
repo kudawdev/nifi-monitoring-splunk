@@ -5,7 +5,7 @@
 | **Fecha** | 2026-08-24 |
 | **Autor** | Anibal Vasquez (Kudaw SA) |
 | **Última revisión** | 2026-09-16 |
-| **Estado** | **Ejecutado — 2.0.0 lista, sin liberar.** El último tag y el último release siguen siendo 1.2.3; la rama `nifi-2` no está mergeada. Lo diferido a 2.1 está en §12 |
+| **Estado** | **Ejecutado — 2.0.0 lista, sin liberar.** El último tag y el último release siguen siendo 1.2.3; la rama `nifi-2` no está mergeada. Lo diferido a 2.1 está en §13 |
 | **Versión al abrir el plan** | 1.2.3 (ambas) |
 | **Versión en la fuente** | **2.0.0 (ambas)** — breaking change, sin publicar |
 | **Apps afectadas** | `nifi_monitoring` (Splunkbase 6125), `nifi_TA_monitoring` (Splunkbase 6124) |
@@ -20,7 +20,7 @@ Extender las dos apps para monitorear instancias de **Apache NiFi 2.x** sin perd
 
 - Soporte simultáneo de NiFi 1.16+ y 2.x en un único código.
 - Revisión y consolidación del método de recolección.
-- Corrección de los 24 defectos catalogados en §7 (B-19 se retiró tras verificarlo). **Cerrados 21; B-14, B-15 y B-24 diferidos a 2.1 — §12.**
+- Corrección de los 24 defectos catalogados en §7 (B-19 se retiró tras verificarlo). **Cerrados 21; B-14, B-15 y B-24 diferidos a 2.1 — §13.**
 - Rediseño de `tests/` como matriz parametrizable NiFi × Splunk con verificación automatizada.
 - Actualización de la documentación pública bilingüe en `doc/`.
 
@@ -352,7 +352,7 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 
 ## 6. Cambios por componente
 
-> **Leyenda:** ✅ hecho · ◐ parcial · ◻ pendiente, diferido a 2.1 (§12) · ❌ no se hará.
+> **Leyenda:** ✅ hecho · ◐ parcial · ◻ pendiente, diferido a 2.1 (§13) · ❌ no se hará.
 
 ### 6.1 `nifi_TA_monitoring`
 
@@ -367,7 +367,7 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 | TA-5 ✅ | **Hecho.** Polling de `/flow/bulletin-board` → `nifi:api:bulletin_board`, habilitado por defecto, con `?after=<id>` y cursor en el `checkpoint_dir`. `props.conf` mapea la forma del board a los nombres que ya usa el datamodel, para que ambas fuentes alimenten los mismos paneles. |
 | TA-6 ✅ | **Hecho.** `nifi:api:controller_cluster` retirado (nada lo producía) y `nifi:api:site_to_site` retirado por D-2. |
 | TA-7 ◐ | **Parcial.** El cursor de bulletins y el token ya están fuera del `.env` (B-14, 2026-09-17); queda solo pedir el token **proactivamente** antes de la primera request en lugar de provocar el 401 de arranque en frío. Texto original: el cursor de bulletins ya usa el `checkpoint_dir` de Splunk. Falta mover el token. Sustituir el estado en `.env` por el KV store de Splunk o `storage/passwords` (B-14). **Medido en el run del 2026-08-24:** el `.env` vive dentro del directorio de la app, así que se pierde al reinstalarla o recrear el contenedor, y cada arranque en frío paga un 401 evitable. Al no haber token cacheado, pedirlo proactivamente antes de la primera request en lugar de provocar el 401. |
-| TA-8 ◐ | **Parcial.** B-4, B-5 y B-16 corregidos; **B-15 (vendorizar `requests`/`urllib3`) diferido a 2.1** — §12. |
+| TA-8 ◐ | **Parcial.** B-4, B-5 y B-16 corregidos; **B-15 (vendorizar `requests`/`urllib3`) diferido a 2.1** — §13. |
 | TA-9 ✅ | **Hecho.** `nifi_manager.xml` e `inputs.conf.spec` exponen los 18 parámetros del input, incluidos `metrics_registries`, `metrics_strategy`, `metrics_sample_filter`, `endpoint_bulletin_board`, `custom_endpoints`, `verify_tls` y `ca_bundle`. |
 | TA-10 ✅ | **Hecho, corregido el 2026-09-16.** `python.required` junto a `python.version`, que se conserva para Splunk 8.2–9.1. El valor era `python3` y **AppInspect no lo acepta**: `python.required` solo admite `3.9` o `3.13` (`PYTHON_REQUIRED_VALUES`), y Splunk 10.2 deprecó todo lo anterior a 3.13. Ahora es `python.required = 3.13`; `python.version` sigue en `python3`, que es su propio conjunto de valores. |
 | TA-11 ✅ | **Hecho.** Nuevo sourcetype `nifi:log:deprecation` + su stanza `[monitor://…nifi-deprecation*.log]`. Es el insumo del panel de apoyo a la migración (§4.3). |
@@ -526,7 +526,7 @@ En PR corren `nifi1-legacy` y `nifi2-current`; la matriz completa en el workflow
 
 **Lo que F0 ya cambió del plan:** §3.5 y §3.6 (nuevas), §4.1 (dos criterios agregados), §4.2.1 (reescrito), TA-2/TA-2b/TA-4/TA-4b. La decisión de §4.2 se sostiene, pero el rol del endpoint de métricas pasó de "sustituto" a "complemento con transformación en el TA".
 
-**Cierre de F0 (2026-09-16):** F0.5, F0.6 y F0.8 se completaron después de escribir esta tabla. El único pendiente es **F0.3** — la medición con un flujo no trivial —, diferido a 2.1 (§12).
+**Cierre de F0 (2026-09-16):** F0.5, F0.6 y F0.8 se completaron después de escribir esta tabla. El único pendiente es **F0.3** — la medición con un flujo no trivial —, diferido a 2.1 (§13).
 
 ### F1 — Saneamiento (independiente de NiFi 2.x)
 
@@ -648,7 +648,7 @@ escrito**, que es peor que no tener ninguno: parece que anda.
 ### 12.1 Una sola instancia — soportada y verificada
 
 Es lo que cubren todos los perfiles de §8.4. No falta nada de topología; lo
-pendiente es de producto y está en §12 y en los hallazgos de dashboards.
+pendiente es de producto y está en §13 y en los hallazgos de dashboards.
 
 ### 12.2 Múltiples instancias independientes — soportada, y ahora verificada
 
@@ -688,7 +688,52 @@ un cliente real delante en lugar de adivinar. Queda como hueco documentado.
 
 ---
 
-## 12. Pendiente para 2.1
+## 12. Hallazgos de los dashboards
+
+Recorridos el **2026-09-16** en un Splunk 10.4 real con datos, panel por panel.
+Ninguno de estos estaba catalogado: F4 se marcó hecha con la mitad de su
+criterio de aceptación sin cumplir, y esto es lo que había del otro lado.
+
+### 12.1 El problema de fondo: la app se diseñó para push
+
+2.0.0 movió el camino primario a pull y nadie reacomodó la capa visual. Todo lo
+que sigue es la misma causa.
+
+| # | Hallazgo | Evidencia |
+|---|---|---|
+| **D-A** | **15 paneles de `nifi_instances_detail` (de 30) cuelgan de `baseSearch2`**, que es `tstats … from datamodel=NIFI.Reporting_Task`. Ese objeto lo alimenta solo `nifi:reporting:task`, que produce la **Reporting Task dentro de NiFi** — el camino push. En un despliegue pull están permanentemente vacíos | medido; visto en vivo: "JVM Heap Usage %", "JVM Heap Bytes" y "JVM Heap Usage Bytes" dicen *No results found* |
+| **D-B** | **El heap sí está en el índice, con otro nombre.** `/system-diagnostics` trae `heapUtilization`, `usedHeapBytes` y `maxHeapBytes`; los paneles piden `Max_jvmheap_usage`, que es el nombre de la Reporting Task. La app recolecta el dato y no lo muestra | consulta directa al índice |
+| **D-C** | **`Bulletin_Board` y `Reporting_Bulletin` son objetos disjuntos**, y **todos** los paneles de bulletins consultan el segundo. Con el polling del board encendido — que D-1 dejó **por defecto** — se recolectan bulletins que ningún panel muestra. **Es un defecto funcional del camino recomendado**, no una molestia estética | constraints del modelo: `sourcetype="nifi:reporting:bulletin"` vs `"nifi:api:bulletin_board"` |
+| **D-D** | **Los cuatro objetos que creó APP-3 no los consulta nadie:** `Flow_Metrics`, `Bulletin_Board`, `Version_Info` y `Request_Log`. `flow_metrics` es además el sourcetype de mayor volumen | búsqueda de `datamodel=NIFI.<objeto>` en los siete dashboards |
+| **D-E** | **`nifi:log:deprecation` y `nifi:log:request` no tienen panel.** TA-11 llamó al primero *"el mayor aporte de valor que salió de este análisis"*: es el insumo de la migración a 2.x | ningún XML los menciona |
+
+### 12.2 Defectos de presentación
+
+| # | Hallazgo |
+|---|---|
+| **D-F** | **13 columnas sin encabezado** en "Overall Status Nifi". La query las renombra bien ("Active Threads", "Running Components"…) pero se renderizan como iconos con el encabezado vacío, y **no hay tooltip**: son ilegibles salvo abriendo el XML |
+| **D-G** | **Los colores mienten.** En el bloque de componentes el color está fijo por fila, no derivado del valor: `Running = 0` se pinta **verde** y `Stopped = 0` **rojo**. Un NiFi con el flujo muerto se ve sano, y uno sano dispara un rojo que no es nada |
+| **D-H** | **`home` cuenta la topología vieja:** diagrama NiFi → Splunk con salidas *Metrics, Logs, Bulletin, Reporting Task*, sin ninguno de los sourcetypes nuevos. Es la primera pantalla de la app y contradice lo que `compatibility.md` declara como camino primario |
+| **D-I** | **"Could not create search."** en el primer render de `logs`, `bulletin` y `status_history`: el base search usa `span=$span$` y `$time.earliest$`, y los dropdowns post-procesan ese base — inputs que dependen de un base que depende de inputs. En `logs` y `bulletin` se cura solo; **en `status_history` no**, porque los dropdowns son cascada y sin cluster nunca se puede seleccionar nada |
+| **D-J** | **Sin instancia por defecto:** `nifi_instances_detail` abre con el título literal `Nifi Instance: $host$` y todos los paneles en *"waiting for input"*, habiendo una sola instancia |
+| **D-K** | **Inconsistencias de texto:** "Locally **Modify** Versioned Process Group" en `instances_detail` contra "Locally **Modified**" en `overview`; ídem "Up To Date" vs "Up to Date". Y `nifi_overview.xml` conserva `<format type="number" field="contentUtilization">`, un campo que dejó de existir cuando APP-5 reescribió el panel |
+
+### 12.3 Huecos de cobertura
+
+- **Cinco de los siete dashboards no tienen ninguna assertion**: `home`, `nifi_bulletin`, `nifi_instances_detail`, `nifi_logs`, `nifi_status_history`. `DashboardPanelTest` cubre dos paneles de `overview` y uno de `internal_monitoring`.
+- **La latencia nunca se midió.** F4 pedía *"tiempo del panel más lento medido y registrado antes/después"*. No hay ningún número, y ahora importa más: D-4 se invirtió y el modelo se distribuye sin acelerar.
+- **El CI en pull request corre 2 de 6 perfiles.** Una regresión en los otros cuatro se descubre al publicar.
+
+### 12.4 Lo que falta y no es un dashboard
+
+- **Cero alertas.** No existe `savedsearches.conf`. Un operador no mira tableros: quiere que lo despierten. El mínimo defendible son cinco, apagadas por defecto: instancia sin datos, backpressure sobre umbral, bulletin ERROR, heap sostenido alto con GC en aumento, y repositorio proyectado a llenarse.
+- **Umbrales por instancia.** La colección KV `instance` tiene dos campos, `host` y `cluster`. La app **ya depende de Lookup File Editor**: ahí es donde cada operador debería fijar sus umbrales sin tocar un `.conf`.
+
+**Lectura.** El arreglo de razón para D-A a D-D no es panel por panel: es un **objeto padre por concepto** — `Bulletins` sobre `Reporting_Bulletin` + `Bulletin_Board`, `Metrics` sobre `Reporting_Task` + `Flow_Metrics` — de modo que los paneles dejen de saber por qué vía llegó el dato. Es lo que APP-3 dijo que buscaba, un nivel más arriba.
+
+---
+
+## 13. Pendiente para 2.1
 
 Estado al **2026-09-16**, verificado contra el código y no contra las marcas de
 este documento. Todo lo demás del plan está cerrado. **Nada de esto bloquea el
@@ -778,4 +823,4 @@ Contenedores `apache/nifi:1.23.2` (HTTP sin auth, puerto 18080) y `apache/nifi:2
 
 Muestras versionadas en `docs/plans/samples/`: `nifi{1.23,2.11}-{metrics-all,flow-status,system-diagnostics}.json`.
 
-> **Al 2026-09-16:** F0.5 (importación del flow en 2.11.0) y F0.8 (end-to-end TA→Splunk) se completaron después de escribir este anexo — ver §3.7 y F2. Sigue pendiente solo la medición con un flujo no trivial (F0.3), diferida a 2.1 (§12).
+> **Al 2026-09-16:** F0.5 (importación del flow en 2.11.0) y F0.8 (end-to-end TA→Splunk) se completaron después de escribir este anexo — ver §3.7 y F2. Sigue pendiente solo la medición con un flujo no trivial (F0.3), diferida a 2.1 (§13).
