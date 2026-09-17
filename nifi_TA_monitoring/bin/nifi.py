@@ -1,8 +1,25 @@
 import sys
 import os
 import re
-import requests
-import urllib3
+try:
+    import requests
+    import urllib3
+except ImportError as error:  # pragma: no cover - depends on the host Splunk
+    # Deliberately NOT vendored into lib/. Every supported Splunk ships both:
+    # measured 2026-09-17, requests 2.32.5 on Splunk 9.4 (Python 3.9.20) and
+    # on 10.4 (Python 3.13.11), with urllib3 1.26.19 and 2.6.3 respectively.
+    # Vendoring them would mean shipping charset_normalizer's compiled
+    # extension, which is built for one platform and one Python version, so
+    # the add-on would stop working on Windows, on ARM, and on any Splunk
+    # whose Python is not the one it was built against. See defect B-15.
+    sys.stderr.write(
+        "nifi: this add-on uses 'requests' and 'urllib3' from Splunk's own "
+        "Python, and %s. Every supported Splunk release ships both; on an "
+        "installation where they are missing, add them to "
+        "$SPLUNK_HOME/lib/python*/site-packages rather than to this app.\n"
+        % error
+    )
+    raise
 #import xml.etree.ElementTree as ElementTree
 import uuid
 import unicodedata
