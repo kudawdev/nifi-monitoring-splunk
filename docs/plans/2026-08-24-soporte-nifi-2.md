@@ -366,7 +366,7 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 | TA-4b ✅ | **Hecho el 2026-09-17, y no como lo pedía este plan.** `/system-diagnostics` **no puede** volverse opcional: es cómo TA-3 detecta la versión, así que se llama esté o no indexado el sourcetype — dos ítems del plan que se contradecían y nadie había cruzado. Lo que sí se puede es dejar de pagarlo cada ciclo: 1891 bytes por llamada, una por minuto por defecto, descartados en un input que no lo indexa. La versión detectada se cachea en el `checkpoint_dir` con TTL de una hora; si el input no indexa el sourcetype y el cache está fresco, la llamada se saltea entera, y si lo indexa se pide una sola vez y se reutiliza, como antes. Texto original: En NiFi ≥2.0 los repositorios llegan por métricas (`nifi_*_repo_*_space_bytes`): hacer `/system-diagnostics` opcional o de intervalo mayor, sin romper 1.x. |
 | TA-5 ✅ | **Hecho.** Polling de `/flow/bulletin-board` → `nifi:api:bulletin_board`, habilitado por defecto, con `?after=<id>` y cursor en el `checkpoint_dir`. `props.conf` mapea la forma del board a los nombres que ya usa el datamodel, para que ambas fuentes alimenten los mismos paneles. |
 | TA-6 ✅ | **Hecho.** `nifi:api:controller_cluster` retirado (nada lo producía) y `nifi:api:site_to_site` retirado por D-2. |
-| TA-7 ◐ | **Parcial.** El cursor de bulletins y el token ya están fuera del `.env` (B-14, 2026-09-17); queda solo pedir el token **proactivamente** antes de la primera request en lugar de provocar el 401 de arranque en frío. Texto original: el cursor de bulletins ya usa el `checkpoint_dir` de Splunk. Falta mover el token. Sustituir el estado en `.env` por el KV store de Splunk o `storage/passwords` (B-14). **Medido en el run del 2026-08-24:** el `.env` vive dentro del directorio de la app, así que se pierde al reinstalarla o recrear el contenedor, y cada arranque en frío paga un 401 evitable. Al no haber token cacheado, pedirlo proactivamente antes de la primera request en lugar de provocar el 401. |
+| TA-7 ✅ | **Hecho.** El cursor de bulletins y el token salieron del `.env` (B-14, 2026-09-17), y el 2026-09-21 se cerró la parte que faltaba: con `auth_type = basic` y nada guardado, el input pide el token **antes** de la primera request en lugar de mandar el bearer literal `unknown` y dejar que NiFi lo rechace. Eso costaba un ERROR por endpoint habilitado en cada instalación nueva, en el log que un operador lee justamente para decidir si el add-on está sano. La rama del 401 sigue: un token que era válido y venció no se puede anticipar, solo reaccionar. Medido en `nifi2-current`: cero errores y un solo login. Texto original: el cursor de bulletins ya usa el `checkpoint_dir` de Splunk. Falta mover el token. Sustituir el estado en `.env` por el KV store de Splunk o `storage/passwords` (B-14). **Medido en el run del 2026-08-24:** el `.env` vive dentro del directorio de la app, así que se pierde al reinstalarla o recrear el contenedor, y cada arranque en frío paga un 401 evitable. Al no haber token cacheado, pedirlo proactivamente antes de la primera request en lugar de provocar el 401. |
 | TA-8 ◐ | **Parcial.** B-4, B-5 y B-16 corregidos; **B-15 (vendorizar `requests`/`urllib3`) diferido a 2.1** — §14. |
 | TA-9 ✅ | **Hecho.** `nifi_manager.xml` e `inputs.conf.spec` exponen los 18 parámetros del input, incluidos `metrics_registries`, `metrics_strategy`, `metrics_sample_filter`, `endpoint_bulletin_board`, `custom_endpoints`, `verify_tls` y `ca_bundle`. |
 | TA-10 ✅ | **Hecho, corregido el 2026-09-16.** `python.required` junto a `python.version`, que se conserva para Splunk 8.2–9.1. El valor era `python3` y **AppInspect no lo acepta**: `python.required` solo admite `3.9` o `3.13` (`PYTHON_REQUIRED_VALUES`), y Splunk 10.2 deprecó todo lo anterior a 3.13. Ahora es `python.required = 3.13`; `python.version` sigue en `python3`, que es su propio conjunto de valores. |
@@ -867,20 +867,21 @@ URL sigue contando.
 
 ## 14. Pendiente para 2.1
 
-Estado al **2026-09-16**, verificado contra el código y no contra las marcas de
+Estado al **2026-09-21**, verificado contra el código y no contra las marcas de
 este documento. Todo lo demás del plan está cerrado. **Nada de esto bloquea el
 release de 2.0.0**, que aún no se publicó: falta mergear `nifi-2` y correr
 `main.yml`.
 
-| # | Qué falta | Cómo se verificó que sigue abierto |
+| # | Qué falta | Estado |
 |---|---|---|
-| **TA-7** (resto) | Pedir el token proactivamente en el arranque en frío, en lugar de provocar un 401 y renovar. B-14 ya cerró la parte del almacenamiento. | El harness mide exactamente un 401 por input por arranque, por diseño |
-| **DOC-3** ❌ | Recapturar los screenshots con la UI de NiFi 2.x. **No se hará desde acá**: es trabajo visual. 12 imágenes de 1.x siguen referenciadas en §4 de la doc, advertidas como tales. | — |
+| **CE-2** | Aplanar los arrays de los endpoints custom reusando `flatten_samples`. 8 de los 13 endpoints probados traen arrays paralelos que hoy no se pueden correlacionar. | Abierto, diferido a 2.1 |
+| **DOC-3** ❌ | Recapturar los screenshots con la UI de NiFi 2.x. **No se hará desde acá**: es trabajo visual. 12 imágenes de 1.x siguen referenciadas en §4 de la doc, advertidas como tales. | Rechazado |
 
-**Queda poco, y nada de código de producto.** El resto de TA-7 es una mejora de
-arranque en frío; DOC-3 está rechazado con motivo. Salieron de esta lista el
+**No queda código de producto pendiente para 2.0.0.** Salieron de esta lista el
 2026-09-17: B-14, B-24, TA-4b, R-8 y F0.3 (resueltos) y B-15 (**retirado**: la
-medición mostró que no era un defecto).
+medición mostró que no era un defecto). El 2026-09-21: CE-1, CE-3 y CE-4
+(resueltos) y **TA-7**, que se cerró entero. La migración a UCC (UI-1/UI-2/UI-3)
+se adelantó a esta pasada por decisión del 2026-09-21 y ya no está diferida.
 
 ---
 

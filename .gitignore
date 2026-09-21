@@ -5,3 +5,4 @@ Thumbs.db
 .dccache
 __pycache__/
 tests/.env
+.venv-ucc/

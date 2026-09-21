@@ -101,10 +101,13 @@ class IngestTest(IntegrationTestCase):
         self.assertTrue(rows)
         self.assertTrue(rows[0].get("cluster"), "cluster was not looked up from host")
 
-    def test_the_input_logs_no_errors_other_than_the_bootstrap_401(self):
-        """One 401 per cold start is by design: with no cached token the first
-        request is unauthorized, and the input then fetches one and retries.
-        Anything else is a real failure."""
+    def test_the_input_logs_no_errors_at_all(self):
+        """A healthy input has nothing to say at ERROR level.
+
+        This used to allow one 401 per endpoint, because a cold start sent a
+        placeholder bearer and let NiFi refuse it. TA-7 asks for the token
+        first, so the allowance is gone and any ERROR is now a real one.
+        """
         rows = search(
             self.splunk,
             'index=_internal sourcetype=splunkd log_level=ERROR "Nifi Log pid=" '
@@ -113,48 +116,69 @@ class IngestTest(IntegrationTestCase):
             "| stats count by code",
             earliest="-1h",
         )
-        unexpected = [row for row in rows if row.get("code") != "401"]
         self.assertEqual(
-            unexpected, [], "the input logged errors other than a 401: %s" % unexpected
+            rows, [], "the input logged errors: %s" % rows
         )
 
-    def test_the_input_recovers_from_the_bootstrap_401(self):
-        """The regression guard for the token-refresh bug: before it was fixed
-        the retry re-sent the expired token, so the input never got past the
-        401 and nothing was ever indexed. Events dated after the last error
-        prove the renewal worked."""
-        last_error = search(
+    def test_the_cold_start_costs_no_401(self):
+        """TA-7: an authenticated input logs in before its first request.
+
+        The old behaviour was to send the string "unknown" as the bearer,
+        collect a 401 per enabled endpoint and renew from there. It worked --
+        the previous version of this test asserted the recovery -- but it
+        filled the log an operator reads to judge the add-on's health with
+        errors that meant nothing was wrong. The renewal path itself is still
+        there for an expired token, and TokenRefreshTest covers it: that case
+        cannot be detected in advance, only reacted to, so it has no integration
+        signature to assert here.
+        """
+        if env("NIFI_AUTH", "none") == "none":
+            self.skipTest("unauthenticated profile: the input never logs in")
+        rows = search(
             self.splunk,
             'index=_internal sourcetype=splunkd log_level=ERROR "Nifi Log pid=" '
-            + NOT_DELIBERATE +
-            "| stats max(_time) as last_error",
+            '"status_code: 401" | stats count',
             earliest="-1h",
         )
-        if not last_error or not str(last_error[0].get("last_error", "")).strip():
-            self.skipTest("the input logged no errors at all; nothing to recover from")
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertEqual(
+            count, 0,
+            "%d bootstrap 401s: the input is still provoking a refusal instead "
+            "of asking for a token" % count,
+        )
 
-        last_event = search(
+    def test_the_input_logs_in_exactly_once_per_cold_start(self):
+        """The other half of TA-7. Asking first is only an improvement if it
+        is asked once: a login per request would trade a bounded handful of
+        401s for an unbounded number of round trips, which is worse. The token
+        goes to storage/passwords, so the second process finds it there."""
+        if env("NIFI_AUTH", "none") == "none":
+            self.skipTest("unauthenticated profile: the input never logs in")
+        rows = search(
             self.splunk,
-            'index=nifi sourcetype="nifi:api:*" | stats max(_time) as last_event',
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" '
+            '"No stored token for input" | stats count',
             earliest="-1h",
         )
-        self.assertTrue(last_event and last_event[0].get("last_event"))
-        self.assertGreater(
-            float(last_event[0]["last_event"]),
-            float(last_error[0]["last_error"]),
-            "no events arrived after the last error: the input did not recover",
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertGreater(count, 0, "the input never logged in at all")
+        # One per input process, and a container can be recreated once.
+        self.assertLessEqual(
+            count, 4,
+            "%d logins: the token is not being reused across requests" % count,
         )
 
-    def test_errors_are_confined_to_startup(self):
-        """Errors must look like a bounded bootstrap, not one per request.
+    def test_a_healthy_input_errors_zero_times(self):
+        """This has had three shapes, each one a smaller allowance.
 
-        An earlier version of this compared total errors against total
-        indexed events, which was flaky: the error count is a one-off from
-        startup while the event count grows with uptime, so the same healthy
-        stack passed when the assertions ran late and failed when they ran
-        early. Bound it against something that does not move instead -- the
-        number of enabled endpoints, which is the most bootstrap 401s the
-        input can legitimately pay.
+        It began by comparing total errors against total indexed events, which
+        was flaky: the error count is a one-off from startup while the event
+        count grows with uptime, so the same healthy stack passed when the
+        assertions ran late and failed when they ran early. It then allowed a
+        ceiling of one 401 per enabled endpoint, which was honest about the
+        cold start but still an allowance nobody could read a number out of.
+        TA-7 removed the reason for it: the input logs in before it asks for
+        anything, so the right budget is none.
         """
         errors = search(
             self.splunk,
@@ -164,17 +188,9 @@ class IngestTest(IntegrationTestCase):
             earliest="-1h",
         )
         error_count = int(errors[0]["count"]) if errors and errors[0].get("count") else 0
-
-        # flow_status, system_diagnostics, the bulletin board and flow metrics
-        # are enabled by the harness input; each can pay at most one 401
-        # before the token is cached, and a cold start can happen twice if a
-        # container is recreated.
-        ceiling = 4 * 2
-        self.assertLessEqual(
-            error_count,
-            ceiling,
-            "%d errors is more than a bounded startup (<=%d): the input is "
-            "erroring on every request" % (error_count, ceiling),
+        self.assertEqual(
+            error_count, 0,
+            "%d errors from an input with nothing wrong with it" % error_count,
         )
 
 
@@ -1050,19 +1066,24 @@ class MultiInstanceTest(IntegrationTestCase):
         """The defect this profile was built to catch. Two processes renewing
         a token at once used to rewrite one shared .env non-atomically; the
         symptom is one input authenticating fine while the other loops on 401
-        long after its cold start."""
+        long after its cold start.
+
+        The allowance for a bootstrap 401 per input is gone with TA-7: each
+        one logs in before its first request, so a 401 here is either an
+        expired token -- which cannot happen inside a test run, NiFi issues
+        them for eight hours -- or the clobbering this exists to catch.
+        """
         rows = search(
             self.splunk,
             'index=_internal sourcetype=splunkd "Nifi Log pid=" '
             '"Error HTTP request" "status_code: 401" '
-            '| stats count by _time | stats count as bursts')
+            '| stats count')
         self.assertTrue(rows, "the search returned nothing at all")
-        # One 401 per input per cold start is by design; more than a handful
-        # means they are fighting over the stored token.
-        self.assertLessEqual(
-            int(rows[0]["bursts"]), 2 * len(self.HOSTS),
-            "%s separate 401s across %d inputs: the token is being clobbered"
-            % (rows[0]["bursts"], len(self.HOSTS)),
+        count = int(rows[0]["count"]) if rows[0].get("count") else 0
+        self.assertEqual(
+            count, 0,
+            "%d 401s across %d inputs: the token is being clobbered"
+            % (count, len(self.HOSTS)),
         )
 
     def test_each_instance_keeps_its_own_lookup_row(self):

@@ -1125,7 +1125,24 @@ class NiFiScript(Script):
             # storage/passwords call per endpoint per cycle in auth_type=none,
             # and an error logged for a credential that mode never stores.
             password = self.__get_password(ew, session_key, username)
-            token = self.__read_token(ew, session_key, input_name) or "unknown"
+            token = self.__read_token(ew, session_key, input_name)
+            if not token:
+                # Cold start: nothing stored yet. The input used to send the
+                # literal string "unknown" as the bearer, let NiFi answer 401
+                # and renew from there. It worked, but it asked to be refused:
+                # one ERROR per enabled endpoint on every fresh install, in a
+                # log an operator reads to decide whether the add-on is
+                # healthy, saying "Error HTTP request - status_code: 401" when
+                # nothing was wrong (TA-7). Ask for the token first instead.
+                #
+                # The 401 branch below stays: it is the other case, a token
+                # that was valid and expired, and that one cannot be predicted.
+                EventWriter.log(ew, EventWriter.INFO, '{} No stored token for input {}; requesting one before the first call'.format(self.pid, input_name))
+                token = self.__get_token(ew, base_url, username, password)
+                if not token:
+                    EventWriter.log(ew, EventWriter.ERROR, '{} Could not obtain a token, aborting request - url: {}'.format(self.pid, self.__urljoin(base_url, path)))
+                    return None
+                self.__write_token(ew, session_key, input_name, token)
             EventWriter.log(ew, EventWriter.INFO, '{} Request base_url:{} path:{}, auth_type:{}, username:{}, input_name:{}, token:{}'.format(self.pid, base_url, path, auth_type, username, input_name, self.__redact(token)))
             
             url = self.__urljoin(base_url, path)
