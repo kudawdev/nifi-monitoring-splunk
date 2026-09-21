@@ -5,7 +5,7 @@
 | **Fecha** | 2026-08-24 |
 | **Autor** | Anibal Vasquez (Kudaw SA) |
 | **Última revisión** | 2026-09-16 |
-| **Estado** | **Ejecutado — 2.0.0 lista, sin liberar.** El último tag y el último release siguen siendo 1.2.3; la rama `nifi-2` no está mergeada. Lo diferido a 2.1 está en §14 |
+| **Estado** | **Ejecutado — 2.0.0 lista, sin liberar.** El último tag y el último release siguen siendo 1.2.3; la rama `nifi-2` no está mergeada. Lo diferido a 2.1 está en §15 |
 | **Versión al abrir el plan** | 1.2.3 (ambas) |
 | **Versión en la fuente** | **2.0.0 (ambas)** — breaking change, sin publicar |
 | **Apps afectadas** | `nifi_monitoring` (Splunkbase 6125), `nifi_TA_monitoring` (Splunkbase 6124) |
@@ -20,7 +20,7 @@ Extender las dos apps para monitorear instancias de **Apache NiFi 2.x** sin perd
 
 - Soporte simultáneo de NiFi 1.16+ y 2.x en un único código.
 - Revisión y consolidación del método de recolección.
-- Corrección de los 24 defectos catalogados en §7 (B-19 se retiró tras verificarlo). **Cerrados 21; B-14, B-15 y B-24 diferidos a 2.1 — §14.**
+- Corrección de los 24 defectos catalogados en §7 (B-19 se retiró tras verificarlo). **Cerrados 21; B-14, B-15 y B-24 diferidos a 2.1 — §15.**
 - Rediseño de `tests/` como matriz parametrizable NiFi × Splunk con verificación automatizada.
 - Actualización de la documentación pública bilingüe en `doc/`.
 
@@ -352,7 +352,7 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 
 ## 6. Cambios por componente
 
-> **Leyenda:** ✅ hecho · ◐ parcial · ◻ pendiente, diferido a 2.1 (§14) · ❌ no se hará.
+> **Leyenda:** ✅ hecho · ◐ parcial · ◻ pendiente, diferido a 2.1 (§15) · ❌ no se hará.
 
 ### 6.1 `nifi_TA_monitoring`
 
@@ -367,7 +367,7 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 | TA-5 ✅ | **Hecho.** Polling de `/flow/bulletin-board` → `nifi:api:bulletin_board`, habilitado por defecto, con `?after=<id>` y cursor en el `checkpoint_dir`. `props.conf` mapea la forma del board a los nombres que ya usa el datamodel, para que ambas fuentes alimenten los mismos paneles. |
 | TA-6 ✅ | **Hecho.** `nifi:api:controller_cluster` retirado (nada lo producía) y `nifi:api:site_to_site` retirado por D-2. |
 | TA-7 ✅ | **Hecho.** El cursor de bulletins y el token salieron del `.env` (B-14, 2026-09-17), y el 2026-09-21 se cerró la parte que faltaba: con `auth_type = basic` y nada guardado, el input pide el token **antes** de la primera request en lugar de mandar el bearer literal `unknown` y dejar que NiFi lo rechace. Eso costaba un ERROR por endpoint habilitado en cada instalación nueva, en el log que un operador lee justamente para decidir si el add-on está sano. La rama del 401 sigue: un token que era válido y venció no se puede anticipar, solo reaccionar. Medido en `nifi2-current`: cero errores y un solo login. Texto original: el cursor de bulletins ya usa el `checkpoint_dir` de Splunk. Falta mover el token. Sustituir el estado en `.env` por el KV store de Splunk o `storage/passwords` (B-14). **Medido en el run del 2026-08-24:** el `.env` vive dentro del directorio de la app, así que se pierde al reinstalarla o recrear el contenedor, y cada arranque en frío paga un 401 evitable. Al no haber token cacheado, pedirlo proactivamente antes de la primera request en lugar de provocar el 401. |
-| TA-8 ◐ | **Parcial.** B-4, B-5 y B-16 corregidos; **B-15 (vendorizar `requests`/`urllib3`) diferido a 2.1** — §14. |
+| TA-8 ◐ | **Parcial.** B-4, B-5 y B-16 corregidos; **B-15 (vendorizar `requests`/`urllib3`) diferido a 2.1** — §15. |
 | TA-9 ✅ | **Hecho.** `nifi_manager.xml` e `inputs.conf.spec` exponen los 18 parámetros del input, incluidos `metrics_registries`, `metrics_strategy`, `metrics_sample_filter`, `endpoint_bulletin_board`, `custom_endpoints`, `verify_tls` y `ca_bundle`. |
 | TA-10 ✅ | **Hecho, corregido el 2026-09-16.** `python.required` junto a `python.version`, que se conserva para Splunk 8.2–9.1. El valor era `python3` y **AppInspect no lo acepta**: `python.required` solo admite `3.9` o `3.13` (`PYTHON_REQUIRED_VALUES`), y Splunk 10.2 deprecó todo lo anterior a 3.13. Ahora es `python.required = 3.13`; `python.version` sigue en `python3`, que es su propio conjunto de valores. |
 | TA-11 ✅ | **Hecho.** Nuevo sourcetype `nifi:log:deprecation` + su stanza `[monitor://…nifi-deprecation*.log]`. Es el insumo del panel de apoyo a la migración (§4.3). |
@@ -534,7 +534,7 @@ En pull request corren cuatro — uno por estrategia y por arquitectura: `nifi1-
 
 **Lo que F0 ya cambió del plan:** §3.5 y §3.6 (nuevas), §4.1 (dos criterios agregados), §4.2.1 (reescrito), TA-2/TA-2b/TA-4/TA-4b. La decisión de §4.2 se sostiene, pero el rol del endpoint de métricas pasó de "sustituto" a "complemento con transformación en el TA".
 
-**Cierre de F0 (2026-09-16):** F0.5, F0.6 y F0.8 se completaron después de escribir esta tabla. El único pendiente es **F0.3** — la medición con un flujo no trivial —, diferido a 2.1 (§14).
+**Cierre de F0 (2026-09-16):** F0.5, F0.6 y F0.8 se completaron después de escribir esta tabla. El único pendiente es **F0.3** — la medición con un flujo no trivial —, diferido a 2.1 (§15).
 
 ### F1 — Saneamiento (independiente de NiFi 2.x)
 
@@ -656,7 +656,7 @@ escrito**, que es peor que no tener ninguno: parece que anda.
 ### 11.1 Una sola instancia — soportada y verificada
 
 Es lo que cubren todos los perfiles de §8.4. No falta nada de topología; lo
-pendiente es de producto y está en §14 y en los hallazgos de dashboards.
+pendiente es de producto y está en §15 y en los hallazgos de dashboards.
 
 ### 11.2 Múltiples instancias independientes — soportada, y ahora verificada
 
@@ -938,7 +938,40 @@ URL sigue contando.
 
 ---
 
-## 14. Pendiente para 2.1
+## 14. Lo que encontró la matriz completa
+
+Primera corrida de los 10 perfiles contra el add-on generado por UCC, el
+**2026-09-21**. Ocho pasaron a la primera. Los dos que no eran defectos del
+harness, ninguno del producto — pero los tres que aparecieron comparten una
+forma que vale registrar: **el test no fallaba, pasaba por el motivo
+equivocado**.
+
+| # | Defecto | Cómo se manifestaba |
+|---|---|---|
+| **H-1** | Los dos guards de TA-7 preguntaban `NIFI_AUTH == "none"` para saber si el input se autentica. El perfil `cluster` usa el archivo de entorno `none2x`, así que no coincidía y el guard no saltaba | `the input never logged in at all` contra un NiFi que efectivamente nunca se autentica. Leía el **nombre del perfil** para averiguar algo que solo sabe el input; ahora lo pregunta donde corresponde: `\| rest .../data/inputs/nifi \| search auth_type=basic` |
+| **H-2** | El import del flow es un `POST` **no idempotente** y pasaba por el reintento genérico. En un cluster el coordinador responde 500 porque un nodo todavía se está uniendo **después** de haber creado el grupo, así que cada reintento importaba el flow de nuevo | Tres reintentos en una corrida, tres grupos `NiFiMonitoring` bajo el root. Y no falla ruidosamente: **NiFi no rechaza el duplicado, renombra lo que colisiona**. Los puertos quedaron como `Copy of Copy of bulletin_report` y las conexiones del grupo que sí corría apuntaban a los nombres originales, así que el flujo se veía sano y no mandaba nada |
+| **H-3** | Tres pruebas de panel hacían `wait_for_events` sobre **la query del dashboard**, leída del XML. Esa query termina en una tabla armada desde el lookup de instancias: devuelve una fila aunque no haya llegado un solo evento | La espera volvía al instante y la aserción corría contra `{host, cluster}` y nada más. En un solo nodo no se notaba; en cluster sí, porque los pollers de API llevan `executionNode: PRIMARY` y no recolectan hasta que se resuelve la elección |
+
+Menor, del mismo tipo: `test_system_diagnostics_is_not_fetched_twice` agrupaba
+por ventanas de un segundo **sin separar por host**, así que dos instancias
+recolectadas a la vez se leían como una recolectada dos veces. Latente desde
+que existen los perfiles multi-instancia; pasaba por casualidad de timing.
+
+**Los guards que quedan.** H-2 deja tres: el import comprueba si el grupo
+aterrizó antes de dar el intento por fallido, una aserción de que hay
+exactamente una copia, y otra que falla si algún puerto quedó con el prefijo
+`Copy of` — que es el síntoma que uno ve. H-3 deja una regla general en
+`IntegrationWaitsAreRealTest`: **`wait_for_events` solo acepta una query
+literal**. Esperar sobre una variable es esperar sobre algo que nadie puede
+revisar, y es exactamente cómo este caso se escapó de un guard escrito para
+cazarlo — la cadena ni siquiera está en el repositorio.
+
+Cerrada la corrida: **10 de 10 perfiles verdes**, 69 aserciones cada uno, 295
+tests unitarios.
+
+---
+
+## 15. Pendiente para 2.1
 
 Estado al **2026-09-21**, verificado contra el código y no contra las marcas de
 este documento. Todo lo demás del plan está cerrado. **Nada de esto bloquea el
@@ -1032,4 +1065,4 @@ Contenedores `apache/nifi:1.23.2` (HTTP sin auth, puerto 18080) y `apache/nifi:2
 
 Muestras versionadas en `docs/plans/samples/`: `nifi{1.23,2.11}-{metrics-all,flow-status,system-diagnostics}.json`.
 
-> **Al 2026-09-16:** F0.5 (importación del flow en 2.11.0) y F0.8 (end-to-end TA→Splunk) se completaron después de escribir este anexo — ver §3.7 y F2. Sigue pendiente solo la medición con un flujo no trivial (F0.3), diferida a 2.1 (§14).
+> **Al 2026-09-16:** F0.5 (importación del flow en 2.11.0) y F0.8 (end-to-end TA→Splunk) se completaron después de escribir este anexo — ver §3.7 y F2. Sigue pendiente solo la medición con un flujo no trivial (F0.3), diferida a 2.1 (§15).

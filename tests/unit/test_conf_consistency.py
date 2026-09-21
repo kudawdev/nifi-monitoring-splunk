@@ -693,6 +693,24 @@ class IntegrationWaitsAreRealTest(unittest.TestCase):
             "wait_for_events on a bare `| stats count` returns at once; add a "
             "by-clause so it waits for real: %s" % ", ".join(offenders))
 
+    def test_no_wait_is_on_a_query_nobody_can_read(self):
+        lines = open(self.SOURCE).read().split("\n")
+        offenders = []
+        for number, line in enumerate(lines, start=1):
+            if "wait_for_events(" not in line:
+                continue
+            window = " ".join(lines[number - 1:number + 2])
+            argument = window.split("wait_for_events(", 1)[1]
+            argument = argument.split("self.splunk,", 1)[-1].lstrip()
+            if argument.startswith(("'", '"')):
+                continue
+            offenders.append("%s:%d" % (os.path.basename(self.SOURCE), number))
+        self.assertEqual(
+            offenders, [],
+            "wait_for_events on a query that is not a literal: whether it "
+            "returns rows when there is no data cannot be reviewed, so wait "
+            "on the underlying sourcetype instead: %s" % ", ".join(offenders))
+
 
 class ConfContinuationTest(unittest.TestCase):
     """Splunk ends a value at the first unescaped newline.

@@ -114,14 +114,41 @@ def _call_once(path, body=None, method="GET", raw=None, content_type="applicatio
     return json.loads(text) if text else {}
 
 
+GROUP_NAME = "NiFiMonitoring"
+
+
+def imported_groups(root):
+    """Every copy of the flow directly under root.
+
+    NiFi does not refuse a second import of the same flow, it renames what
+    collides -- so a duplicate announces itself as ports called "Copy of
+    bulletin_report" rather than as an error.
+    """
+    flow = call("/flow/process-groups/%s" % root)["processGroupFlow"]["flow"]
+    return [group for group in flow.get("processGroups", [])
+            if GROUP_NAME in group["component"]["name"]]
+
+
 def upload_flow(root, path):
-    """Import the flow definition the way the UI's 'import from file' does."""
+    """Import the flow definition the way the UI's 'import from file' does.
+
+    Deliberately not routed through call(). This POST is not idempotent, and
+    on a cluster the coordinator can answer 500 because a node is still
+    joining *after* the group has been created -- so the generic retry
+    imported the flow again, once per attempt. Three attempts in one run left
+    three copies of NiFiMonitoring under root, two stopped and one running,
+    with ports named "Copy of Copy of bulletin_report". The events the
+    dashboards need never arrived, because the copy that was running had its
+    ports renamed out from under the connections.
+
+    So: check whether the group landed before deciding the attempt failed.
+    """
     boundary = "----nifiharness"
     with open(path, "rb") as handle:
         content = handle.read()
 
     parts = []
-    for name, value in (("groupName", "NiFiMonitoring"), ("positionX", "0"),
+    for name, value in (("groupName", GROUP_NAME), ("positionX", "0"),
                         ("positionY", "0"), ("clientId", "harness"),
                         ("disconnectedNodeAcknowledged", "false")):
         parts.append(("--%s\r\nContent-Disposition: form-data; name=\"%s\"\r\n\r\n%s\r\n"
@@ -132,9 +159,37 @@ def upload_flow(root, path):
     parts.append(content)
     parts.append(("\r\n--%s--\r\n" % boundary).encode())
 
-    return call("/process-groups/%s/process-groups/upload" % root, method="POST",
-                raw=b"".join(parts),
-                content_type="multipart/form-data; boundary=%s" % boundary)
+    already = imported_groups(root)
+    if already:
+        raise SystemExit(
+            "%d copies of %s already exist under root; this script expects a "
+            "fresh NiFi" % (len(already), GROUP_NAME))
+
+    payload = b"".join(parts)
+    endpoint = "/process-groups/%s/process-groups/upload" % root
+    content_type = "multipart/form-data; boundary=%s" % boundary
+
+    last = None
+    for attempt in range(1, RETRIES + 1):
+        try:
+            return _call_once(endpoint, method="POST", raw=payload,
+                              content_type=content_type)
+        except _CallFailed as error:
+            last = error
+            transient = error.status >= 500 or (
+                error.status == 409 and CLUSTER_SETTLING in str(error))
+            if not transient:
+                raise SystemExit(str(error))
+            landed = imported_groups(root)
+            if landed:
+                print("    attempt %d answered HTTP %s but the group was "
+                      "created; using it rather than importing again"
+                      % (attempt, error.status))
+                return landed[0]
+            print("    attempt %d: cluster still settling, retrying" % attempt)
+            time.sleep(RETRY_WAIT)
+    raise SystemExit("gave up importing the flow after %d attempts: %s"
+                     % (RETRIES, last))
 
 
 def set_variables(group_id, values):
@@ -260,6 +315,13 @@ def provision_one():
     group_id = group["id"]
     print("    imported the %s flow as process group %s" % (line, group_id))
 
+    copies = imported_groups(root)
+    if len(copies) != 1:
+        raise SystemExit(
+            "%d copies of %s under root after one import: %s"
+            % (len(copies), GROUP_NAME,
+               ", ".join(c["component"]["name"] for c in copies)))
+
     if major == "1":
         set_variables(group_id, [
             ("splunk_hec", "http://splunk:8088"),
@@ -321,6 +383,17 @@ def finish(group_id):
     ports = port_states(group_id)
     print("    %d processors running, ports: %s"
           % (running, ", ".join("%s=%s" % item for item in sorted(ports))))
+
+    # The symptom rather than the cause, kept because it is the thing anyone
+    # actually sees: NiFi renames what collides instead of refusing, so a
+    # second import shows up here as "Copy of bulletin_report" and nowhere
+    # else. The connections still point at the original names, so the flow
+    # looks healthy and sends nothing.
+    renamed = sorted(name for name, _ in ports if name.startswith("Copy of"))
+    if renamed:
+        raise SystemExit(
+            "NiFi renamed %d port(s), which means the flow was imported more "
+            "than once: %s" % (len(renamed), ", ".join(renamed)))
     return 0
 
 

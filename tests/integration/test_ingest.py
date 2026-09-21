@@ -120,6 +120,22 @@ class IngestTest(IntegrationTestCase):
             rows, [], "the input logged errors: %s" % rows
         )
 
+    def skip_unless_the_input_logs_in(self):
+        """Only a basic-auth input ever calls POST /access/token.
+
+        Asked of Splunk rather than of the profile name: NIFI_AUTH names an
+        environment file, and `none` and `none2x` are both unauthenticated.
+        Reading the first for the second is how these two guards ran against
+        a cluster that never logs in and reported that it had not.
+        """
+        rows = search(
+            self.splunk,
+            '| rest /servicesNS/nobody/nifi_TA_monitoring/data/inputs/nifi '
+            '| search auth_type=basic disabled=0 | stats count')
+        configured = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        if not configured:
+            self.skipTest("no enabled basic-auth input: nothing ever logs in")
+
     def test_the_cold_start_costs_no_401(self):
         """TA-7: an authenticated input logs in before its first request.
 
@@ -132,8 +148,7 @@ class IngestTest(IntegrationTestCase):
         cannot be detected in advance, only reacted to, so it has no integration
         signature to assert here.
         """
-        if env("NIFI_AUTH", "none") == "none":
-            self.skipTest("unauthenticated profile: the input never logs in")
+        self.skip_unless_the_input_logs_in()
         rows = search(
             self.splunk,
             'index=_internal sourcetype=splunkd log_level=ERROR "Nifi Log pid=" '
@@ -152,8 +167,7 @@ class IngestTest(IntegrationTestCase):
         is asked once: a login per request would trade a bounded handful of
         401s for an unbounded number of round trips, which is worse. The token
         goes to storage/passwords, so the second process finds it there."""
-        if env("NIFI_AUTH", "none") == "none":
-            self.skipTest("unauthenticated profile: the input never logs in")
+        self.skip_unless_the_input_logs_in()
         rows = search(
             self.splunk,
             'index=_internal sourcetype=splunkd "Nifi Log pid=" '
@@ -243,11 +257,17 @@ class VersionDetectionTest(IntegrationTestCase):
 
     def test_system_diagnostics_is_not_fetched_twice(self):
         """Version detection reuses the diagnostics response, so enabling the
-        endpoint must not double the events."""
+        endpoint must not double the events.
+
+        Counted per host, not per second. Two inputs polling two NiFis land in
+        the same one-second bin often enough, and that is two instances being
+        collected rather than one being collected twice -- which is what this
+        reported the first time a profile ran more than one.
+        """
         rows = search(
             self.splunk,
             'index=nifi sourcetype="nifi:api:system_diagnostics" '
-            '| bin _time span=1s | stats count by _time | where count > 1',
+            '| bin _time span=1s | stats count by _time, host | where count > 1',
         )
         self.assertEqual(
             rows, [], "system_diagnostics arrived more than once per cycle: %s" % rows
@@ -470,16 +490,39 @@ class DashboardPanelTest(IntegrationTestCase):
             for q in queries
         ]
 
+    def wait_for_the_data_behind_the_panels(self):
+        """A panel query is not a wait condition.
+
+        Both overview panels end in a table built from the instance lookup, so
+        they return a row whether or not any diagnostics arrived -- waiting on
+        one comes back at once and the assertion then runs against a row with
+        nothing in it but host and cluster. That is the same mistake
+        IntegrationWaitsAreRealTest exists to catch, and it cannot see this
+        one: the query comes out of the dashboard XML, not out of this file.
+
+        On a cluster the wait is real rather than theoretical. The API pollers
+        carry executionNode PRIMARY, so nothing is collected at all until the
+        election settles, and the first diagnostics can be a couple of minutes
+        behind the flow being started.
+        """
+        wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:system_diagnostics" '
+            '| stats count by host',
+            minimum=1, timeout=420)
+
     def test_the_overview_status_panel_returns_a_row_per_instance(self):
+        self.wait_for_the_data_behind_the_panels()
         query = self.panel_queries("nifi_overview.xml")[0]
-        rows = wait_for_events(self.splunk, query, minimum=1)
+        rows = search(self.splunk, query)
         self.assertTrue(rows, "the overall status panel returned nothing")
         self.assertIn("host", rows[0])
         self.assertEqual(rows[0].get("status"), "Up")
 
     def test_the_disk_panel_returns_numeric_percentages(self):
+        self.wait_for_the_data_behind_the_panels()
         query = self.panel_queries("nifi_overview.xml")[1]
-        rows = wait_for_events(self.splunk, query, minimum=1)
+        rows = search(self.splunk, query)
         self.assertTrue(rows, "the disk panel returned nothing")
         row = rows[0]
         for column in ("Content %", "Content Used GB", "Provenance %"):
@@ -489,8 +532,9 @@ class DashboardPanelTest(IntegrationTestCase):
                 float(row[column])
 
     def test_the_disk_percentages_are_in_range(self):
+        self.wait_for_the_data_behind_the_panels()
         query = self.panel_queries("nifi_overview.xml")[1]
-        rows = wait_for_events(self.splunk, query, minimum=1)
+        rows = search(self.splunk, query)
         for column in ("Content %", "Flow %", "Provenance %"):
             with self.subTest(column=column):
                 value = float(rows[0][column])
@@ -501,9 +545,13 @@ class DashboardPanelTest(IntegrationTestCase):
         if self.profile_collection != "pull":
             self.skipTest("the version column comes from nifi:api:version_info, "
                           "which only the TA produces")
+        wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:version_info" | stats count by host',
+            minimum=1, timeout=420)
         queries = self.panel_queries("nifi_internal_monitoring.xml")
         inventory = [q for q in queries if "version_info" in q][0]
-        rows = wait_for_events(self.splunk, inventory, minimum=1)
+        rows = search(self.splunk, inventory)
         self.assertTrue(rows, "the inventory panel returned nothing")
         self.assertEqual(rows[0].get("nifi_version"), self.nifi_version)
         self.assertIn("REST pull", str(rows[0].get("paths")))
@@ -854,12 +902,21 @@ class ClusterTest(IntegrationTestCase):
         text = _re.sub(r"<!--.*?-->", "", open(views).read(), flags=_re.S)
         queries = [q.replace("&gt;", ">").replace("&lt;", "<").replace("&amp;", "&").strip()
                    for q in _re.findall(r"<query>(.*?)</query>", text, _re.S)]
+        # Wait on the sourcetypes, then ask the panel. The panel query is a
+        # tstats over the datamodel: it answers with whatever the model has,
+        # which is no rows rather than one, but it is also not a string anyone
+        # reviewing this file can read -- so the wait belongs on the data.
+        for sourcetype in ("nifi:api:cluster_nodes", "nifi:api:node_diagnostics"):
+            wait_for_events(
+                self.splunk,
+                'index=nifi sourcetype="%s" | stats count by node' % sourcetype,
+                minimum=self.NODES, timeout=420)
+
         for objeto in ("Cluster_Nodes", "Node_Diagnostics"):
             with self.subTest(object=objeto):
                 panel = [q for q in queries if objeto in q]
                 self.assertTrue(panel, "no panel queries %s" % objeto)
-                rows = wait_for_events(self.splunk, panel[0],
-                                       minimum=self.NODES, timeout=420)
+                rows = search(self.splunk, panel[0])
                 self.assertEqual(
                     len(rows), self.NODES,
                     "%s panel returned %d rows for %d nodes"
@@ -1113,7 +1170,12 @@ class MultiInstanceTest(IntegrationTestCase):
         text = _re.sub(r"<!--.*?-->", "", text, flags=_re.S)
         query = _re.findall(r"<query>(.*?)</query>", text, _re.S)[0]
         query = query.replace("&gt;", ">").replace("&lt;", "<").replace("&amp;", "&").strip()
-        rows = wait_for_events(self.splunk, query, minimum=len(self.HOSTS), timeout=420)
+        wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:system_diagnostics" '
+            '| stats count by host',
+            minimum=len(self.HOSTS), timeout=420)
+        rows = search(self.splunk, query)
         seen = {row["host"] for row in rows}
         for host in self.HOSTS:
             with self.subTest(host=host):
