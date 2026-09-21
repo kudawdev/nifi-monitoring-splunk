@@ -432,6 +432,15 @@ class NiFiScript(Script):
             return "path '{}' must start with / and be relative to the NiFi API URL".format(path)
         if any(character.isspace() for character in path):
             return "path '{}' must not contain whitespace".format(path)
+        if '{' in path or '}' in path:
+            # Accepting it and then requesting the path literally is a silent
+            # 404: the built-in history endpoints do substitute an id, they
+            # are configured a few fields up on the same screen, and it is a
+            # reasonable thing to assume carries over here (defect CE-3).
+            return ("path '{}' cannot contain a placeholder: custom endpoints are "
+                    "requested exactly as written. Use the actual id, or the "
+                    "Status History fields above, which substitute one"
+                    .format(path))
         return None
 
     @classmethod
@@ -708,18 +717,25 @@ class NiFiScript(Script):
                         "Invalid {} id '{}': expected a UUID".format(label, component_id)
                     )
 
+        # Every bad line at once. Stopping at the first meant fixing one,
+        # saving, and being told about the next -- tedious with three
+        # mistakes in a list of thirteen, which is the size this field is
+        # actually used at.
+        problems = []
         for line_number, line in enumerate((params.get("custom_endpoints") or "").splitlines(), start=1):
             line = line.strip()
             if not line or line.startswith('#'):
                 continue
             if ',' not in line:
-                raise ValueError(
-                    "Custom endpoint on line {} must be 'sourcetype,path': {}".format(line_number, line)
-                )
+                problems.append(
+                    "line {} must be 'sourcetype,path': {}".format(line_number, line))
+                continue
             sourcetype, path = (part.strip() for part in line.split(',', 1))
             error = self._validate_custom_endpoint(sourcetype, path)
             if error:
-                raise ValueError("Custom endpoint on line {}: {}".format(line_number, error))
+                problems.append("line {}: {}".format(line_number, error))
+        if problems:
+            raise ValueError("Custom endpoints -- %s" % "; ".join(problems))
 
 
     def stream_events(self, inputs, ew):
@@ -839,6 +855,11 @@ class NiFiScript(Script):
                         response = diagnostics   # already fetched for version detection
                     else:
                         response = self.__get_request(ew, base_url, path, auth_type, username, iname, session_key)
+                    if response is None:
+                        # The request failed and said so in the log. Writing
+                        # the event anyway is how an error body ends up
+                        # indexed as data (CE-1).
+                        continue
                     EventWriter.log(ew, EventWriter.DEBUG, '{} Response: {}'.format(self.pid, response))
                     event = Event(
                         sourcetype=sourcetype,
@@ -912,6 +933,13 @@ class NiFiScript(Script):
         EventWriter.log(ew, EventWriter.INFO, '{} Request custom endpoint: {}'.format(self.pid, custom))
         try:
             response = self.__get_request(ew, base_url, custom['path'], auth_type, username, iname, session_key)
+            if response is None:
+                # Nothing usable came back, and __get_request already logged
+                # why. A path that does not exist used to produce one event
+                # per poll carrying the 404 body, under the sourcetype the
+                # user chose, so their index said the endpoint was working.
+                EventWriter.log(ew, EventWriter.WARN, "{} Custom endpoint '{}' returned nothing usable; no event written".format(self.pid, custom['path']))
+                return
             EventWriter.log(ew, EventWriter.DEBUG, '{} Response: {}'.format(self.pid, response))
             event = Event(
                 sourcetype=custom['sourcetype'],
@@ -1063,6 +1091,16 @@ class NiFiScript(Script):
 
 
     def __get_request(self, ew, base_url, path, auth_type, username, input_name, session_key):
+        """The response body, or None when there is no usable one.
+
+        None on any status >= 400, and on a transport error. It used to return
+        `response.text` whatever the status, so an error body was indexed as
+        though it were data: a custom endpoint pointed at a path that does not
+        exist produced one event per poll containing "The specified resource
+        could not be found", under whatever sourcetype the user had chosen,
+        with nothing to mark it as a failure. The add-on logged the 404 and
+        indexed it anyway (defect CE-1).
+        """
         EventWriter.log(ew, EventWriter.INFO, '{} Resquest base_url:{} path:{}, auth_type:{}, input_name:{}'.format(self.pid, base_url, path, auth_type, input_name))
         if auth_type == "none":
             url = self.__urljoin(base_url, path)
@@ -1076,8 +1114,8 @@ class NiFiScript(Script):
                 response = requests.get(url, **req_args)
                 if response.status_code >= 400:
                     EventWriter.log(ew, EventWriter.ERROR, '{} Error HTTP request - status_code: {}, reason: {}, url: {}'.format(self.pid, response.status_code, response.reason, url))
-                else:
-                    EventWriter.log(ew, EventWriter.INFO, '{} Get OK - status_code: {}, response_elapsed: {}, url: {}'.format(self.pid, response.status_code, response.elapsed.total_seconds(), url))
+                    return None
+                EventWriter.log(ew, EventWriter.INFO, '{} Get OK - status_code: {}, response_elapsed: {}, url: {}'.format(self.pid, response.status_code, response.elapsed.total_seconds(), url))
                 return response.text
             except Exception as error:
                 EventWriter.log(ew, EventWriter.ERROR, '{} Error request - {}{}'.format(self.pid, error, self.__tls_hint(error)))
@@ -1110,13 +1148,13 @@ class NiFiScript(Script):
                     response = requests.get(url, **req_args)
                     if response.status_code >= 400:
                         EventWriter.log(ew, EventWriter.ERROR, '{} Error HTTP request - status_code: {}, reason: {}, url: {}'.format(self.pid, response.status_code, response.reason, url))
-                    else:
-                        EventWriter.log(ew, EventWriter.INFO, '{} Get OK - status_code: {}, response_elapsed: {}, url: {}'.format(self.pid, response.status_code, response.elapsed.total_seconds(), url))
+                        return None
+                    EventWriter.log(ew, EventWriter.INFO, '{} Get OK - status_code: {}, response_elapsed: {}, url: {}'.format(self.pid, response.status_code, response.elapsed.total_seconds(), url))
                     return response.text
                 elif response.status_code >= 400:
                     EventWriter.log(ew, EventWriter.ERROR, '{} Error HTTP request - status_code: {}, reason: {}, url: {}'.format(self.pid, response.status_code, response.reason, url))
-                else:
-                    EventWriter.log(ew, EventWriter.INFO, '{} Get OK - status_code: {}, response_elapsed: {}, url: {}'.format(self.pid, response.status_code, response.elapsed.total_seconds(), url))
+                    return None
+                EventWriter.log(ew, EventWriter.INFO, '{} Get OK - status_code: {}, response_elapsed: {}, url: {}'.format(self.pid, response.status_code, response.elapsed.total_seconds(), url))
                 return response.text
             except Exception as error:
                 EventWriter.log(ew, EventWriter.ERROR, '{} Error request - {}{}'.format(self.pid, error, self.__tls_hint(error)))

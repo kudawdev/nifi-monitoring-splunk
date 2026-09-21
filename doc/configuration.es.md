@@ -232,6 +232,19 @@ En el apartado NIFI Endpoints, selecciona los elementos a monitorear de la lista
 ### a.1 Endpoints personalizados
 La lista fija anterior cubre lo que la app trae de fábrica. Si necesitás consultar un endpoint REST de NiFi que no está en esa lista, usá en cambio el apartado **Custom Endpoints**: una línea por endpoint, con el formato `sourcetype,path` (por ejemplo `nifi:api:custom:queue_stats,/flow/connections/1234-5678-90ab-cdef/status`). El path es relativo a la NiFi API URL configurada arriba. Splunk indexa la respuesta cruda bajo el sourcetype que elijas; si necesitás extracción de campos para ese sourcetype, agregá tu propia stanza en `props.conf`.
 
+Tres cosas que conviene saber antes de depender de uno:
+
+- **No se admiten marcadores `{id}`.** A diferencia de los apartados Status History de esta misma pantalla, un path custom se pide literal. Escribí el UUID completo. El input se niega a guardar un path que contenga `{` o `}` en lugar de dejar que falle recién al consultar.
+- **Una consulta fallida no indexa nada.** Si NiFi responde 4xx o 5xx, el add-on lo registra en `splunkd.log` y no escribe ningún evento, así que un sourcetype vacío significa que el endpoint no está funcionando — el cuerpo del error nunca se indexa como si fuera dato.
+- **Editar `inputs.conf` a mano requiere un backslash al final.** El textarea acepta un endpoint por línea, pero un archivo `.conf` termina el valor en el primer salto de línea sin escapar. Cuando escribas la stanza vos mismo — por ejemplo desde un deployment server — continuá cada línea con `\`:
+
+```
+custom_endpoints = nifi:api:custom:queue_stats,/flow/connections/1234-5678-90ab-cdef/status\
+nifi:api:custom:cluster,/controller/cluster
+```
+
+  Indentar la continuación en cambio se ignora en silencio: Splunk se queda con el primer endpoint y descarta el resto. `splunk btool inputs list` muestra qué quedó realmente en efecto.
+
 ### b. NIFI Status History para Procesadores
 En el apartado NIFI Status History > List Processors ID especifica los ID de procesadores que serán monitorieados y separados por coma en caso de ser varios.
 

@@ -228,6 +228,19 @@ In the NIFI Endpoints section, select the elements to monitor from the existing 
 ### a.1 Custom Endpoints
 The fixed list above covers what the app ships with. If you need to poll a NiFi REST endpoint that is not on that list, use the **Custom Endpoints** section instead: one line per endpoint, as `sourcetype,path` (e.g. `nifi:api:custom:queue_stats,/flow/connections/1234-5678-90ab-cdef/status`). The path is relative to the NiFi API URL configured above. Splunk indexes the raw response under the sourcetype you choose; if you need field extraction for it, add your own `props.conf` stanza for that sourcetype.
 
+Three things worth knowing before you rely on one:
+
+- **`{id}` placeholders are not supported.** Unlike the Status History sections on this same screen, a custom path is requested literally. Write the UUID out. The input refuses to save a path containing `{` or `}` rather than letting it fail at poll time.
+- **A failed request indexes nothing.** If NiFi answers 4xx or 5xx, the add-on logs it to `splunkd.log` and writes no event, so an empty sourcetype means the endpoint is not working — the error body is never indexed as if it were data.
+- **Editing `inputs.conf` by hand needs a trailing backslash.** The textarea takes one endpoint per line, but a `.conf` file ends a value at the first unescaped newline. When you write the stanza yourself — a deployment server, for instance — continue each line with `\`:
+
+```
+custom_endpoints = nifi:api:custom:queue_stats,/flow/connections/1234-5678-90ab-cdef/status\
+nifi:api:custom:cluster,/controller/cluster
+```
+
+  Indenting the continuation instead is silently ignored: Splunk keeps the first endpoint and drops the rest. `splunk btool inputs list` shows what actually took effect.
+
 ### b. NIFI Status History for Processors
 In the NIFI Status History > List Processors ID section, specify the processor IDs that will be monitored and separated by commas if there are several.
 
