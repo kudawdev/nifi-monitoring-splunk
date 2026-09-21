@@ -624,3 +624,104 @@ class DatamodelObjectShapeTest(unittest.TestCase):
                     owners - {name, obj.get("parentName")}, set(),
                     "%s declares fields owned by something else: %s"
                     % (name, owners))
+
+
+class IntegrationWaitsAreRealTest(unittest.TestCase):
+    """`| stats count` emits a row even when it counts nothing.
+
+    Waiting on it therefore returns immediately and proves nothing: the
+    assertion that follows runs before the data it needs exists, so the test
+    passes or fails on timing. This was written four separate times in this
+    suite -- in ForwarderPathTest, FlowMetricsTest, TlsVerificationTest and
+    CustomEndpointTest -- each time after the last one had been fixed and
+    explained in a docstring. A comment is clearly not enough, so this checks
+    it instead.
+
+    A bare `| stats count` is fine with `search()`, which does not wait. Only
+    `wait_for_events` needs a query that returns no rows until there is data.
+    """
+
+    SOURCE = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "integration", "test_ingest.py")
+
+    def test_no_wait_uses_a_query_that_always_returns_a_row(self):
+        lines = open(self.SOURCE).read().split("\n")
+        offenders = []
+        for number, line in enumerate(lines, start=1):
+            if "| stats count'" not in line and '| stats count")' not in line:
+                continue
+            # walk back to whichever call this argument belongs to
+            for previous in range(number - 1, max(0, number - 7), -1):
+                text = lines[previous - 1]
+                if "wait_for_events(" in text:
+                    offenders.append("%s:%d" % (os.path.basename(self.SOURCE), number))
+                    break
+                if re.search(r"\bsearch\(", text):
+                    break
+        self.assertEqual(
+            offenders, [],
+            "wait_for_events on a bare `| stats count` returns at once; add a "
+            "by-clause so it waits for real: %s" % ", ".join(offenders))
+
+
+class ConfContinuationTest(unittest.TestCase):
+    """Splunk ends a value at the first unescaped newline.
+
+    `custom_endpoints` takes one endpoint per line, which the UI textarea
+    accepts literally -- but a hand-written `.conf` has to continue each line
+    with a trailing backslash. Indenting the continuation instead, the obvious
+    thing to try, is not an error: Splunk keeps the first line, drops the rest
+    and says nothing. The harness did exactly that and the cluster profile
+    silently configured one endpoint where it meant two (CE-4).
+
+    Nothing in Splunk's tooling flags it, so this does: any line inside a
+    stanza that carries no `=` and does not continue a `\\`-terminated line is
+    a value that never took effect.
+    """
+
+    DIRECTORY = os.path.join(REPO, "tests", "provision", "splunk")
+
+    def templates(self):
+        for name in sorted(os.listdir(self.DIRECTORY)):
+            if name.startswith("inputs.conf"):
+                yield name, os.path.join(self.DIRECTORY, name)
+
+    def test_every_input_template_parses_whole(self):
+        self.assertTrue(list(self.templates()), "no input templates found")
+        for name, path in self.templates():
+            with self.subTest(template=name):
+                orphans = []
+                continued = False
+                for number, raw in enumerate(open(path).read().split("\n"), start=1):
+                    line = raw.rstrip("\n")
+                    was_continued, continued = continued, line.endswith("\\")
+                    if was_continued:
+                        continue
+                    stripped = line.strip()
+                    if not stripped or stripped.startswith(("#", "[")):
+                        continue
+                    if "=" not in stripped:
+                        orphans.append("%s:%d: %s" % (name, number, stripped))
+                self.assertEqual(
+                    orphans, [],
+                    "these lines are dropped by Splunk -- end the line before "
+                    "them with a backslash: %s" % "; ".join(orphans))
+
+    def test_the_cluster_profile_still_asks_for_two_custom_endpoints(self):
+        """The one assertion CE-4 broke without failing.
+
+        `CustomEndpointTest` proves a failing endpoint writes nothing. With
+        the continuation dropped, the failing endpoint was never configured,
+        so "nothing indexed" was true for the wrong reason and the test passed
+        on an empty premise.
+        """
+        path = os.path.join(self.DIRECTORY, "inputs.conf.cluster")
+        text = open(path).read().replace("\\\n", "")
+        value = re.search(r"^custom_endpoints = (.*)$", text, re.M)
+        self.assertIsNotNone(value, "the cluster profile declares no custom endpoints")
+        endpoints = [part for part in value.group(1).split(",") if "/" in part]
+        self.assertEqual(
+            len(endpoints), 2,
+            "CustomEndpointTest needs one working and one failing endpoint, "
+            "got %r" % (value.group(1),))

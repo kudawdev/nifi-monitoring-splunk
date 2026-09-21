@@ -21,6 +21,18 @@ endpoint_system_diagnostics = 1
 # had ever pointed at a cluster.
 endpoint_flow_metrics = 1
 metrics_strategy = ALL_COMPONENTS
+# Two custom endpoints, one that works and one that cannot: the point is
+# that the second writes nothing at all (defect CE-1). Before the fix it
+# produced one event per poll carrying the 404 body, under this very
+# sourcetype, so the index said the endpoint was fine.
+#
+# One per line, continued with a trailing backslash. The UI textarea
+# accepts a plain newline, but a hand-written .conf does not: Splunk
+# ends the value at the first unescaped newline and silently drops the
+# rest, indented or not. Verified with btool against this very file.
+custom_endpoints = nifi:api:custom:cluster,/controller/cluster\
+nifi:api:custom:missing,/flow/controller/status/history
+
 host = nifi
 index = nifi
 interval = 60

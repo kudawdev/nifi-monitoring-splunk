@@ -5,7 +5,7 @@
 | **Fecha** | 2026-08-24 |
 | **Autor** | Anibal Vasquez (Kudaw SA) |
 | **Última revisión** | 2026-09-16 |
-| **Estado** | **Ejecutado — 2.0.0 lista, sin liberar.** El último tag y el último release siguen siendo 1.2.3; la rama `nifi-2` no está mergeada. Lo diferido a 2.1 está en §13 |
+| **Estado** | **Ejecutado — 2.0.0 lista, sin liberar.** El último tag y el último release siguen siendo 1.2.3; la rama `nifi-2` no está mergeada. Lo diferido a 2.1 está en §14 |
 | **Versión al abrir el plan** | 1.2.3 (ambas) |
 | **Versión en la fuente** | **2.0.0 (ambas)** — breaking change, sin publicar |
 | **Apps afectadas** | `nifi_monitoring` (Splunkbase 6125), `nifi_TA_monitoring` (Splunkbase 6124) |
@@ -20,7 +20,7 @@ Extender las dos apps para monitorear instancias de **Apache NiFi 2.x** sin perd
 
 - Soporte simultáneo de NiFi 1.16+ y 2.x en un único código.
 - Revisión y consolidación del método de recolección.
-- Corrección de los 24 defectos catalogados en §7 (B-19 se retiró tras verificarlo). **Cerrados 21; B-14, B-15 y B-24 diferidos a 2.1 — §13.**
+- Corrección de los 24 defectos catalogados en §7 (B-19 se retiró tras verificarlo). **Cerrados 21; B-14, B-15 y B-24 diferidos a 2.1 — §14.**
 - Rediseño de `tests/` como matriz parametrizable NiFi × Splunk con verificación automatizada.
 - Actualización de la documentación pública bilingüe en `doc/`.
 
@@ -352,7 +352,7 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 
 ## 6. Cambios por componente
 
-> **Leyenda:** ✅ hecho · ◐ parcial · ◻ pendiente, diferido a 2.1 (§13) · ❌ no se hará.
+> **Leyenda:** ✅ hecho · ◐ parcial · ◻ pendiente, diferido a 2.1 (§14) · ❌ no se hará.
 
 ### 6.1 `nifi_TA_monitoring`
 
@@ -367,7 +367,7 @@ Splunk sube de 8.2–9.4 a 9.0–10.x: 8.x está fuera de soporte y Splunk 10 ya
 | TA-5 ✅ | **Hecho.** Polling de `/flow/bulletin-board` → `nifi:api:bulletin_board`, habilitado por defecto, con `?after=<id>` y cursor en el `checkpoint_dir`. `props.conf` mapea la forma del board a los nombres que ya usa el datamodel, para que ambas fuentes alimenten los mismos paneles. |
 | TA-6 ✅ | **Hecho.** `nifi:api:controller_cluster` retirado (nada lo producía) y `nifi:api:site_to_site` retirado por D-2. |
 | TA-7 ◐ | **Parcial.** El cursor de bulletins y el token ya están fuera del `.env` (B-14, 2026-09-17); queda solo pedir el token **proactivamente** antes de la primera request en lugar de provocar el 401 de arranque en frío. Texto original: el cursor de bulletins ya usa el `checkpoint_dir` de Splunk. Falta mover el token. Sustituir el estado en `.env` por el KV store de Splunk o `storage/passwords` (B-14). **Medido en el run del 2026-08-24:** el `.env` vive dentro del directorio de la app, así que se pierde al reinstalarla o recrear el contenedor, y cada arranque en frío paga un 401 evitable. Al no haber token cacheado, pedirlo proactivamente antes de la primera request en lugar de provocar el 401. |
-| TA-8 ◐ | **Parcial.** B-4, B-5 y B-16 corregidos; **B-15 (vendorizar `requests`/`urllib3`) diferido a 2.1** — §13. |
+| TA-8 ◐ | **Parcial.** B-4, B-5 y B-16 corregidos; **B-15 (vendorizar `requests`/`urllib3`) diferido a 2.1** — §14. |
 | TA-9 ✅ | **Hecho.** `nifi_manager.xml` e `inputs.conf.spec` exponen los 18 parámetros del input, incluidos `metrics_registries`, `metrics_strategy`, `metrics_sample_filter`, `endpoint_bulletin_board`, `custom_endpoints`, `verify_tls` y `ca_bundle`. |
 | TA-10 ✅ | **Hecho, corregido el 2026-09-16.** `python.required` junto a `python.version`, que se conserva para Splunk 8.2–9.1. El valor era `python3` y **AppInspect no lo acepta**: `python.required` solo admite `3.9` o `3.13` (`PYTHON_REQUIRED_VALUES`), y Splunk 10.2 deprecó todo lo anterior a 3.13. Ahora es `python.required = 3.13`; `python.version` sigue en `python3`, que es su propio conjunto de valores. |
 | TA-11 ✅ | **Hecho.** Nuevo sourcetype `nifi:log:deprecation` + su stanza `[monitor://…nifi-deprecation*.log]`. Es el insumo del panel de apoyo a la migración (§4.3). |
@@ -534,7 +534,7 @@ En pull request corren cuatro — uno por estrategia y por arquitectura: `nifi1-
 
 **Lo que F0 ya cambió del plan:** §3.5 y §3.6 (nuevas), §4.1 (dos criterios agregados), §4.2.1 (reescrito), TA-2/TA-2b/TA-4/TA-4b. La decisión de §4.2 se sostiene, pero el rol del endpoint de métricas pasó de "sustituto" a "complemento con transformación en el TA".
 
-**Cierre de F0 (2026-09-16):** F0.5, F0.6 y F0.8 se completaron después de escribir esta tabla. El único pendiente es **F0.3** — la medición con un flujo no trivial —, diferido a 2.1 (§13).
+**Cierre de F0 (2026-09-16):** F0.5, F0.6 y F0.8 se completaron después de escribir esta tabla. El único pendiente es **F0.3** — la medición con un flujo no trivial —, diferido a 2.1 (§14).
 
 ### F1 — Saneamiento (independiente de NiFi 2.x)
 
@@ -656,7 +656,7 @@ escrito**, que es peor que no tener ninguno: parece que anda.
 ### 11.1 Una sola instancia — soportada y verificada
 
 Es lo que cubren todos los perfiles de §8.4. No falta nada de topología; lo
-pendiente es de producto y está en §13 y en los hallazgos de dashboards.
+pendiente es de producto y está en §14 y en los hallazgos de dashboards.
 
 ### 11.2 Múltiples instancias independientes — soportada, y ahora verificada
 
@@ -757,7 +757,115 @@ que sigue es la misma causa.
 
 ---
 
-## 13. Pendiente para 2.1
+## 13. Endpoints custom y el framework de configuración
+
+Evaluado el **2026-09-21** configurando los 13 endpoints que un usuario pidió
+— por la UI real, contra un cluster con un flujo de 37 procesadores, no
+leyendo el código.
+
+### 13.1 Qué funciona
+
+TA-15 entregó algo sólido y deliberadamente acotado: un `textarea`, una línea
+por endpoint como `sourcetype,path`, validado al guardar. Los 13 llegaron sin
+tocar código. La validación **dice qué línea falla y la transcribe**, y los
+campos se extraen solos por el `KV_MODE` por defecto de Splunk — 105 campos
+bajo `component.*` en `processor_details` —, así que la doc es más pesimista
+que la realidad cuando dice "agregá tu propio `props.conf`".
+
+### 13.2 Los cuatro defectos, en orden de gravedad
+
+| # | Defecto | Evidencia medida |
+|---|---|---|
+| **CE-1** | **Las respuestas de error se indexan como si fueran datos.** 2 de los 13 fallaron — `processor_types` con una excepción de replicación y `controller_status_history` con 404 — y **ambos cuerpos quedaron indexados bajo el sourcetype del usuario, sin marca alguna**. El TA los registró en `splunkd` (un 500 y dos 404), pero eso no ayuda a quien mira su índice y ve 13 sourcetypes llegando. Un 404 permanente acumula basura y consume licencia en cada poll | 2 sourcetypes con texto de error, 12 con datos |
+| **CE-2** | **Los arrays no se pueden correlacionar.** `cluster.nodes{}.address` devuelve `"nifi-node2, nifi"` y `status` devuelve `"CONNECTED, CONNECTED"`: arrays paralelos, sin forma de saber qué estado es de qué nodo. Es el mismo defecto que §3.5(a) documentó para el endpoint de métricas y que TA-2 resolvió aplanando; el camino custom no lo resuelve | **8 de 13** traen campos de array: `processor_diagnostics` 115, `process_group_flow` 106, `pg_connections` 68 |
+| **CE-3** | **`{id}` es una trampa silenciosa.** El validador **acepta** `/flow/processors/{id}/status` y después pide esa ruta literal, que da 404. El usuario la ve aceptada y asume que funciona como los endpoints de historial, que sí tienen esa mecánica en la misma pantalla | **6 de los 13** endpoints pedidos necesitan un UUID concreto |
+| **CE-4** | **La lista multilínea no es escribible a mano.** El `textarea` de la UI acepta un endpoint por línea, pero un `.conf` termina el valor en el primer salto de línea sin escapar: hace falta `\` al final de cada línea. Indentar la continuación — la forma intuitiva, y la que usaba el propio harness — **se ignora en silencio**: Splunk se queda con el primer endpoint y descarta el resto, sin warning en `splunkd.log`. Roto justamente en el camino que §13.3 usó como argumento a favor del texto: el deployment server | `btool` resolvía 1 de 2 endpoints con la forma indentada, 2 de 2 con `\` |
+
+Menor, pero real: los endpoints custom **comparten el `interval` del input** y nada advierte del volumen. Los tres más pesados rondan 10 KB por poll **en un NiFi casi vacío**, y `processor_diagnostics` y `process_group_flow` escalan con el flujo.
+
+### 13.3 El widget no es el problema
+
+Se evaluó si el `textarea` debería ser algo más rico. **No.** La fricción real al
+configurar los 13 fue saber la ruta, conseguir 6 UUIDs y no saber si funcionó;
+una tabla con "agregar fila" no resuelve ninguna de las tres. Y el texto tiene
+ventajas que una tabla pierde: se copia entre instancias, se versiona, se
+diffea y se edita directo en `inputs.conf`, que es como un deployment server
+lo empuja.
+
+Esa última ventaja es la que CE-4 desmiente a medias, y el hallazgo salió de
+intentar usarla: el harness escribió la lista indentada y perdió un endpoint
+sin enterarse. La forma correcta — `\` al final de línea — funciona y es la
+que Splunk mismo escribe cuando el valor llega por la UI o por REST, pero no
+estaba en ninguna parte. Es un defecto de documentación, no de diseño: el
+arreglo es decirlo, no cambiar el widget.
+
+### 13.4 Decisión: migrar a UCC en 2.1, no antes
+
+| # | Decisión | Razón |
+|---|---|---|
+| **UI-1** | **Migrar a UCC Framework**, no al manager XML extendido | El manager XML legado no tiene widget de filas repetibles **ni forma de poner un botón**. UCC trae `Test Connection` como REST handler de primera clase, `loggingTab` — nivel de log configurable, que hoy no existe — y validadores declarativos. Referencia interna: `PRD-allkunem-splunk/allkun_em`, que ya lo usa en producción |
+| **UI-2** | **Después de publicar 2.0.0** | Cambiar el framework de UI antes de liberar le agrega riesgo a un release ya demorado |
+| **UI-3** | **Condición innegociable: los tests y el harness deben correr contra `output/`** | Con UCC `inputs.conf` pasa a ser **generado**. Hoy 13 referencias en 2 archivos de test leen `default/*.conf` del árbol fuente, y el harness siembra el árbol tal cual. Si eso no se migra, **lo que probamos deja de ser lo que está versionado** — y esa propiedad es la que hizo aparecer la mitad de los defectos de este plan. El add-on de referencia no tuvo que resolverlo porque no tiene tests |
+
+### 13.5 Por qué los tests no usan la macro `index_nifi`
+
+Decidido el **2026-09-21**, porque es el tipo de duplicación que invita a
+"corregirse" sin mirar el motivo.
+
+La macro existe desde B-6/APP-1 y es el único punto de control del índice para
+la app: **12 constraints del datamodel y los 5 dashboards** pasan por ella, y
+ninguno hardcodea un índice. Cambiar de índice es una línea en
+`local/macros.conf`.
+
+Los tests de integración, en cambio, escriben `index=nifi` literal en **47
+lugares**, y así debe quedar:
+
+1. **Verifican el contrato del harness**, no la abstracción de la app: que el
+   input escriba en ese índice. Con la macro comprobarían dos cosas a la vez y
+   un fallo no diría cuál de las dos se rompió.
+2. **Varias búsquedas corren sin contexto de app.** La macro vive en
+   `nifi_monitoring` y hubo que exportarla a `system` — defecto B-25, que
+   apareció justamente al correr assertions sin app context. Usarla en las 47
+   acoplaría toda la ingesta a que ese export siga bien.
+
+La macro **sí** se ejercita, en los dos lugares donde eso es el objetivo:
+`test_the_macro_resolves_to_data` la ejecuta y exige filas, y
+`test_the_macro_is_visible_outside_the_app` verifica el export. Y todas las
+assertions de paneles la usan sin nombrarla, porque leen las queries del XML.
+
+Lo que sí conviene centralizar es otra cosa: el índice aparece en **5
+plantillas de `inputs.conf`** del harness, y correr la matriz contra otro
+índice obliga a tocar cinco archivos. Eso pertenece al `.env` del perfil, no a
+una macro de Splunk.
+
+### 13.6 Qué entra en 2.0.0
+
+CE-1, CE-3 y CE-4, que son baratos y cierran el problema de confianza: sin
+ellos un usuario no puede tomar "el sourcetype tiene eventos" como "el
+endpoint anda", ni dar por hecho que lo que escribió en el `.conf` es lo que
+quedó configurado. Además de reportar **todas** las líneas inválidas de una
+vez en lugar de la primera. CE-2 es trabajo de verdad — reusar
+`flatten_samples` — y va a 2.1 junto con la migración.
+
+CE-4 se cierra en `doc/configuration.md`/`.es.md`, con la forma `\` y la
+advertencia de que la indentada se descarta callada, más `btool` como forma
+de verificarlo. El perfil `cluster` del harness lo cubre: configura dos
+endpoints custom por `.conf`, y si la continuación se perdiera volvería a
+quedar uno solo. Dos guards unitarios lo cierran sin necesidad de Docker —
+uno rechaza cualquier línea huérfana en los templates del harness, el otro
+exige que el perfil `cluster` siga pidiendo dos endpoints.
+
+Arreglarlo destapó de paso que tres aserciones de `IngestTest` acotaban los
+errores del input a "un 401 de arranque", suposición que solo se sostenía
+porque el endpoint que falla a propósito nunca había estado configurado. Con
+él activo hay un 404 por poll, para siempre: dos de las tres fallaban y la
+tercera — un techo de 8 errores — habría fallado sola al crecer el uptime.
+Ahora excluyen esa ruta por nombre, así que un error real en cualquier otra
+URL sigue contando.
+
+---
+
+## 14. Pendiente para 2.1
 
 Estado al **2026-09-16**, verificado contra el código y no contra las marcas de
 este documento. Todo lo demás del plan está cerrado. **Nada de esto bloquea el
@@ -847,4 +955,4 @@ Contenedores `apache/nifi:1.23.2` (HTTP sin auth, puerto 18080) y `apache/nifi:2
 
 Muestras versionadas en `docs/plans/samples/`: `nifi{1.23,2.11}-{metrics-all,flow-status,system-diagnostics}.json`.
 
-> **Al 2026-09-16:** F0.5 (importación del flow en 2.11.0) y F0.8 (end-to-end TA→Splunk) se completaron después de escribir este anexo — ver §3.7 y F2. Sigue pendiente solo la medición con un flujo no trivial (F0.3), diferida a 2.1 (§13).
+> **Al 2026-09-16:** F0.5 (importación del flow en 2.11.0) y F0.8 (end-to-end TA→Splunk) se completaron después de escribir este anexo — ver §3.7 y F2. Sigue pendiente solo la medición con un flujo no trivial (F0.3), diferida a 2.1 (§14).

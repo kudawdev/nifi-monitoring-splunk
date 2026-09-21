@@ -23,6 +23,16 @@ CORE_SOURCETYPES = [
 # or datamodel object ever read it.
 REMOVED_SOURCETYPES = ["nifi:api:site_to_site"]
 
+# The cluster profile points one custom endpoint at a path NiFi 2.x does not
+# serve, on purpose: CustomEndpointTest asserts a 404 writes no event and
+# still reaches the log. That endpoint therefore logs one error per poll for
+# as long as the stack is up, which is not what the guards below are about --
+# they bound the input's errors to a cold start. Left in, they would fail on
+# uptime instead of on a defect, and the longer the stack ran the worse it
+# would get. Excluded by path so a real error at any other URL still counts.
+DELIBERATE_FAILURE = "controller/status/history"
+NOT_DELIBERATE = 'NOT "%s" ' % DELIBERATE_FAILURE
+
 
 class IngestTest(IntegrationTestCase):
     collection = "pull"
@@ -98,6 +108,7 @@ class IngestTest(IntegrationTestCase):
         rows = search(
             self.splunk,
             'index=_internal sourcetype=splunkd log_level=ERROR "Nifi Log pid=" '
+            + NOT_DELIBERATE +
             '| rex "status_code: (?<code>\\d+)" '
             "| stats count by code",
             earliest="-1h",
@@ -115,6 +126,7 @@ class IngestTest(IntegrationTestCase):
         last_error = search(
             self.splunk,
             'index=_internal sourcetype=splunkd log_level=ERROR "Nifi Log pid=" '
+            + NOT_DELIBERATE +
             "| stats max(_time) as last_error",
             earliest="-1h",
         )
@@ -147,6 +159,7 @@ class IngestTest(IntegrationTestCase):
         errors = search(
             self.splunk,
             'index=_internal sourcetype=splunkd log_level=ERROR "Nifi Log pid=" '
+            + NOT_DELIBERATE +
             "| stats count",
             earliest="-1h",
         )
@@ -305,7 +318,7 @@ class FlowMetricsTest(IntegrationTestCase):
     def test_samples_are_indexed_as_individual_events(self):
         rows = wait_for_events(
             self.splunk,
-            'index=nifi sourcetype="nifi:api:flow_metrics" | stats count',
+            'index=nifi sourcetype="nifi:api:flow_metrics" | stats count by sourcetype',
             minimum=1,
         )
         count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
@@ -850,6 +863,81 @@ class ClusterTest(IntegrationTestCase):
         self.assertGreater(int(rows[0]["count"]), 0)
 
 
+class CustomEndpointTest(IntegrationTestCase):
+    """User-declared endpoints, which had no integration coverage at all.
+
+    TA-15 shipped with twenty-three unit tests, every one of them about
+    parsing and validating the field. Nothing checked that a custom endpoint
+    reaches the index, and nothing checked what happens when it cannot -- so
+    defect CE-1, an error body indexed under the user's own sourcetype, went
+    unnoticed until someone configured thirteen of them by hand and read what
+    arrived.
+    """
+
+    cluster = True
+    collection = "pull"
+
+    def test_a_working_custom_endpoint_reaches_the_index(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:custom:cluster" | stats count by sourcetype',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows)
+        self.assertGreater(int(rows[0]["count"]), 0)
+
+    def test_a_failing_custom_endpoint_indexes_nothing(self):
+        """CE-1. /flow/controller/status/history does not exist in NiFi 2.x;
+        the add-on must log the 404 and write no event, not index the body."""
+        wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:custom:cluster" | stats count by sourcetype',
+            minimum=1, timeout=420,
+        )
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:custom:missing" | stats count')
+        self.assertTrue(rows, "the search returned nothing at all")
+        self.assertEqual(
+            int(rows[0]["count"]), 0,
+            "%s events indexed for an endpoint that returns 404"
+            % rows[0]["count"])
+
+    def test_no_error_body_is_indexed_under_any_sourcetype(self):
+        """The general form of the same defect: __get_request used to return
+        the body whatever the status, so a built-in endpoint could do this
+        too."""
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:*" '
+            '("could not be found" OR "WebClientServiceException") '
+            '| stats count by sourcetype')
+        self.assertEqual(
+            rows, [],
+            "error bodies indexed as data: %s" % [r.get("sourcetype") for r in rows])
+
+    def test_the_failure_is_still_visible_in_the_log(self):
+        """Not writing the event must not mean hiding the problem.
+
+        Waits on a by-clause, not `| stats count`: that returns a row even
+        when it counts nothing, so waiting on it comes back at once and the
+        assertion runs before splunkd has indexed the line. The same mistake
+        is spelled out in ForwarderPathTest.wait_for_app_events, and this is
+        where it was made again.
+        """
+        rows = wait_for_events(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" '
+            '("%s" OR "returned nothing usable") ' % DELIBERATE_FAILURE +
+            '| stats count by sourcetype',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(
+            rows,
+            "the endpoint failed silently: nothing indexed and nothing logged")
+        self.assertGreater(int(rows[0]["count"]), 0)
+
+
 class TlsVerificationTest(IntegrationTestCase):
     """Defect R-8: the add-on's default is to verify NiFi's certificate, and
     no profile exercised it.
@@ -870,7 +958,7 @@ class TlsVerificationTest(IntegrationTestCase):
         nothing would be indexed at all."""
         rows = wait_for_events(
             self.splunk,
-            'index=nifi sourcetype="nifi:api:flow_status" | stats count',
+            'index=nifi sourcetype="nifi:api:flow_status" | stats count by sourcetype',
             minimum=1, timeout=420,
         )
         self.assertTrue(rows)
