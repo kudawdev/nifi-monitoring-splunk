@@ -26,12 +26,16 @@ metrics_strategy = ALL_COMPONENTS
 # produced one event per poll carrying the 404 body, under this very
 # sourcetype, so the index said the endpoint was fine.
 #
+# Named, not given a sourcetype: each lands under
+# nifi:api:custom:<name>, which is also the only thing keeping a
+# custom endpoint out of the add-on's own namespace (CE-5).
+#
 # One per line, continued with a trailing backslash. The UI textarea
 # accepts a plain newline, but a hand-written .conf does not: Splunk
 # ends the value at the first unescaped newline and silently drops the
 # rest, indented or not. Verified with btool against this very file.
-custom_endpoints = nifi:api:custom:cluster,/controller/cluster\
-nifi:api:custom:missing,/flow/controller/status/history
+custom_endpoints = cluster,/controller/cluster\
+missing,/flow/controller/status/history
 
 host = nifi
 index = nifi

@@ -459,15 +459,56 @@ class NiFiScript(Script):
     # any number of additional REST paths, each tagged with the sourcetype
     # they want it indexed under -- the TA does not know their shape, so it
     # cannot pick a sourcetype for them the way it does for the built-in six.
-    custom_sourcetype_pattern = re.compile(r'^[A-Za-z0-9:_.-]+$')
+    #
+    # The user names the endpoint, not the sourcetype: `queue_stats`, not
+    # `nifi:api:custom:queue_stats`. The prefix carries no information they
+    # could get wrong usefully, and writing it out thirteen times -- the size
+    # this field is actually used at -- is thirteen chances to typo it.
+    #
+    # It is also the only thing keeping them out of the add-on's own
+    # namespace. The first version accepted any string of legal characters, so
+    # `nifi:api:flow_status,/flow/about` saved without complaint and the next
+    # poll would have written /flow/about bodies into the sourcetype the NIFI
+    # datamodel and every overview panel read -- silently, and indistinguishable
+    # from real data once indexed (defect CE-5).
+    custom_prefix = 'nifi:api:custom:'
+    custom_name_pattern = re.compile(r'^[A-Za-z0-9_.-]+$')
+
+    @classmethod
+    def custom_sourcetype(cls, name):
+        """The sourcetype a custom endpoint's name resolves to.
+
+        Idempotent: the long form is accepted so a configuration written
+        against an earlier build, or copied out of an index, still means what
+        it says.
+        """
+        name = (name or '').strip()
+        if name.startswith(cls.custom_prefix):
+            return name
+        return cls.custom_prefix + name
 
     @classmethod
     def _validate_custom_endpoint(cls, sourcetype, path):
         """None when (sourcetype, path) is usable, else why it is not."""
         if not sourcetype:
             return 'sourcetype is empty'
-        if not cls.custom_sourcetype_pattern.match(sourcetype):
-            return "sourcetype '{}' must contain only letters, digits, ':', '_', '.' or '-'".format(sourcetype)
+        name = sourcetype[len(cls.custom_prefix):] \
+            if sourcetype.startswith(cls.custom_prefix) else sourcetype
+        if ':' in name:
+            if sourcetype.startswith('nifi:'):
+                return ("'{}' is a sourcetype this add-on ships; a custom "
+                        "endpoint writing to it would mix its response into "
+                        "data the dashboards read. Give the endpoint a name "
+                        "instead, and it is indexed under {}<name>"
+                        .format(sourcetype, cls.custom_prefix))
+            return ("'{}' is not a name: a custom endpoint is named, not "
+                    "given a sourcetype, and is always indexed under "
+                    "{}<name>".format(sourcetype, cls.custom_prefix))
+        if not name:
+            return 'sourcetype is empty'
+        if not cls.custom_name_pattern.match(name):
+            return ("name '{}' must contain only letters, digits, '_', '.' "
+                    "or '-'".format(name))
         if not path:
             return 'path is empty'
         if '://' in path:
@@ -511,7 +552,8 @@ class NiFiScript(Script):
                 if ew is not None:
                     cls._log(ew, EventWriter.WARN, '{} Ignoring custom endpoint on line {}: {}'.format(cls.pid, line_number, error))
                 continue
-            endpoints.append({'sourcetype': sourcetype, 'path': path})
+            endpoints.append({'sourcetype': cls.custom_sourcetype(sourcetype),
+                              'path': path})
         return endpoints
 
 

@@ -421,7 +421,7 @@
                                 "rowsMin": 3,
                                 "rowsMax": 12
                             },
-                            "help": "One per line, as sourcetype,path -- e.g. nifi:api:custom:queue_stats,/flow/connections/1234-5678-90ab-cdef/status. The path is relative to the API URL above and is requested exactly as written: no {id} substitution. A request that fails writes no event, so an empty sourcetype means the endpoint is not working.",
+                            "help": "One per line, as name,path -- e.g. queue_stats,/flow/connections/1234-5678-90ab-cdef/status. Each is indexed under nifi:api:custom:<name>, so that one is searchable as nifi:api:custom:queue_stats. The path is relative to the API URL above and is requested exactly as written: no {id} substitution. A request that fails writes no event, so an empty sourcetype means the endpoint is not working.",
                             "validators": [
                                 {
                                     "type": "string",

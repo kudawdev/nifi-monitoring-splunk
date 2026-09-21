@@ -1,4 +1,8 @@
-"""Generate nifi_TA_monitoring/globalConfig.json.
+"""Generate the globalConfig.json next to this file.
+
+Lives here rather than under a build directory for the same reason
+additional_packaging.py does: both are build-time scripts that belong to the
+add-on but must stay out of package/, which ucc-gen copies verbatim.
 
 Written as a script rather than hand-edited JSON because the same field list
 has to stay consistent across the form, the table and the group layout, and
@@ -10,7 +14,7 @@ import json
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TARGET = os.path.join(HERE, "..", "nifi_TA_monitoring", "globalConfig.json")
+TARGET = os.path.join(HERE, "globalConfig.json")
 
 VERSION = "2.0.0"
 
@@ -225,11 +229,13 @@ CUSTOM_ENDPOINTS = {
     "field": "custom_endpoints",
     "required": False,
     "options": {"rowsMin": 3, "rowsMax": 12},
-    "help": "One per line, as sourcetype,path -- e.g. "
-            "nifi:api:custom:queue_stats,/flow/connections/1234-5678-90ab-cdef/status. "
-            "The path is relative to the API URL above and is requested exactly "
-            "as written: no {id} substitution. A request that fails writes no "
-            "event, so an empty sourcetype means the endpoint is not working.",
+    "help": "One per line, as name,path -- e.g. "
+            "queue_stats,/flow/connections/1234-5678-90ab-cdef/status. Each is "
+            "indexed under nifi:api:custom:<name>, so that one is searchable "
+            "as nifi:api:custom:queue_stats. The path is relative to the API "
+            "URL above and is requested exactly as written: no {id} "
+            "substitution. A request that fails writes no event, so an empty "
+            "sourcetype means the endpoint is not working.",
     "validators": [length("the endpoint list", 16384)],
 }
 

@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ta_paths import REPO, TA_BUILT, TA_SOURCE, require_built  # noqa: E402
 
 GLOBAL_CONFIG = os.path.join(REPO, "nifi_TA_monitoring", "globalConfig.json")
-GENERATOR = os.path.join(REPO, ".build", "gen_globalconfig.py")
+GENERATOR = os.path.join(REPO, "nifi_TA_monitoring", "gen_globalconfig.py")
 
 # Read by the input but not configurable, on purpose.
 NOT_FIELDS = {
@@ -49,7 +49,7 @@ def entity():
 
 
 class GlobalConfigIsGeneratedTest(unittest.TestCase):
-    """globalConfig.json is written by .build/gen_globalconfig.py.
+    """globalConfig.json is written by nifi_TA_monitoring/gen_globalconfig.py.
 
     It is generated rather than hand-edited because the same field list has
     to stay consistent across the form, the table and the group layout, and
@@ -71,7 +71,7 @@ class GlobalConfigIsGeneratedTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr[-2000:])
         self.assertEqual(
             json.loads(committed), json.loads(result.stdout),
-            "globalConfig.json differs from what .build/gen_globalconfig.py "
+            "globalConfig.json differs from what nifi_TA_monitoring/gen_globalconfig.py "
             "produces: edit the generator and re-run it, not the JSON")
 
     def test_every_field_is_in_exactly_one_group(self):

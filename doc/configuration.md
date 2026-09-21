@@ -230,17 +230,20 @@ In the NIFI Endpoints section, select the elements to monitor from the existing 
 - Flow Metrics (NiFi 1.16 and later; configured under Advanced settings, off by default)
 
 ### a.1 Custom Endpoints
-The fixed list above covers what the app ships with. If you need to poll a NiFi REST endpoint that is not on that list, use the **Custom Endpoints** section instead: one line per endpoint, as `sourcetype,path` (e.g. `nifi:api:custom:queue_stats,/flow/connections/1234-5678-90ab-cdef/status`). The path is relative to the NiFi API URL configured above. Splunk indexes the raw response under the sourcetype you choose; if you need field extraction for it, add your own `props.conf` stanza for that sourcetype.
+The fixed list above covers what the app ships with. If you need to poll a NiFi REST endpoint that is not on that list, use the **Custom Endpoints** section instead: one line per endpoint, as `name,path` (e.g. `queue_stats,/flow/connections/1234-5678-90ab-cdef/status`). The path is relative to the NiFi API URL configured above.
+
+You name the endpoint; the add-on gives it the sourcetype. `queue_stats` is indexed as `nifi:api:custom:queue_stats`, so everything you declare is searchable as `nifi:api:custom:*` and nothing you declare can land in a sourcetype the add-on itself writes. Splunk indexes the raw response; if you need field extraction for it, add your own `props.conf` stanza for that sourcetype.
 
 Three things worth knowing before you rely on one:
 
+- **A name, not a sourcetype.** `nifi:api:flow_status` and anything else outside `nifi:api:custom:` is refused at save time: a custom endpoint writing into a shipped sourcetype would mix its response into the data the dashboards read, and nothing downstream could tell the two apart. Writing the full `nifi:api:custom:queue_stats` is accepted and means the same as `queue_stats`.
 - **`{id}` placeholders are not supported.** Unlike the Status History sections on this same screen, a custom path is requested literally. Write the UUID out. The input refuses to save a path containing `{` or `}` rather than letting it fail at poll time.
 - **A failed request indexes nothing.** If NiFi answers 4xx or 5xx, the add-on logs it to `splunkd.log` and writes no event, so an empty sourcetype means the endpoint is not working — the error body is never indexed as if it were data.
 - **Editing `inputs.conf` by hand needs a trailing backslash.** The textarea takes one endpoint per line, but a `.conf` file ends a value at the first unescaped newline. When you write the stanza yourself — a deployment server, for instance — continue each line with `\`:
 
 ```
-custom_endpoints = nifi:api:custom:queue_stats,/flow/connections/1234-5678-90ab-cdef/status\
-nifi:api:custom:cluster,/controller/cluster
+custom_endpoints = queue_stats,/flow/connections/1234-5678-90ab-cdef/status\
+cluster,/controller/cluster
 ```
 
   Indenting the continuation instead is silently ignored: Splunk keeps the first endpoint and drops the rest. `splunk btool inputs list` shows what actually took effect.

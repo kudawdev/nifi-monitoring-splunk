@@ -772,14 +772,30 @@ campos se extraen solos por el `KV_MODE` por defecto de Splunk — 105 campos
 bajo `component.*` en `processor_details` —, así que la doc es más pesimista
 que la realidad cuando dice "agregá tu propio `props.conf`".
 
-### 13.2 Los cuatro defectos, en orden de gravedad
+### 13.2 Los cinco defectos, en orden de gravedad
 
 | # | Defecto | Evidencia medida |
 |---|---|---|
 | **CE-1** | **Las respuestas de error se indexan como si fueran datos.** 2 de los 13 fallaron — `processor_types` con una excepción de replicación y `controller_status_history` con 404 — y **ambos cuerpos quedaron indexados bajo el sourcetype del usuario, sin marca alguna**. El TA los registró en `splunkd` (un 500 y dos 404), pero eso no ayuda a quien mira su índice y ve 13 sourcetypes llegando. Un 404 permanente acumula basura y consume licencia en cada poll | 2 sourcetypes con texto de error, 12 con datos |
+| **CE-5** | **Un endpoint custom podía escribir en un sourcetype del propio add-on.** El validador aceptaba cualquier cadena que pasara `^[A-Za-z0-9:_.-]+$`, así que `nifi:api:flow_status,/flow/about` se guardaba con HTTP 200 y el siguiente poll habría metido cuerpos de `/flow/about` dentro del sourcetype que leen el datamodel `NIFI` y todos los paneles del overview. Sin error y sin aviso — y una vez indexado, indistinguible del dato real | Guardado aceptado contra el stack el 2026-09-21; revertido antes del ciclo, así que no llegó a contaminar |
 | **CE-2** | **Los arrays no se pueden correlacionar.** `cluster.nodes{}.address` devuelve `"nifi-node2, nifi"` y `status` devuelve `"CONNECTED, CONNECTED"`: arrays paralelos, sin forma de saber qué estado es de qué nodo. Es el mismo defecto que §3.5(a) documentó para el endpoint de métricas y que TA-2 resolvió aplanando; el camino custom no lo resuelve | **8 de 13** traen campos de array: `processor_diagnostics` 115, `process_group_flow` 106, `pg_connections` 68 |
 | **CE-3** | **`{id}` es una trampa silenciosa.** El validador **acepta** `/flow/processors/{id}/status` y después pide esa ruta literal, que da 404. El usuario la ve aceptada y asume que funciona como los endpoints de historial, que sí tienen esa mecánica en la misma pantalla | **6 de los 13** endpoints pedidos necesitan un UUID concreto |
 | **CE-4** | **La lista multilínea no es escribible a mano.** El `textarea` de la UI acepta un endpoint por línea, pero un `.conf` termina el valor en el primer salto de línea sin escapar: hace falta `\` al final de cada línea. Indentar la continuación — la forma intuitiva, y la que usaba el propio harness — **se ignora en silencio**: Splunk se queda con el primer endpoint y descarta el resto, sin warning en `splunkd.log`. Roto justamente en el camino que §13.3 usó como argumento a favor del texto: el deployment server | `btool` resolvía 1 de 2 endpoints con la forma indentada, 2 de 2 con `\` |
+
+**CE-5 se cierra cambiando quién nombra qué.** El usuario ya no da un
+sourcetype sino un **nombre**, y el add-on lo indexa bajo
+`nifi:api:custom:<nombre>`. Eso cierra el agujero por construcción —no hay
+forma de alcanzar el espacio de nombres del add-on— y de paso saca la
+fricción que §13.3 describe: configurar los 13 endpoints significó escribir
+`nifi:api:custom:` trece veces, un prefijo que no aporta información que el
+usuario pueda equivocar de forma útil. La forma larga se sigue aceptando y
+se normaliza, para quien copie una configuración existente; cualquier otro
+namespace se rechaza, que es la parte opinable y se decidió a favor de que
+`sourcetype=nifi:api:custom:*` encuentre todo lo que el usuario declaró.
+
+El cambio es gratis **hoy**: `custom_endpoints` es una función de 2.0.0 y
+2.0.0 nunca se liberó, así que no hay base instalada que migrar. Deja de ser
+gratis en cuanto se publique.
 
 Menor, pero real: los endpoints custom **comparten el `interval` del input** y nada advierte del volumen. Los tres más pesados rondan 10 KB por poll **en un NiFi casi vacío**, y `processor_diagnostics` y `process_group_flow` escalan con el flujo.
 
@@ -830,7 +846,7 @@ el formulario no ofrece, o al revés.
 
 | Dónde | Qué |
 |---|---|
-| `globalConfig.json` | Fuente única del formulario, la tabla, los defaults de `inputs.conf` y el spec. A su vez **generado** por `.build/gen_globalconfig.py`, porque veinte bloques de validador repetidos son más fáciles de equivocar que de generar; un test falla si el JSON se edita a mano |
+| `globalConfig.json` | Fuente única del formulario, la tabla, los defaults de `inputs.conf` y el spec. A su vez **generado** por `nifi_TA_monitoring/gen_globalconfig.py`, porque veinte bloques de validador repetidos son más fáciles de equivocar que de generar; un test falla si el JSON se edita a mano |
 | `package/` | Lo escrito a mano que se distribuye tal cual: `bin/`, `props.conf`, `transforms.conf`, `static/`, `app.manifest`, `lib/requirements.txt`, `lib/exclude.txt` |
 | `appended/inputs.conf` | Los monitores de log. Aparte porque ucc-gen es dueño de `default/inputs.conf`, y un archivo nuestro ahí lo **reemplazaría** en vez de sumarse: los defaults desaparecerían y un input sin `verify_tls` dejaría de verificar, en silencio |
 | `additional_packaging.py` | Hook post-build: agrega esos monitores y escribe `python.required = 3.13` en `[nifi]` y en las tres stanzas `[admin_external:*]`, ninguna de las cuales ucc-gen emite |
@@ -910,7 +926,7 @@ una macro de Splunk.
 
 ### 13.6 Qué entra en 2.0.0
 
-CE-1, CE-3 y CE-4, que son baratos y cierran el problema de confianza: sin
+CE-1, CE-3, CE-4 y CE-5, que son baratos y cierran el problema de confianza: sin
 ellos un usuario no puede tomar "el sourcetype tiene eventos" como "el
 endpoint anda", ni dar por hecho que lo que escribió en el `.conf` es lo que
 quedó configurado. Además de reportar **todas** las líneas inválidas de una

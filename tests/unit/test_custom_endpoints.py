@@ -4,8 +4,15 @@ Feature request from a customer (docs/support/2026-09-08-correo-cliente-ta.md):
 the fixed `endpoints` table only covers what the app ships with, and there was
 no way to poll a NiFi REST path outside that list without a code change.
 `custom_endpoints` lets an input declare any number of additional
-'sourcetype,path' pairs; the TA polls each one and passes the response
-through unchanged under the sourcetype given.
+'name,path' pairs; the TA polls each one and passes the response through
+unchanged under `nifi:api:custom:<name>`.
+
+The user names the endpoint rather than giving it a sourcetype. That is
+shorter -- the prefix carries nothing they could get wrong usefully -- and it
+is the only thing keeping them out of the add-on's own namespace, which the
+first version did not: `nifi:api:flow_status` was accepted as a custom
+sourcetype, and the next poll would have mixed its response into the data the
+dashboards read (CE-5).
 """
 
 import unittest
@@ -23,26 +30,58 @@ class ValidateCustomEndpointTest(unittest.TestCase):
     def validate(self, sourcetype, path):
         return self.nifi.NiFiScript._validate_custom_endpoint(sourcetype, path)
 
-    def test_a_normal_endpoint_is_accepted(self):
-        self.assertIsNone(self.validate("nifi:api:custom:queue_stats", "/flow/connections/1234/status"))
+    def test_a_name_is_accepted(self):
+        self.assertIsNone(self.validate("queue_stats", "/flow/connections/1234/status"))
+
+    def test_the_long_form_is_still_accepted(self):
+        """A configuration written against an earlier build, or copied out of
+        an index, still means what it says."""
+        self.assertIsNone(
+            self.validate("nifi:api:custom:queue_stats", "/flow/connections/1234/status"))
 
     def test_an_empty_sourcetype_is_rejected(self):
         self.assertIn("sourcetype is empty", self.validate("", "/flow/status"))
 
-    def test_a_sourcetype_with_spaces_is_rejected(self):
-        self.assertIn("letters, digits", self.validate("nifi custom", "/flow/status"))
+    def test_a_name_with_spaces_is_rejected(self):
+        self.assertIn("letters, digits", self.validate("queue stats", "/flow/status"))
+
+    def test_a_shipped_sourcetype_is_rejected(self):
+        """CE-5. This saved without complaint, and the next poll would have
+        written the response into the sourcetype the NIFI datamodel and every
+        overview panel read -- indistinguishable from real data once indexed."""
+        message = self.validate("nifi:api:flow_status", "/flow/about")
+        self.assertIn("ships", message)
+        self.assertIn("nifi:api:custom:", message)
+
+    def test_a_log_sourcetype_is_rejected_too(self):
+        self.assertIn("ships", self.validate("nifi:log:app", "/flow/about"))
+
+    def test_another_namespace_is_rejected(self):
+        """Not a hazard, a decision: everything a user declares lives under
+        one prefix, so `sourcetype=nifi:api:custom:*` finds all of it and the
+        props.conf advice is the same for every one."""
+        self.assertIn("is not a name", self.validate("acme:nifi:queues", "/flow/about"))
 
     def test_an_empty_path_is_rejected(self):
-        self.assertIn("path is empty", self.validate("nifi:api:custom:x", ""))
+        self.assertIn("path is empty", self.validate("x", ""))
 
     def test_a_path_without_a_leading_slash_is_rejected(self):
-        self.assertIn("must start with /", self.validate("nifi:api:custom:x", "flow/status"))
+        self.assertIn("must start with /", self.validate("x", "flow/status"))
 
     def test_a_full_url_is_rejected_instead_of_a_relative_path(self):
-        self.assertIn("must be a relative path", self.validate("nifi:api:custom:x", "http://evil.example/x"))
+        self.assertIn("must be a relative path", self.validate("x", "http://evil.example/x"))
 
     def test_a_path_with_whitespace_is_rejected(self):
-        self.assertIn("must not contain whitespace", self.validate("nifi:api:custom:x", "/flow /status"))
+        self.assertIn("must not contain whitespace", self.validate("x", "/flow /status"))
+
+    def test_the_name_becomes_the_sourcetype(self):
+        resolve = self.nifi.NiFiScript.custom_sourcetype
+        self.assertEqual(resolve("queue_stats"), "nifi:api:custom:queue_stats")
+
+    def test_resolving_the_long_form_is_idempotent(self):
+        resolve = self.nifi.NiFiScript.custom_sourcetype
+        self.assertEqual(resolve("nifi:api:custom:queue_stats"),
+                         "nifi:api:custom:queue_stats")
 
 
 class ParseCustomEndpointsTest(unittest.TestCase):
@@ -120,7 +159,7 @@ class CustomEndpointValidationTest(unittest.TestCase):
 
     def test_an_invalid_sourcetype_is_rejected(self):
         with self.assertRaises(ValueError) as caught:
-            self.validate(custom_endpoints="bad sourcetype,/path")
+            self.validate(custom_endpoints="bad name,/path")
         self.assertIn("letters, digits", str(caught.exception))
 
     def test_no_custom_endpoints_is_fine(self):
@@ -258,7 +297,7 @@ class EveryBadLineIsReportedTest(NiFiScriptTestCase):
     def test_all_three_problems_come_back_together(self):
         with self.assertRaises(ValueError) as caught:
             self.script.validate_input(self.validate(
-                "ok:a,/flow/status\nno comma here\nok:b,http://absolute/x\nok:c,/p/{id}"))
+                "a,/flow/status\nno comma here\nb,http://absolute/x\nc,/p/{id}"))
         message = str(caught.exception)
         for line in ("line 2", "line 3", "line 4"):
             with self.subTest(line=line):
@@ -266,4 +305,4 @@ class EveryBadLineIsReportedTest(NiFiScriptTestCase):
 
     def test_a_clean_list_still_passes(self):
         self.script.validate_input(self.validate(
-            "ok:a,/flow/status\n# a comment\n\nok:b,/controller/cluster"))
+            "a,/flow/status\n# a comment\n\nb,/controller/cluster"))
