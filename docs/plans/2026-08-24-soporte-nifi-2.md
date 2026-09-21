@@ -799,13 +799,83 @@ que Splunk mismo escribe cuando el valor llega por la UI o por REST, pero no
 estaba en ninguna parte. Es un defecto de documentación, no de diseño: el
 arreglo es decirlo, no cambiar el widget.
 
-### 13.4 Decisión: migrar a UCC en 2.1, no antes
+La migración a UCC no cambió esta conclusión aunque tuvo la oportunidad: el
+campo sigue siendo un `textarea`, ahora con validación declarativa y ayuda
+en pantalla. UCC tampoco tiene un widget de filas repetibles que resuelva
+las tres fricciones reales.
 
-| # | Decisión | Razón |
+### 13.4 Migración a UCC — hecha el 2026-09-21
+
+Se decidió el 2026-09-21 adelantarla en lugar de diferirla a 2.1 (UI-2
+queda sin efecto). Las otras dos decisiones se sostuvieron tal como estaban
+escritas.
+
+| # | Decisión | Estado |
 |---|---|---|
-| **UI-1** | **Migrar a UCC Framework**, no al manager XML extendido | El manager XML legado no tiene widget de filas repetibles **ni forma de poner un botón**. UCC trae `Test Connection` como REST handler de primera clase, `loggingTab` — nivel de log configurable, que hoy no existe — y validadores declarativos. Referencia interna: `PRD-allkunem-splunk/allkun_em`, que ya lo usa en producción |
-| **UI-2** | **Después de publicar 2.0.0** | Cambiar el framework de UI antes de liberar le agrega riesgo a un release ya demorado |
-| **UI-3** | **Condición innegociable: los tests y el harness deben correr contra `output/`** | Con UCC `inputs.conf` pasa a ser **generado**. Hoy 13 referencias en 2 archivos de test leen `default/*.conf` del árbol fuente, y el harness siembra el árbol tal cual. Si eso no se migra, **lo que probamos deja de ser lo que está versionado** — y esa propiedad es la que hizo aparecer la mitad de los defectos de este plan. El add-on de referencia no tuvo que resolverlo porque no tiene tests |
+| **UI-1** | **Migrar a UCC Framework**, no al manager XML extendido. El manager XML legado no tiene widget de filas repetibles ni forma de poner un botón. UCC trae `Test Connection` como REST handler de primera clase, `loggingTab` — nivel de log configurable, que no existía — y validadores declarativos. Referencia interna: `PRD-allkunem-splunk/allkun_em` | ✅ ucc-gen 6.6.0 |
+| **UI-2** | ~~Después de publicar 2.0.0~~ | ❌ Revertida. Entra en 2.0.0 |
+| **UI-3** | **Los tests y el harness corren contra `output/`** | ✅ `run.sh` construye antes de levantar nada, el seed se niega a instalar desde el árbol, y `REQUIRE_BUILT_TA=1` convierte en fallo lo que sin build sería un skip |
+
+**UI-4 — el defecto que la migración destapó y cierra.** `endpoint_flow_metrics`,
+`metrics_registries`, `metrics_strategy` y `metrics_sample_filter` estaban
+implementados en `nifi.py` y documentados en `inputs.conf.spec`, pero **no en
+`nifi_manager.xml`**: la única forma de activar las métricas de flujo era
+editar `inputs.conf` a mano. TA-9 afirmaba en este mismo documento que el
+manager XML exponía los 18 parámetros; eran 14. Tres lugares escritos a mano
+que tenían que coincidir, y no coincidían. Ahora hay uno solo —
+`globalConfig.json` — y un test unitario falla si el código lee un campo que
+el formulario no ofrece, o al revés.
+
+**Cómo quedó armado.** El TA deja de ser instalable desde el árbol:
+
+| Dónde | Qué |
+|---|---|
+| `globalConfig.json` | Fuente única del formulario, la tabla, los defaults de `inputs.conf` y el spec. A su vez **generado** por `.build/gen_globalconfig.py`, porque veinte bloques de validador repetidos son más fáciles de equivocar que de generar; un test falla si el JSON se edita a mano |
+| `package/` | Lo escrito a mano que se distribuye tal cual: `bin/`, `props.conf`, `transforms.conf`, `static/`, `app.manifest`, `lib/requirements.txt`, `lib/exclude.txt` |
+| `appended/inputs.conf` | Los monitores de log. Aparte porque ucc-gen es dueño de `default/inputs.conf`, y un archivo nuestro ahí lo **reemplazaría** en vez de sumarse: los defaults desaparecerían y un input sin `verify_tls` dejaría de verificar, en silencio |
+| `additional_packaging.py` | Hook post-build: agrega esos monitores y escribe `python.required = 3.13` en `[nifi]` y en las tres stanzas `[admin_external:*]`, ninguna de las cuales ucc-gen emite |
+| `output/` | Lo que realmente se instala. Gitignored |
+
+**Las tres decisiones de dependencias**, todas con la misma razón de fondo —
+el Python de Splunk no admite instalar cualquier cosa, así que lo que se
+distribuye tiene que ser puro y lo que Splunk ya trae no se duplica:
+
+| Paquete | Decisión | Por qué |
+|---|---|---|
+| `requests`, `urllib3`, `certifi`, `charset-normalizer`, `idna` | `exclude.txt` | Splunk los trae (medido el 2026-09-17: requests 2.32.5 en 9.4 y en 10.4). Duplicarlos arrastra la extensión compilada de `charset_normalizer`. Es B-15, que se retiró justamente porque la medición mostró que vendorizar era lo dañino |
+| `solnlib` | `>=7,<8` | 8.0.0 sumó grpcio y el exporter de OpenTelemetry como dependencias duras: 21 MB y **dos extensiones compiladas**. `cygrpc` se compila para una arquitectura y una minor de Python, así que el add-on dejaría de funcionar en Windows, en ARM y en cualquier Splunk cuyo intérprete no sea el del wheel |
+| `splunk-sdk` | `>=2.1,<3` | 3.0.0 trae `splunklib/ai/`, cuyas fuentes el parser de AppInspect rechaza: `check_all_python_files_are_well_formed` pasa de 0 a 2 fallos, y un fallo es freno total en el gate |
+
+Resultado: 6.3 MB, **cero** archivos `.so`, y un test unitario que falla si
+alguno aparece.
+
+**El gate de AppInspect subió de 8 a 13 warnings**, medido, no estimado:
+`nifi_monitoring` 5 y `nifi_TA_monitoring` 12, con errores, fallos y
+future-failures todos en 0. El TA pasó de 7 a 12 y las cinco nuevas están en
+código del framework, no en el nuestro: `check_for_splunk_js` y
+`check_for_splunk_js_header_and_footer_view` disparan sobre el `entry_page.js`
+que genera ucc-gen, `check_for_supported_tls` sobre `splunklib` y `solnlib`, y
+`check_for_ucc_framework_version` y `check_ucc_dependencies` son
+informativas ("No action required"). Se mantiene un warning de margen, el
+mismo que tenía el valor viejo.
+
+**Dos cosas que el framework impone y se aceptan.** `is_visible` pasa a
+`true` — sin eso no hay forma de llegar a la pantalla nueva — y
+`test_connection`, que es un botón y no un ajuste, aparece igual en el spec y
+en el REST handler generado. Pelearle a lo segundo dejaría el spec y el
+handler diciendo cosas distintas, que es peor que una clave vacía en
+`inputs.conf`.
+
+**Lo que se ganó, verificado contra el stack.** `Test connection` responde
+los cinco casos con un mensaje accionable en lugar de un error tardío en
+`splunkd.log`: conecta y dice la versión (`Connected to NiFi 2.11.0 in 2943 ms`),
+distingue credenciales rechazadas de 401 por modo de autenticación mal
+elegido, explica el certificado autofirmado nombrando las dos salidas, separa
+"no se llega al host" de "la URL está mal" y pide la URL cuando falta. Y el
+nivel de log pasa a ser configurable: `nifi.py` loguea por `self._log`, no por
+`EventWriter.log`, así que **Configuration > Logging** puede bajar el ruido —
+antes la única forma de reducir una línea INFO por request por endpoint por
+intervalo era dejar de recolectar.
 
 ### 13.5 Por qué los tests no usan la macro `index_nifi`
 
@@ -847,6 +917,9 @@ quedó configurado. Además de reportar **todas** las líneas inválidas de una
 vez en lugar de la primera. CE-2 es trabajo de verdad — reusar
 `flatten_samples` — y va a 2.1 junto con la migración.
 
+La migración a UCC (§13.4) también entra en 2.0.0, con UI-4 cerrado por
+construcción. TA-7 entró el mismo día.
+
 CE-4 se cierra en `doc/configuration.md`/`.es.md`, con la forma `\` y la
 advertencia de que la indentada se descarta callada, más `btool` como forma
 de verificarlo. El perfil `cluster` del harness lo cubre: configura dos
@@ -875,13 +948,16 @@ release de 2.0.0**, que aún no se publicó: falta mergear `nifi-2` y correr
 | # | Qué falta | Estado |
 |---|---|---|
 | **CE-2** | Aplanar los arrays de los endpoints custom reusando `flatten_samples`. 8 de los 13 endpoints probados traen arrays paralelos que hoy no se pueden correlacionar. | Abierto, diferido a 2.1 |
+| **DOC-4** | Recapturar los screenshots de la pantalla de configuración del TA: los de §4 muestran el manager XML legado, que ya no es el camino recomendado. El texto sí describe la pantalla nueva. Mismo motivo que DOC-3. | Abierto |
 | **DOC-3** ❌ | Recapturar los screenshots con la UI de NiFi 2.x. **No se hará desde acá**: es trabajo visual. 12 imágenes de 1.x siguen referenciadas en §4 de la doc, advertidas como tales. | Rechazado |
 
 **No queda código de producto pendiente para 2.0.0.** Salieron de esta lista el
 2026-09-17: B-14, B-24, TA-4b, R-8 y F0.3 (resueltos) y B-15 (**retirado**: la
 medición mostró que no era un defecto). El 2026-09-21: CE-1, CE-3 y CE-4
-(resueltos) y **TA-7**, que se cerró entero. La migración a UCC (UI-1/UI-2/UI-3)
-se adelantó a esta pasada por decisión del 2026-09-21 y ya no está diferida.
+(resueltos) y **TA-7**, que se cerró entero. La migración a UCC se adelantó a
+esta pasada por decisión del 2026-09-21: UI-1 y UI-3 hechos, UI-2 revertida, y
+**UI-4** — cuatro campos implementados pero inalcanzables desde la UI —
+encontrado y cerrado en el camino.
 
 ---
 

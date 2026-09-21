@@ -181,21 +181,25 @@ If all the configuration was successful, the information will be sent to Splunk.
 *This configuration must be applied when the NIFI instances have at least basic authentication*
 
 In the Splunk data inputs you can configure several resources, such as: NIFI Endpoints for monitoring System Diagnostics, Flow Status, Bulletin Board and Flow Metrics, Custom Endpoints for any other NiFi REST path, and the NIFI Status History for specific monitoring of processors and process groups based on their IDs.
-To configure, in the splunk where the Nifi Monitoring application is installed, access the Home of the APP.
+As of 2.0.0 the add-on has its own configuration page. Open **Apps > NiFi TA
+Monitoring > Inputs** and click **Create New Input**. Splunk's generic
+*Settings > Data inputs > NiFi* screen still works and writes the same
+`inputs.conf`, but it does not offer the grouped form, the field validation
+or the connection test described below.
 
-![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_home.png)
+Two things live outside the input itself:
 
-Then in Settings Data Inputs
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_1.png)
-
-In the local data input, identify NiFi and then click on + Add new
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_2.png)
-
-A window like the following will be displayed:
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_3.jpeg)
+- **Configuration > Logging** sets how much the add-on writes to
+  `splunkd.log`. It is `INFO` by default, which is one line per request per
+  endpoint per interval. On an instance polling several NiFis that is most of
+  what the add-on puts in `_internal`; `WARNING` keeps the problems and drops
+  the rest.
+- **Test connection**, on the input form next to the credentials, performs
+  the same two calls the input performs -- the login and
+  `GET /system-diagnostics` -- with the values currently on screen, and says
+  what came back. It saves nothing. Getting a NiFi input right means getting
+  the URL, the scheme, the certificate and the credentials right at the same
+  time; without this they all fail the same way, some minutes later, in a log.
 
 **We recommend that you configure each of the monitoring resources independently for eventual changes in the configuration and due to execution times to obtain data.**
 

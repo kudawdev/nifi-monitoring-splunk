@@ -1,8 +1,9 @@
 """Shared helpers for the integration assertions.
 
 Talks to the running stack through Splunk's management API using the
-splunklib already vendored in nifi_TA_monitoring/lib, so the harness needs
-nothing installed.
+splunklib in the built add-on's lib/, so the harness needs nothing installed
+of its own -- but it does need the add-on to have been built, which run.sh
+does before bringing anything up.
 """
 
 import json
@@ -14,7 +15,13 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TESTS_DIR = os.path.dirname(HERE)
 REPO = os.path.dirname(TESTS_DIR)
-sys.path.insert(0, os.path.join(REPO, "nifi_TA_monitoring", "lib"))
+# ucc-gen installs splunklib here; it is no longer versioned in the tree.
+TA_LIB = os.path.join(REPO, "output", "nifi_TA_monitoring", "lib")
+if not os.path.isdir(TA_LIB):
+    raise SystemExit(
+        "tests/integration needs the built add-on for splunklib: run "
+        "tests/build-ta.sh first (run.sh does it for you)")
+sys.path.insert(0, TA_LIB)
 
 import splunklib.client as client  # noqa: E402
 

@@ -86,6 +86,7 @@ class WarningsAreNotSilencedGloballyTest(unittest.TestCase):
             os.path.join(
                 os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
                 "nifi_TA_monitoring",
+                "package",
                 "bin",
                 "nifi.py",
             )

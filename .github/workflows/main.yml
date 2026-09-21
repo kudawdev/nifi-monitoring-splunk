@@ -3,7 +3,18 @@ name: Appinspect, Test, Merge and Release
 on: workflow_dispatch
 
 env:
-  MAX_WARNING: 8
+  # Measured 2026-09-21, precert, per app: nifi_monitoring 5, nifi_TA_monitoring
+  # 12. The gate is per app, so it has to clear the worse one, plus the single
+  # warning of headroom the old value of 8 also carried.
+  #
+  # The TA went from 7 to 12 with the UCC migration and all five are in
+  # framework code, not ours: check_for_splunk_js and
+  # check_for_splunk_js_header_and_footer_view fire on ucc-gen's own
+  # entry_page.js, check_for_supported_tls on splunklib and solnlib, and
+  # check_for_ucc_framework_version and check_ucc_dependencies are
+  # informational ("No action required"). Errors, failures and future
+  # failures are all zero and stay gated at zero.
+  MAX_WARNING: 13
   APP_NAME: "NIFI Monitoring for Splunk"
 
 jobs:
@@ -15,20 +26,23 @@ jobs:
       - name: Check app versions are equal
         run: |
           set -euo pipefail
-          apps="nifi_monitoring nifi_TA_monitoring"
-          versions=""
-          for d in $apps; do
-            f="$d/default/app.conf"
-            [ -f "$f" ] || { echo "::error::missing $f"; exit 1; }
-            v=$(awk -F= '/^version[[:space:]]*=/{gsub(/[[:space:]]/,"");print $2}' "$f" | head -1)
-            [ -n "$v" ] || { echo "::error::no version found in $f"; exit 1; }
-            # AppInspect reads the [id] stanza too, so the two must agree.
-            ids=$(awk -F= '/^version[[:space:]]*=/{gsub(/[[:space:]]/,"");print $2}' "$f" | sort -u | wc -l)
-            [ "$ids" -eq 1 ] || { echo "::error::version differs between stanzas in $f"; exit 1; }
-            echo "$d = $v"
-            versions="$versions$v\n"
-          done
-          count=$(printf "$versions" | sort -u | grep -c .)
+          # nifi_TA_monitoring has no app.conf in the tree any more: ucc-gen
+          # generates it from globalConfig.json and package/app.manifest, so
+          # those two are what has to agree with the app. The unit suite checks
+          # the generator's own constant as well; here we only need the versions
+          # that decide the release tag.
+          app_conf="nifi_monitoring/default/app.conf"
+          [ -f "$app_conf" ] || { echo "::error::missing $app_conf"; exit 1; }
+          app_versions=$(awk -F= '/^version[[:space:]]*=/{gsub(/[[:space:]]/,"");print $2}' "$app_conf" | sort -u)
+          [ "$(printf '%s\n' "$app_versions" | grep -c .)" -eq 1 ] \
+            || { echo "::error::version differs between stanzas in $app_conf"; exit 1; }
+
+          ta_version=$(python3 -c "import json;print(json.load(open('nifi_TA_monitoring/globalConfig.json'))['meta']['version'])")
+          manifest_version=$(python3 -c "import json;print(json.load(open('nifi_TA_monitoring/package/app.manifest'))['info']['id']['version'])")
+          echo "nifi_monitoring = $app_versions"
+          echo "nifi_TA_monitoring = $ta_version (manifest $manifest_version)"
+
+          count=$(printf '%s\n%s\n%s\n' "$app_versions" "$ta_version" "$manifest_version" | sort -u | grep -c .)
           if [ "$count" -eq 1 ]; then
             echo "App versions are equal"
           else
@@ -47,14 +61,27 @@ jobs:
       matrix: ${{ matrix.applications }}
     steps:
       - uses: actions/checkout@v4
+      - name: Build nifi_TA_monitoring with ucc-gen
+        # The add-on is generated. Packaging nifi_TA_monitoring/ straight from the
+        # tree would inspect a directory with no app.conf, no inputs.conf and no
+        # UI -- and pass (condition UI-3 of the plan).
+        run: ./tests/build-ta.sh
+      - name: Locate the directory to package
+        id: locate
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.applications }}" = "nifi_TA_monitoring" ]; then
+            echo "DIR=output/nifi_TA_monitoring" >> $GITHUB_OUTPUT
+          else
+            echo "DIR=${{ matrix.applications }}" >> $GITHUB_OUTPUT
+          fi
       - name: Get APP version
         id: get_app_id
-        run: echo "APP_VERSION=$(cat ${{ matrix.applications }}/default/app.conf | grep ^version | awk -F '=' '{gsub(/ /,"");print $2}')" >> $GITHUB_OUTPUT
+        run: echo "APP_VERSION=$(grep ^version ${{ steps.locate.outputs.DIR }}/default/app.conf | awk -F '=' '{gsub(/ /,"");print $2}' | head -1)" >> $GITHUB_OUTPUT
       - run: echo ${{ steps.get_app_id.outputs.APP_VERSION }}
-      #- run: exit 1
       - name: Slim Package
         id: slim_package
-        run: slim package ${{ matrix.applications }}
+        run: slim package ${{ steps.locate.outputs.DIR }}
       - name: Slim validate
         id: slim_validate
         run: slim validate ${{ matrix.applications }}-${{ steps.get_app_id.outputs.APP_VERSION }}.tar.gz
@@ -77,10 +104,16 @@ jobs:
     container: kudaw/appinspect:latest
     steps:
       - uses: actions/checkout@v4
+      - name: Build nifi_TA_monitoring with ucc-gen
+        run: ./tests/build-ta.sh
       - name: Run unit tests
         working-directory: tests/unit
+        # The generated half of the add-on -- app.conf, inputs.conf, the spec and
+        # lib/ -- only exists after the build. Without this flag the checks that
+        # read it skip, and a green run would mean they were never made.
+        env:
+          REQUIRE_BUILT_TA: "1"
         run: python3 -m unittest discover -v
-
   integration:
     needs: appinspect
     runs-on: ubuntu-latest

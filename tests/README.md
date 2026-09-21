@@ -7,13 +7,33 @@ Two layers:
 | `unit/` | The TA's Python: token refresh, input validation, credential handling, and the matrix reader | no |
 | `integration/` | That data actually reaches Splunk and the fields come out, against a real NiFi + Splunk pair | yes |
 
+## Building the add-on
+
+`nifi_TA_monitoring` is generated. `app.conf`, `inputs.conf`, the spec,
+`restmap.conf`, `lib/` and the whole configuration UI come out of `ucc-gen`
+and land in `output/nifi_TA_monitoring/`, which is gitignored:
+
+```
+./build-ta.sh
+```
+
+The first run creates `.venv-ucc` and installs `ucc-gen` into it; after that
+it takes a few seconds. Both layers below need it, and `run.sh` calls it for
+you.
+
 ## Unit tests
 
-Standard library only, nothing to install:
+Standard library only, but the build has to have run -- `splunklib` is no
+longer versioned, it is installed into the built add-on's `lib/`:
 
 ```
-cd tests/unit && python3 -m unittest discover -v
+./build-ta.sh
+cd unit && python3 -m unittest discover -v
 ```
+
+Without a build they skip, with a message saying to run it. `REQUIRE_BUILT_TA=1`
+turns those skips into failures; CI sets it, because a green run where the
+generated half of the add-on was never looked at is worse than a red one.
 
 These run in CI (the `unittest` job of `dev.yml`, `testing.yml` and
 `main.yml`).
@@ -31,9 +51,10 @@ cd tests
 ./run.sh --keep nifi2-current   # leave the stack up to poke at it
 ```
 
-`run.sh` writes `.env` from the profile, brings the stack up, waits for NiFi
-to answer, runs the assertions, and tears down. It exits non-zero if
-anything fails, so CI can call it directly.
+`run.sh` builds the add-on, writes `.env` from the profile, brings the stack
+up, waits for NiFi to answer, runs the assertions, and tears down. It exits
+non-zero if anything fails, so CI can call it directly. `SKIP_TA_BUILD=1`
+reuses the last build, for a quick re-run against unchanged add-on code.
 
 While a stack is up:
 
@@ -87,6 +108,11 @@ its own `etc/` additively, so seeded files survive), which installs both
 apps plus the two bundled third-party visualizations, enables the HEC
 without SSL, loads the `instance` lookup, and installs the TA input
 matching the profile's auth mode (`provision/splunk/inputs.conf.<mode>`).
+
+The **TA comes from `output/`, not from the tree** -- seeding the tree would
+install an add-on with no `app.conf`, no `inputs.conf` and no UI, which looks
+like it installed and then does nothing. The seed script refuses rather than
+doing that. The app, which is not generated, still comes from the tree.
 
 This replaces the old procedure of `docker exec`-ing into the container,
 running `init_splunk_nologin.sh` by hand, and then turning off SSL on the

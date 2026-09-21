@@ -13,7 +13,7 @@ from support import NiFiScriptTestCase, load_nifi_module, response
 
 TA_BIN = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "nifi_TA_monitoring", "bin",
+    "nifi_TA_monitoring", "package", "bin",
 )
 
 JWT = (

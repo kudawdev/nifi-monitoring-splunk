@@ -18,9 +18,15 @@ import sys
 import unittest
 import unittest.mock as mock
 
-TA_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "nifi_TA_monitoring")
-)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from ta_paths import TA_BUILT, TA_SOURCE, built_available, require_built  # noqa: E402
+
+# bin/ and lib/ come from different places now. bin/nifi.py is handwritten and
+# versioned under package/; lib/ only exists once ucc-gen has installed the
+# requirements into output/. Importing the source file against the built lib
+# is deliberate: it is the combination that ships, and it keeps the suite
+# runnable from a clean checkout for everything that does not need lib/.
+TA_DIR = TA_SOURCE
 
 
 def load_nifi_module():
@@ -29,7 +35,15 @@ def load_nifi_module():
     Returns (module, stubs) where stubs holds the mock for `requests` so tests
     can drive and inspect it.
     """
-    for path in (os.path.join(TA_DIR, "lib"), os.path.join(TA_DIR, "bin")):
+    # splunklib is no longer versioned: ucc-gen installs it into the built
+    # add-on's lib/. Without a build there is nothing to import against, and
+    # the failure would otherwise arrive as thirty ImportErrors from
+    # setUpClass rather than as one sentence saying to run the build.
+    reason = require_built()
+    if reason:
+        raise unittest.SkipTest(reason)
+
+    for path in (os.path.join(TA_BUILT, "lib"), os.path.join(TA_DIR, "bin")):
         if path not in sys.path:
             sys.path.insert(0, path)
 
@@ -40,6 +54,10 @@ def load_nifi_module():
         "requests": stub_requests,
         "urllib3": stub_urllib3,
         "splunklib.client": mock.MagicMock(),
+        # ucc-gen generates this into the built add-on's bin/. It rewrites
+        # sys.path for the real runtime; here sys.path is already whatever the
+        # test needs, and importing it would undo that.
+        "import_declare_test": mock.MagicMock(),
     }
     with mock.patch.dict(sys.modules, stubs):
         if "nifi" in sys.modules:

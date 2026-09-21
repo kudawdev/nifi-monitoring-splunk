@@ -185,21 +185,27 @@ Sí toda la configuración se ejecutó de manera correcta, se iniciará el enví
 
 En en los data input de Splunk puedes configurar varios recursos, como: NIFI Endpoints para el monitoreo de System Diagnostics, Flow Status, Bulletin Board y Flow Metrics, Custom Endpoints para cualquier otra ruta REST de NiFi, y el NIFI Status History para monitoreo específico de procesadores y grupos de procesos en base a los ID de éstos.
 
-Para configurar, en el splunk donde está instalada la aplicación Nifi Monitoring, accede al Home de la APP.
+Desde la 2.0.0 el add-on tiene su propia pantalla de configuración. Entrá a
+**Apps > NiFi TA Monitoring > Inputs** y hacé clic en **Create New Input**.
+La pantalla genérica de Splunk (*Settings > Data inputs > NiFi*) sigue
+funcionando y escribe el mismo `inputs.conf`, pero no ofrece el formulario
+agrupado, la validación de campos ni la prueba de conexión que se describen
+abajo.
 
-![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_home.png)
+Dos cosas viven fuera del input:
 
-Luego en Settings Data Inputs
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_1.png)
-
-En los local data input, identifica NiFi y luego clic en + Add new
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_2.png)
-
-Se desplegará una ventana como la siguiente:
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_3.jpeg)
+- **Configuration > Logging** define cuánto escribe el add-on en
+  `splunkd.log`. Por defecto es `INFO`, que es una línea por request por
+  endpoint por intervalo. En una instancia que consulta varios NiFi eso es
+  casi todo lo que el add-on deja en `_internal`; `WARNING` conserva los
+  problemas y descarta el resto.
+- **Test connection**, en el formulario junto a las credenciales, hace las
+  mismas dos llamadas que hace el input — el login y
+  `GET /system-diagnostics` — con los valores que están en pantalla, y dice
+  qué respondió. No guarda nada. Configurar bien un input de NiFi implica
+  acertar al mismo tiempo la URL, el esquema, el certificado y las
+  credenciales; sin esto los cuatro fallan igual, unos minutos después, en un
+  log.
 
 **Te recomendamos configurar de manera independiente cada uno de los recursos de monitoreo para eventuales modificaciones en la configuración y debido a los tiempos de ejecución para obtención de datos.**
 

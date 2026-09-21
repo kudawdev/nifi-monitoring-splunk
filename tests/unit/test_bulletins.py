@@ -181,7 +181,7 @@ class BulletinFieldMappingTest(unittest.TestCase):
     def setUpClass(cls):
         repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         cls.props = open(
-            os.path.join(repo, "nifi_TA_monitoring", "default", "props.conf")
+            os.path.join(repo, "nifi_TA_monitoring", "package", "default", "props.conf")
         ).read()
         cls.datamodel = json.load(
             open(os.path.join(repo, "nifi_monitoring", "default", "data", "models", "NIFI.json"))
@@ -234,7 +234,7 @@ class CapturedPayloadTest(unittest.TestCase):
                                "nifi2.11-bulletin-board.json")) as handle:
             cls.board = json.load(handle)
         cls.props = open(
-            os.path.join(repo, "nifi_TA_monitoring", "default", "props.conf")
+            os.path.join(repo, "nifi_TA_monitoring", "package", "default", "props.conf")
         ).read()
         cls.entry = cls.board["bulletinBoard"]["bulletins"][0]
         script = load_nifi_module()[0].NiFiScript

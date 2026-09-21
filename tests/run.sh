@@ -35,6 +35,18 @@ PY
     esac
 done
 
+# The add-on is generated since the UCC migration: app.conf, inputs.conf, the
+# spec and the whole configuration UI do not exist in the tree. Seeding from
+# nifi_TA_monitoring/ would install something that has never been built, so
+# the build comes first and the harness only ever sees output/ (UI-3).
+# SKIP_TA_BUILD=1 reuses whatever is already there, for a quick re-run.
+if [ "${SKIP_TA_BUILD:-0}" != "1" ]; then
+    ./build-ta.sh
+elif [ ! -d ../output/nifi_TA_monitoring ]; then
+    echo "SKIP_TA_BUILD=1 but output/nifi_TA_monitoring does not exist" >&2
+    exit 2
+fi
+
 echo "==> profile: $PROFILE"
 python3 matrix.py "$PROFILE" > .env
 cat .env | sed 's/^/    /'

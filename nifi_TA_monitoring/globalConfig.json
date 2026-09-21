@@ -1,0 +1,607 @@
+{
+    "meta": {
+        "name": "nifi_TA_monitoring",
+        "restRoot": "nifi_TA_monitoring",
+        "version": "2.0.0",
+        "displayName": "NiFi TA Monitoring",
+        "schemaVersion": "0.0.10",
+        "checkForUpdates": true,
+        "supportedThemes": [
+            "light",
+            "dark"
+        ]
+    },
+    "pages": {
+        "configuration": {
+            "title": "Configuration",
+            "description": "Add-on wide settings. The NiFi instances themselves are configured under Inputs.",
+            "tabs": [
+                {
+                    "type": "loggingTab"
+                }
+            ]
+        },
+        "inputs": {
+            "title": "Inputs",
+            "description": "One entry per NiFi instance. A NiFi cluster is one instance, not one per node.",
+            "table": {
+                "actions": [
+                    "edit",
+                    "delete",
+                    "clone"
+                ],
+                "header": [
+                    {
+                        "label": "Name",
+                        "field": "name"
+                    },
+                    {
+                        "label": "API URL",
+                        "field": "api_url"
+                    },
+                    {
+                        "label": "Authentication",
+                        "field": "auth_type"
+                    },
+                    {
+                        "label": "Interval",
+                        "field": "interval"
+                    },
+                    {
+                        "label": "Index",
+                        "field": "index"
+                    },
+                    {
+                        "label": "Status",
+                        "field": "disabled"
+                    }
+                ],
+                "moreInfo": [
+                    {
+                        "label": "Name",
+                        "field": "name"
+                    },
+                    {
+                        "label": "API URL",
+                        "field": "api_url"
+                    },
+                    {
+                        "label": "Authentication",
+                        "field": "auth_type"
+                    },
+                    {
+                        "label": "Username",
+                        "field": "username"
+                    },
+                    {
+                        "label": "Interval",
+                        "field": "interval"
+                    },
+                    {
+                        "label": "Index",
+                        "field": "index"
+                    },
+                    {
+                        "label": "Host",
+                        "field": "host"
+                    },
+                    {
+                        "label": "Verify TLS",
+                        "field": "verify_tls"
+                    },
+                    {
+                        "label": "CA bundle",
+                        "field": "ca_bundle"
+                    },
+                    {
+                        "label": "Additional endpoints",
+                        "field": "custom_endpoints"
+                    },
+                    {
+                        "label": "Status",
+                        "field": "disabled",
+                        "mapping": {
+                            "true": "Disabled",
+                            "false": "Enabled"
+                        }
+                    }
+                ]
+            },
+            "services": [
+                {
+                    "name": "nifi",
+                    "title": "NiFi instance",
+                    "subTitle": "Polls the NiFi REST API on each interval.",
+                    "entity": [
+                        {
+                            "type": "text",
+                            "label": "NiFi instance name",
+                            "field": "name",
+                            "required": true,
+                            "help": "A unique name for this input. Used as the host value unless one is set below.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "errorMsg": "The name must begin with a letter and contain only letters, digits and underscores.",
+                                    "pattern": "^[a-zA-Z]\\w*$"
+                                },
+                                {
+                                    "type": "string",
+                                    "errorMsg": "Length of the name must be between 1 and 100",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                }
+                            ]
+                        },
+                        {
+                            "type": "text",
+                            "label": "NiFi API URL",
+                            "field": "api_url",
+                            "required": true,
+                            "help": "Base URL of the NiFi REST API, e.g. https://nifi-instance:8443/nifi-api/",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "errorMsg": "Must be an http:// or https:// URL ending in the NiFi API path.",
+                                    "pattern": "^https?://[^\\s]+$"
+                                },
+                                {
+                                    "type": "string",
+                                    "errorMsg": "Length of the URL must be between 1 and 4096",
+                                    "minLength": 1,
+                                    "maxLength": 4096
+                                }
+                            ]
+                        },
+                        {
+                            "type": "singleSelect",
+                            "label": "Authentication",
+                            "field": "auth_type",
+                            "required": true,
+                            "defaultValue": "none",
+                            "help": "basic performs POST /access/token and sends the JWT it returns.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "errorMsg": "Authentication must be none or basic.",
+                                    "pattern": "^(none|basic)$"
+                                }
+                            ],
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {
+                                        "label": "None",
+                                        "value": "none"
+                                    },
+                                    {
+                                        "label": "Username and password",
+                                        "value": "basic"
+                                    }
+                                ]
+                            },
+                            "modifyFieldsOnValue": [
+                                {
+                                    "fieldValue": "none",
+                                    "fieldsToModify": [
+                                        {
+                                            "fieldId": "username",
+                                            "display": false,
+                                            "required": false
+                                        },
+                                        {
+                                            "fieldId": "password",
+                                            "display": false,
+                                            "required": false
+                                        }
+                                    ]
+                                },
+                                {
+                                    "fieldValue": "basic",
+                                    "fieldsToModify": [
+                                        {
+                                            "fieldId": "username",
+                                            "display": true,
+                                            "required": true
+                                        },
+                                        {
+                                            "fieldId": "password",
+                                            "display": true,
+                                            "required": true
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "type": "text",
+                            "label": "Username",
+                            "field": "username",
+                            "required": false,
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "errorMsg": "Length of the username must be between 1 and 200",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                }
+                            ]
+                        },
+                        {
+                            "type": "text",
+                            "label": "Password",
+                            "field": "password",
+                            "required": false,
+                            "encrypted": true,
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "errorMsg": "Length of the password must be between 1 and 8192",
+                                    "minLength": 1,
+                                    "maxLength": 8192
+                                }
+                            ]
+                        },
+                        {
+                            "type": "custom",
+                            "label": "Connection",
+                            "field": "test_connection",
+                            "help": "Calls the NiFi API with the values above, without saving them.",
+                            "options": {
+                                "type": "external",
+                                "src": "test_connection"
+                            }
+                        },
+                        {
+                            "type": "checkbox",
+                            "label": "Flow status",
+                            "field": "endpoint_flow_status",
+                            "defaultValue": 1,
+                            "help": "GET /flow/status. The summary counters every dashboard panel is built on."
+                        },
+                        {
+                            "type": "checkbox",
+                            "label": "System diagnostics",
+                            "field": "endpoint_system_diagnostics",
+                            "defaultValue": 1,
+                            "help": "GET /system-diagnostics. Heap, threads and repository usage. Also how the add-on detects the NiFi version, so leaving it off disables version reporting."
+                        },
+                        {
+                            "type": "checkbox",
+                            "label": "Bulletin board",
+                            "field": "endpoint_bulletin_board",
+                            "defaultValue": 1,
+                            "help": "GET /flow/bulletin-board. Individual bulletins, polled with a cursor so nothing is counted twice. The board keeps a short window, so an interval longer than that window can miss bulletins."
+                        },
+                        {
+                            "type": "textarea",
+                            "label": "Processor IDs",
+                            "field": "endpoint_processors_history",
+                            "required": false,
+                            "options": {
+                                "rowsMin": 2,
+                                "rowsMax": 10
+                            },
+                            "help": "UUIDs of the processors to collect status history for, comma or newline separated. Empty collects none.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "errorMsg": "Length of Processor IDs must be between 1 and 16384",
+                                    "minLength": 1,
+                                    "maxLength": 16384
+                                }
+                            ]
+                        },
+                        {
+                            "type": "textarea",
+                            "label": "Process group IDs",
+                            "field": "endpoint_process_groups_history",
+                            "required": false,
+                            "options": {
+                                "rowsMin": 2,
+                                "rowsMax": 10
+                            },
+                            "help": "UUIDs of the process groups to collect status history for, comma or newline separated. Empty collects none.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "errorMsg": "Length of Process group IDs must be between 1 and 16384",
+                                    "minLength": 1,
+                                    "maxLength": 16384
+                                }
+                            ]
+                        },
+                        {
+                            "type": "checkbox",
+                            "label": "Collect flow metrics",
+                            "field": "endpoint_flow_metrics",
+                            "defaultValue": 0,
+                            "help": "GET /flow/metrics/json. NiFi 1.16 and later. Off by default: on a large flow this is the highest-volume endpoint the add-on has.",
+                            "modifyFieldsOnValue": [
+                                {
+                                    "fieldValue": 0,
+                                    "fieldsToModify": [
+                                        {
+                                            "fieldId": "metrics_registries",
+                                            "display": false
+                                        },
+                                        {
+                                            "fieldId": "metrics_strategy",
+                                            "display": false
+                                        },
+                                        {
+                                            "fieldId": "metrics_sample_filter",
+                                            "display": false
+                                        }
+                                    ]
+                                },
+                                {
+                                    "fieldValue": 1,
+                                    "fieldsToModify": [
+                                        {
+                                            "fieldId": "metrics_registries",
+                                            "display": true
+                                        },
+                                        {
+                                            "fieldId": "metrics_strategy",
+                                            "display": true
+                                        },
+                                        {
+                                            "fieldId": "metrics_sample_filter",
+                                            "display": true
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "type": "text",
+                            "label": "Registries",
+                            "field": "metrics_registries",
+                            "required": false,
+                            "help": "Comma-separated registry names to collect, e.g. NIFI,JVM. Empty collects every registry NiFi offers.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "errorMsg": "Length of the registry list must be between 1 and 1024",
+                                    "minLength": 1,
+                                    "maxLength": 1024
+                                }
+                            ]
+                        },
+                        {
+                            "type": "singleSelect",
+                            "label": "Strategy",
+                            "field": "metrics_strategy",
+                            "required": false,
+                            "defaultValue": "ALL_PROCESS_GROUPS",
+                            "help": "ALL_COMPONENTS emits a sample per component and multiplies the volume; measure before choosing it.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "errorMsg": "Strategy must be ALL_PROCESS_GROUPS or ALL_COMPONENTS.",
+                                    "pattern": "^(ALL_PROCESS_GROUPS|ALL_COMPONENTS)$"
+                                }
+                            ],
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {
+                                        "label": "All process groups",
+                                        "value": "ALL_PROCESS_GROUPS"
+                                    },
+                                    {
+                                        "label": "All components",
+                                        "value": "ALL_COMPONENTS"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "label": "Sample filter",
+                            "field": "metrics_sample_filter",
+                            "required": false,
+                            "help": "Regular expression matched against the metric name. Empty keeps every sample.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "errorMsg": "Length of the filter must be between 1 and 1024",
+                                    "minLength": 1,
+                                    "maxLength": 1024
+                                }
+                            ]
+                        },
+                        {
+                            "type": "textarea",
+                            "label": "Additional endpoints",
+                            "field": "custom_endpoints",
+                            "required": false,
+                            "options": {
+                                "rowsMin": 3,
+                                "rowsMax": 12
+                            },
+                            "help": "One per line, as sourcetype,path -- e.g. nifi:api:custom:queue_stats,/flow/connections/1234-5678-90ab-cdef/status. The path is relative to the API URL above and is requested exactly as written: no {id} substitution. A request that fails writes no event, so an empty sourcetype means the endpoint is not working.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "errorMsg": "Length of the endpoint list must be between 1 and 16384",
+                                    "minLength": 1,
+                                    "maxLength": 16384
+                                }
+                            ]
+                        },
+                        {
+                            "type": "checkbox",
+                            "label": "Verify the TLS certificate",
+                            "field": "verify_tls",
+                            "defaultValue": 1,
+                            "help": "Leave this on unless NiFi uses a certificate that cannot be trusted through a CA bundle. Turning it off lets anyone able to intercept the connection read the credentials and the token.",
+                            "modifyFieldsOnValue": [
+                                {
+                                    "fieldValue": 0,
+                                    "fieldsToModify": [
+                                        {
+                                            "fieldId": "ca_bundle",
+                                            "display": false
+                                        }
+                                    ]
+                                },
+                                {
+                                    "fieldValue": 1,
+                                    "fieldsToModify": [
+                                        {
+                                            "fieldId": "ca_bundle",
+                                            "display": true
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "type": "text",
+                            "label": "CA bundle path",
+                            "field": "ca_bundle",
+                            "required": false,
+                            "help": "e.g. /opt/splunk/etc/apps/nifi_TA_monitoring/local/nifi-ca.pem. Empty uses the system trust store.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "errorMsg": "Length of the path must be between 1 and 4096",
+                                    "minLength": 1,
+                                    "maxLength": 4096
+                                }
+                            ]
+                        },
+                        {
+                            "type": "interval",
+                            "label": "Interval",
+                            "field": "interval",
+                            "required": true,
+                            "defaultValue": "60",
+                            "help": "Seconds between polls. Every enabled endpoint, including the custom ones, is collected on this interval."
+                        },
+                        {
+                            "type": "index",
+                            "label": "Index",
+                            "field": "index"
+                        },
+                        {
+                            "type": "text",
+                            "label": "Host field value",
+                            "field": "host",
+                            "required": false,
+                            "help": "Stamped on every event from this input. Empty uses the instance name above. On a cluster set this to the cluster, not a node: the add-on names the node in a separate field.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "errorMsg": "Length of the host must be between 1 and 255",
+                                    "minLength": 1,
+                                    "maxLength": 255
+                                }
+                            ]
+                        }
+                    ],
+                    "groups": [
+                        {
+                            "label": "NiFi instance",
+                            "fields": [
+                                "name",
+                                "api_url"
+                            ]
+                        },
+                        {
+                            "label": "Authentication",
+                            "fields": [
+                                "auth_type",
+                                "username",
+                                "password",
+                                "test_connection"
+                            ]
+                        },
+                        {
+                            "label": "Endpoints",
+                            "fields": [
+                                "endpoint_flow_status",
+                                "endpoint_system_diagnostics",
+                                "endpoint_bulletin_board"
+                            ]
+                        },
+                        {
+                            "label": "Status history",
+                            "fields": [
+                                "endpoint_processors_history",
+                                "endpoint_process_groups_history"
+                            ],
+                            "options": {
+                                "isExpandable": true,
+                                "expand": false
+                            }
+                        },
+                        {
+                            "label": "Flow metrics",
+                            "fields": [
+                                "endpoint_flow_metrics",
+                                "metrics_registries",
+                                "metrics_strategy",
+                                "metrics_sample_filter"
+                            ],
+                            "options": {
+                                "isExpandable": true,
+                                "expand": false
+                            }
+                        },
+                        {
+                            "label": "Custom endpoints",
+                            "fields": [
+                                "custom_endpoints"
+                            ],
+                            "options": {
+                                "isExpandable": true,
+                                "expand": false
+                            }
+                        },
+                        {
+                            "label": "TLS",
+                            "fields": [
+                                "verify_tls",
+                                "ca_bundle"
+                            ],
+                            "options": {
+                                "isExpandable": true,
+                                "expand": false
+                            }
+                        },
+                        {
+                            "label": "Advanced",
+                            "fields": [
+                                "interval",
+                                "index",
+                                "host"
+                            ],
+                            "options": {
+                                "isExpandable": true,
+                                "expand": false
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    "options": {
+        "restHandlers": [
+            {
+                "name": "nifi_test_connection",
+                "endpoint": "nifi_test_connection",
+                "handlerType": "EAI",
+                "registerHandler": {
+                    "file": "nifi_rh_test_connection.py",
+                    "actions": [
+                        "create"
+                    ]
+                }
+            }
+        ]
+    }
+}

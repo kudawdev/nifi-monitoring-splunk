@@ -6,3 +6,4 @@ Thumbs.db
 __pycache__/
 tests/.env
 .venv-ucc/
+output/
