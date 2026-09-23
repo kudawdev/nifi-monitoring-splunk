@@ -1,21 +1,31 @@
 # Introducción
 
-Nifi Monitoring es una solución que propone resolver una gran dificultad encontrada durante el desarrollo de Proyectos NIFI y que corresponde al complejo proceso de monitorizar el funcionamiento de diferentes instancias NIFI simultáneamente.
-
-Esta aplicación resuelve este problema centralizando toda la información relativa al funcionamiento de los diferentes componentes para diversas instancias y cuenta con un conjunto de paneles que permiten visualizar de forma clara y rápida el funcionamiento de estas instancias.
+Nifi Monitoring centraliza la visibilidad operacional de múltiples instancias de Apache NiFi en Splunk — standalone o en cluster — para que no tengas que vigilar cada una por separado. Se distribuye como dos apps: **Nifi Monitoring**, los dashboards que describe esta guía, y **Nifi Monitoring TA**, el add-on que trae los datos de NiFi a Splunk.
 
 ![image1](/nifi-monitoring-splunk/assets/images/splunk/nifi_home.png)
 
-Este producto
+## Sobre este producto
 
-Soporta múltiples instancias NIFI ya sea Standalone o Cluster Nodes.  
-Obtiene los datos desde logs, reports y nifi-api
+- Soporta múltiples instancias de NiFi, ya sea standalone o en cluster.
+- Recolecta datos de los logs de NiFi, su API REST y sus reporting tasks.
+- Dos formas de traer esos datos: consultando la API, o un flow dentro de
+  NiFi que envía al HTTP Event Collector de Splunk. Ver
+  [Compatibilidad y métodos de recolección](compatibility.es.md) para elegir una.
 
-Esta aplicación requiere la implementación de las siguientes dependencias:
+Esta aplicación requiere las siguientes dependencias:
 
 - [Lookup File Editor](https://splunkbase.splunk.com/app/1724/)
 - [Status Indicator – Custom Visualization](https://splunkbase.splunk.com/app/3119/)
 
-Su funcionamiento es completamente gratuito y puedes contribuir a través del [repositorio de Github](https://github.com/kudawdev/nifi-monitoring-splunk)
+## Por dónde seguir
 
-Escríbanos a splunk.app@kudaw.com para una evaluación o a través de nuestro sitio [kudaw.com](https://www.kudaw.com/)
+- [Compatibilidad y métodos de recolección](compatibility.es.md) — versiones de NiFi y Splunk soportadas, y cuál de las dos rutas de recolección corresponde a tu ambiente.
+- [Instalación y configuración de NIFI Monitoring en Splunk](installation.es.md) — instalar ambas apps.
+- [Configuración de NIFI](configuration.es.md) — configurar NiFi y el data input según la ruta elegida.
+- [Referencia de Datos](references.es.md) — qué contiene cada sourcetype.
+
+## Soporte
+
+Su funcionamiento es completamente gratuito y puedes contribuir a través del [repositorio de GitHub](https://github.com/kudawdev/nifi-monitoring-splunk).
+
+Escríbanos a splunk.app@kudaw.com para una evaluación, o a través de nuestro sitio [kudaw.com](https://www.kudaw.com/).

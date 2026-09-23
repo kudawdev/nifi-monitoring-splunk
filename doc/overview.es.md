@@ -9,9 +9,10 @@ La aplicación consta del siguiente árbol de navegación:
         - Flow's & Metrics Monitoring Panel
         - Bulletin Monitoring Panel
         - Logs Monitoring Panel
+        - Status History
     - Configuration
-        - Lookups
         - NiFi Instances
+        - Internal Monitoring
     - Alerts
     - Search
 
@@ -54,6 +55,20 @@ En el siguiente panel podemos observar principalmente el comportamiento de los e
 ![image](/nifi-monitoring-splunk/assets/images/splunk/bulletin_panel.png)
 
 ### Logs Monitoring Panel
-Con este panel podemos observar el comportamiento de los errores del sistema de bulletin en nifi, ya que es muy importante en el caso de ocurrir algún error poder realizar la correcta trazabilidad, con el fin de corregir la situación lo antes posible.
+En el siguiente panel podemos observar los logs de aplicación, bootstrap, usuario y request de NiFi recolectados desde cada instancia configurada, para buscar y correlacionar la actividad de logs sin abrir una terminal en cada host de NiFi.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/logs_panel.png)
+
+### Status History
+
+Este panel grafica el status history de los procesadores y grupos de procesos específicos configurados en [Status history](configuration.es.md#4-status-history) del data input — throughput, flow files en cola y los demás contadores que muestra la propia vista Status History de NiFi, a lo largo del tiempo y por instancia.
+
+## Configuration
+
+### NiFi Instances
+
+Abre el editor del [Lookup de Instancias](configuration.es.md#lookup-de-instancias), donde toda instancia de NiFi monitoreada (o cluster) debe tener una fila antes de que sus datos sean accesibles desde los paneles anteriores.
+
+### Internal Monitoring
+
+Etiquetado **Nifi TA Monitoring** en la app. Reporta sobre el propio add-on en lugar de sobre NiFi: cuántos eventos tiene realmente cada sourcetype e index — el primer lugar donde mirar cuando un panel está vacío o al [actualizar](upgrading.es.md) y hay que cambiar la macro `index_nifi` — y, en un cluster, los miembros, sus roles y su heap por nodo.

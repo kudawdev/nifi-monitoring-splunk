@@ -9,9 +9,10 @@ The application consists of the following navigation tree:
         - Flow's & Metrics Monitoring Panel
         - Bulletin Monitoring Panel
         - Logs Monitoring Panel
+        - Status History
     - Configuration
-        - Lookups
         - NiFi Instances
+        - Internal Monitoring
     - Alerts
     - Search
 
@@ -57,6 +58,20 @@ In the next panel, we can mainly observe the behavior of the errors of the bulle
 
 ### Logs Monitoring Panel
 
-In the next panel, we can mainly observe the behavior of the errors of the bulletin system in nifi, since it is very important in the event of an error to be able to carry out the correct traceability, in order to correct the situation as soon as possible.
+In the next panel, we can observe the NiFi application, bootstrap, user and request logs collected from every configured instance, to search and correlate log activity without opening a terminal on each NiFi host.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/logs_panel.png)
+
+### Status History
+
+This panel plots the status history of the specific processors and process groups configured under [Status history](configuration.md#4-status-history) on the data input — throughput, queued flow files and the other counters NiFi's own Status History view shows, over time and per instance.
+
+## Configuration
+
+### NiFi Instances
+
+Opens the [Instance Lookup](configuration.md#instance-lookup) editor, where every monitored NiFi instance (or cluster) must have a row before its data is accessible from the panels above.
+
+### Internal Monitoring
+
+Labeled **Nifi TA Monitoring** in the app. Reports on the add-on itself rather than on NiFi: how many events each sourcetype and index actually holds — the first place to look when a panel is empty or when [upgrading](upgrading.md) and the `index_nifi` macro needs to change — and, on a cluster, the members, their roles and their per-node heap.

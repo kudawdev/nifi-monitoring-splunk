@@ -1,6 +1,6 @@
 # Instalación de NIFI Monitoring APP
 
-Es esta sección se detallarán los pasos necesarios requeridos para instalar la aplicación NIFI Monitoring en Splunk
+En esta sección se detallarán los pasos necesarios requeridos para instalar la aplicación NIFI Monitoring en Splunk
 
 ## Instalación de NIFI Monitoring APP
 
@@ -13,7 +13,7 @@ Esta aplicación requiere la implementación de las siguientes dependencias:
 
 La aplicación contiene todas las características visuales que permiten el monitoreo de las instancias de NIFI configuradas.
 
-Para instalar debe contar con el archivo NIFI_Monitoring_<version\>.tar.gz e instale desde el administrador de aplicaciones de Splunk.
+Para instalar debe contar con el archivo `nifi_monitoring-<version>.tar.gz` — desde [Splunkbase](https://splunkbase.splunk.com/app/6125) o un [release de GitHub](https://github.com/kudawdev/nifi-monitoring-splunk/releases) — e instalarlo desde el administrador de aplicaciones de Splunk.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/upload_app.png)
 
@@ -21,7 +21,7 @@ Para instalar debe contar con el archivo NIFI_Monitoring_<version\>.tar.gz e ins
 
 El Technology Addon (TA) de NIFI Monitoring contiene todas las características no visuales que permiten la indexación de las distintas fuentes de datos recibidas desde el o los servidores NIFI.
 
-Para instalar debe contar con el archivo NIFI_TA_Monitoring_<version\>.tar.gz e instale desde el administrador de aplicaciones de Splunk.
+Para instalar debe contar con el archivo `nifi_TA_monitoring-<version>.tar.gz` — desde [Splunkbase](https://splunkbase.splunk.com/app/6124) o un [release de GitHub](https://github.com/kudawdev/nifi-monitoring-splunk/releases) — e instalarlo desde el administrador de aplicaciones de Splunk.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/upload_app.png)
 

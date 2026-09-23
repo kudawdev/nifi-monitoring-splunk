@@ -65,7 +65,7 @@ si el almacenamiento te importa más que la historia.
 
 `flow_definition/` ahora tiene `nifi-1.x/` y `nifi-2.x/`. Si usás el camino
 push, importá el que corresponde a tu NiFi. Ver
-[Compatibilidad](compatibility.md).
+[Compatibilidad](compatibility.es.md).
 
 El template XML se movió a `nifi-1.x/`. NiFi 2.x eliminó el soporte de
 templates.
