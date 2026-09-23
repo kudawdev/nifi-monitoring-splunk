@@ -1,92 +1,97 @@
 ---
 name: cicd
 description: >
-  Ejecuta el proceso de entrega de este repositorio: los gates, el bump de
-  versión, el changelog, el empaquetado con AppInspect y el release. Úsalo
-  cuando el pedido sea llevar un cambio hacia main o publicar una versión,
-  aunque llegue coloquial: "liberar 2.0.0", "hacer el release", "bumpear",
-  "correr los checks", "promover a main", "publicar las apps", "sacar una
-  versión nueva", "está listo para liberar?". No lo uses para escribir código
-  de las apps, para SPL, ni para correr el harness de integración de un
-  escenario puntual (eso es tests/run.sh directo).
+  Run this repository's delivery process: the gates, the version bump, the
+  changelog, packaging with AppInspect, and the release. Use it when the
+  request is about moving a change towards main or publishing a version,
+  however it is phrased — "release 2.0.0", "cut the release", "bump the
+  version", "run the checks", "promote to main", "publish the apps", "is this
+  ready to ship?", and the same in Spanish: "liberar 2.0.0", "hacer el
+  release", "bumpear", "correr los checks", "promover a main", "publicar las
+  apps", "está listo para liberar?". Do not use it to write app code, for SPL,
+  or to run one integration scenario — that is tests/run.sh directly.
 ---
 
-# cicd — entrega de nifi-monitoring-splunk
+# cicd — delivery for nifi-monitoring-splunk
 
-Perfil **app-splunk**: el entregable es un GitHub Release con los dos `.tar.gz`
-adjuntos. La fachada (`Makefile` + `scripts/`, sellada por `tech-cicd`) hace lo
-determinista; acá vive el juicio: cuándo parar, qué confirmar, cómo presentar
-la evidencia.
+Profile **app-splunk**: the deliverable is a GitHub Release with both `.tar.gz`
+attached. The facade (`Makefile` + `scripts/`, sealed by `tech-cicd`) does what
+is deterministic; what lives here is judgement — when to stop, what to confirm,
+how to present the evidence.
 
-**No reimplementes nada de esto.** Si una orden no está en la tabla, preguntale
-a la fachada: `make help`, `make version`, `make baseline`, `make status`.
+**Reimplement none of it.** If an order is not in the table, ask the facade:
+`make help`, `make version`, `make baseline`, `make status`.
 
-## Lo que este repo tiene de particular
+## What is particular to this repository
 
-Tres cosas que no se deducen de la fachada y que decidieron cómo quedó armada:
+Three things that do not follow from the facade, and that decided how it was
+set up:
 
-1. **La versión tiene una fuente y tres derivaciones.** `make bump` escribe
-   `nifi_monitoring/default/app.conf` y para ahí. El TA no tiene `app.conf` en
-   el árbol —lo genera `ucc-gen`— así que su `globalConfig.json` y su
-   `package/app.manifest` salen de ahí con **`make version-sync`**. Entre el
-   bump y el sync el árbol queda inconsistente y un test unitario lo grita:
-   eso es correcto, no un problema. **Nunca edites la versión a mano en los
-   archivos del TA.**
+1. **The version has one source and three derivations.** `make bump` writes
+   `nifi_monitoring/default/app.conf` and stops there. The TA has no
+   `app.conf` in the tree — ucc-gen generates it — so its `globalConfig.json`
+   and `package/app.manifest` are rewritten from that one with
+   **`make version-sync`**. Between the bump and the sync the tree is
+   inconsistent and a unit test says so: that is correct, not a problem.
+   **Never edit a version by hand in the TA's files.**
 
-2. **El TA no es instalable desde el árbol.** `make build` lo genera en
-   `output/`. Empaquetar `nifi_TA_monitoring/` directo produce un add-on sin
-   `app.conf` y sin UI, y `slim` no se queja.
+2. **The TA is not installable from the tree.** `make build` generates it into
+   `output/`. Packaging `nifi_TA_monitoring/` directly produces an add-on with
+   no `app.conf` and no UI, and `slim` will not complain.
 
-3. **El repo no usa Conventional Commits.** `make suggest-level` va a decir
-   `patch` casi siempre y `make changelog` va a meter todo en «📦 Other».
-   **No confíes en ninguno de los dos**: proponé el nivel leyendo los commits
-   vos, y escribí la entrada del CHANGELOG a mano. La de 2.0.0 quedó así, con
-   el motivo anotado arriba.
+3. **This repository does not use Conventional Commits.** `make suggest-level`
+   will say `patch` almost every time, and `make changelog` will file
+   everything under "📦 Other". **Trust neither**: propose the level by reading
+   the commits yourself, and write the CHANGELOG entry by hand. The 2.0.0 one
+   was written that way, and says so at the top.
 
-## Órdenes
+## Orders
 
-| Pedido | Qué corre | Qué confirmás antes |
+| Request | What runs | What you confirm first |
 |---|---|---|
-| `check` | `make check` | nada; es de solo lectura |
-| `bump [nivel]` | `make bump LEVEL=<nivel>` y después **`make version-sync`** | el nivel, siempre — `suggest-level` no es confiable acá |
-| `changelog` | editás `CHANGELOG.md` a mano, después `make changelog NO_COMMIT=1` solo si querés el andamio | el texto de la entrada |
-| `package` | `make package` | nada |
-| `validate` | `make validate` | nada |
-| `promote` | `make promote-main` | **sí, siempre**: mergea a `main` y pushea |
-| `release` | `make release` | **sí, siempre**: crea el tag y el GitHub Release |
-| `status` | `make status` | nada |
-| `audit` | `adopt.sh <repo> --check` desde el plugin `tech-cicd` | nada |
+| `check` | `make check` | nothing; it is read-only |
+| `bump [level]` | `make bump LEVEL=<level>`, then **`make version-sync`** | the level, always — `suggest-level` is not reliable here |
+| `changelog` | edit `CHANGELOG.md` by hand; `make changelog NO_COMMIT=1` only if you want the scaffold | the wording of the entry |
+| `package` | `make package` | nothing |
+| `validate` | `make validate` | nothing |
+| `promote` | `make promote-main` | **yes, always**: it merges to `main` and pushes |
+| `release` | `make release` | **yes, always**: it creates the tag and the GitHub Release |
+| `status` | `make status` | nothing |
+| `audit` | `adopt.sh <repo> --check`, from the `tech-cicd` plugin | nothing |
 
-## La secuencia
+## The sequence
 
 ```
 check → bump → version-sync → changelog → validate → promote → release
 ```
 
-Antes de empezar, verificá tres cosas que la fachada no mira:
+Before starting, check three things the facade does not look at:
 
-- El árbol está limpio y estás en la rama de trabajo, no en `main`.
-- `make status` no reporta un drift que no sepas explicar.
-- Para un release: **la matriz de integración corrió**. `make check` corre los
-  unitarios y AppInspect, no los diez escenarios. Esos son
-  `cd tests && ./run.sh <perfil>` o el job `integration` de `main.yml`.
+- The tree is clean and you are on the working branch, not on `main`.
+- `make status` reports no drift you cannot explain.
+- For a release: **the integration matrix has run.** `make check` runs the unit
+  tests and AppInspect, not the ten scenarios. Those are
+  `cd tests && ./run.sh <profile>` or the `integration` job of `main.yml`.
 
-## Cómo presentar la evidencia
+## How to present the evidence
 
-- Después de `check`, mostrá el resumen de AppInspect de **las dos apps** con
-  sus números (`error`, `failure`, `warning`), no un "pasó". El gate es 13
-  warnings y hoy son 5 y 12: un número que sube merece mirarse aunque pase.
-- Después de `bump`, mostrá la versión vieja y la nueva, y **confirmá que
-  `version-sync` corrió** — es el paso que se olvida.
-- Antes de `promote` y de `release`, decí en una línea qué va a pasar y esperá
-  el sí. Las dos son irreversibles de hecho: un push a `main` y un tag público.
-- Si algo falla, mostrá la salida cruda del target. No la resumas: el mensaje
-  de la fachada dice qué hacer.
+- After `check`, show the AppInspect summary for **both apps** with their
+  numbers (`error`, `failure`, `warning`), not a "passed". The gate is 13
+  warnings and today they are 5 and 12: a number that goes up is worth looking
+  at even when it still passes.
+- After `bump`, show the old version and the new one, and **confirm that
+  `version-sync` ran** — it is the step people forget.
+- Before `promote` and before `release`, say in one line what is about to
+  happen and wait for the yes. Both are irreversible in practice: a push to
+  `main` and a public tag.
+- When something fails, show the target's raw output. Do not summarise it: the
+  facade's message says what to do.
 
-## Cuando algo no encaja
+## When something does not fit
 
-No edites `delivery.mk` ni `scripts/` — están sellados. O es un valor que va en
-`delivery.conf`, o es un cambio que el contrato `tech-cicd` debe absorber para
-todos los repos. **Hoy hay uno abierto**: el flavour `app-conf` escribe un solo
-manifiesto, y acá hacen falta tres archivos. `version-sync` lo resuelve de este
-lado, pero el contrato no contempla un manifiesto repartido.
+Do not edit `delivery.mk` or `scripts/` — they are sealed. Either it is a value
+that belongs in `delivery.conf`, or it is a change the `tech-cicd` contract
+should absorb for every repository. **One is open today**: the `app-conf`
+flavour writes a single manifest, and this repository needs three files
+touched. `version-sync` covers it from this side, but the contract has no
+notion of a manifest spread across files.
