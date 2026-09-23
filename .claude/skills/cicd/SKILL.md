@@ -58,6 +58,15 @@ set up:
 | `status` | `make status` | nothing |
 | `audit` | `adopt.sh <repo> --check`, from the `tech-cicd` plugin | nothing |
 
+`publish` and `verify` are the profile's artifact slot and are this
+repository's own scripts, not sealed ones. `publish --dry-run` and `publish`
+do the same work — a Splunk app has no registry, the artifact is the pair of
+`.tar.gz` that `release` attaches — but the real one refuses a dirty tree and
+a version that is already released. `verify` checks that the packages declare
+the version they should and that the add-on inside them is the generated one:
+packaging `nifi_TA_monitoring/` from the tree produces something slim accepts
+and Splunk cannot use.
+
 ## The sequence
 
 ```
@@ -90,7 +99,9 @@ Before starting, check three things the facade does not look at:
 
 Do not edit `delivery.mk` or `scripts/` — they are sealed. Either it is a value
 that belongs in `delivery.conf`, or it is a change the `tech-cicd` contract
-should absorb for every repository. **One is open today**: the `app-conf`
-flavour writes a single manifest, and this repository needs three files
-touched. `version-sync` covers it from this side, but the contract has no
-notion of a manifest spread across files.
+should absorb for every repository. Four are open today, written up
+for the skill's maintainer in `docs/support/2026-09-23-tech-cicd-adopcion.md`:
+the `app-conf` flavour assumes a single manifest, `contract-check` approves a
+facade whose scripts do not exist because it resolves targets without running
+them, `adopt.sh` installs the scripts without the executable bit, and
+Conventional Commits are assumed rather than checked.

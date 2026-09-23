@@ -156,6 +156,11 @@ class ExecutableBitTest(unittest.TestCase):
         "../scripts/manifest/app-conf.sh",
         "../scripts/manifest/package-json.sh",
         "../scripts/manifest/pyproject-toml.sh",
+        # This repo's own, the artifact slot of the app-splunk profile plus
+        # the status report, which delivery.mk delegates to the repo too.
+        "../scripts/version-status.sh",
+        "../scripts/publish.sh",
+        "../scripts/verify.sh",
     ]
 
     def recorded_mode(self, relative):
