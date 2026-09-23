@@ -65,7 +65,8 @@ notes live in `docs/` and are not published.
 ## Testing
 
 ```
-make check                            # lint + unit tests + package + AppInspect
+make check                            # every gate, scenarios included (~20 min)
+make integration                      # the scenarios alone; PROFILES=release for all ten
 make build                            # generate the add-on into output/
 make validate                         # package both apps and run AppInspect
 ```

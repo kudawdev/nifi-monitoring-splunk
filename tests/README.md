@@ -53,6 +53,18 @@ cd tests
 ./run.sh --bare cluster    # the environment only, for installing by hand
 ```
 
+Or a whole set at once, which is what `make check` calls:
+
+```
+./integration-matrix.sh                 # pull_request: one per axis
+./integration-matrix.sh release         # all ten
+./integration-matrix.sh cluster nifi2-hec
+```
+
+It builds the add-on once, runs each scenario in turn and reports a line per
+scenario. It never stops at the first failure: a run this long should come
+back with the whole picture.
+
 `run.sh` builds the add-on, writes `.env` from the profile, brings the stack
 up, waits for NiFi to answer, runs the assertions, and tears down. It exits
 non-zero if anything fails, so CI can call it directly. `SKIP_TA_BUILD=1`

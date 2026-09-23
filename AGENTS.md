@@ -43,7 +43,8 @@ are the only prerequisites.
 
 ```
 make              # every target, grouped
-make check        # lint + unit tests + package + AppInspect, in one pass
+make check        # lint + unit tests + AppInspect + the integration scenarios
+make integration  # the scenarios alone. PROFILES=release for all ten
 make build        # ucc-gen into output/ (the TA only; the app needs no build)
 make package      # the two .tar.gz a release attaches
 make validate     # slim validate + AppInspect precert, with CI's gate

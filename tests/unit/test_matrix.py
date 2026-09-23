@@ -161,6 +161,7 @@ class ExecutableBitTest(unittest.TestCase):
         "../scripts/version-status.sh",
         "../scripts/publish.sh",
         "../scripts/verify.sh",
+        "integration-matrix.sh",
     ]
 
     def recorded_mode(self, relative):

@@ -7,6 +7,12 @@
 # Everything runs inside kudaw/appinspect:latest, the image CI uses, so the
 # slim and AppInspect versions here are the ones that gate the release. The
 # only local prerequisites are Docker and Python 3.
+#
+# `check` includes the integration scenarios, and that is deliberate even
+# though it takes it from four minutes to twenty. It is the gate before a bump
+# or a promotion, not a command for the edit loop -- and without them it would
+# report green while the only tests that prove data reaches Splunk never ran.
+# For the edit loop, call the stages directly: `make lint`, `make test`.
 
 include delivery.mk
 
@@ -27,7 +33,12 @@ IMAGE := kudaw/appinspect:latest
 DOCKER := docker run --rm -u "$(shell id -u):$(shell id -g)" -e HOME=/w \
           -v "$(REPO):/w" -w /w $(IMAGE)
 
-.PHONY: lint test security check build version-sync package validate clean
+.PHONY: lint test security check integration build version-sync package validate clean
+
+# Which scenarios `check` runs. `pull_request` is one per NiFi major, per
+# architecture and per strategy -- enough to catch a regression in any of
+# them. `release` is all ten and is what main.yml runs.
+PROFILES ?= pull_request
 
 ## --- stages -----------------------------------------------------------
 
@@ -46,11 +57,15 @@ test: build ## The unit suite, against the built add-on
 security: validate ## AppInspect precert is the security gate for a Splunk app
 	@echo "==> security: covered by validate (AppInspect precert)"
 
+integration: ## Run the scenarios. PROFILES=release for all ten
+	@./tests/integration-matrix.sh $(PROFILES)
+
 check: ## Every gate, in one pass, without stopping at the first failure
 	@failed=0; \
-	$(MAKE) --no-print-directory lint    || failed=1; \
-	$(MAKE) --no-print-directory test    || failed=1; \
-	$(MAKE) --no-print-directory validate|| failed=1; \
+	$(MAKE) --no-print-directory lint       || failed=1; \
+	$(MAKE) --no-print-directory test       || failed=1; \
+	$(MAKE) --no-print-directory validate   || failed=1; \
+	$(MAKE) --no-print-directory integration|| failed=1; \
 	if [ $$failed -ne 0 ]; then echo "==> check FAILED"; exit 1; fi; \
 	echo "==> check passed"
 

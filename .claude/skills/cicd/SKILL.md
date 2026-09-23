@@ -23,7 +23,7 @@ Do not reimplement any target. If something is not here, ask: `make help`,
 
 | Subcommand | Runs | Confirm first |
 |---|---|---|
-| `check` | `make check` | nothing; read-only |
+| `check` | `make check` | nothing; read-only, but it takes ~20 min |
 | `status` | `make status` | nothing |
 | `bump [level]` | `make bump LEVEL=<level>`, then `make version-sync` | the level, always |
 | `changelog` | edit `CHANGELOG.md`, then `make changelog NO_COMMIT=1` if you want the scaffold | the wording |
@@ -57,14 +57,18 @@ check → bump → version-sync → changelog → validate → promote → relea
 
 - Clean tree, on a working branch, not on `main`.
 - `make status` shows no drift you cannot explain.
-- The integration matrix has run. `make check` covers the unit tests and the
-  package validation, not the ten scenarios — those are
-  `cd tests && ./run.sh <profile>`.
+- `make check PROFILES=release` has run, not just `make check`. The default
+  runs four scenarios — one per version line, per architecture and per
+  strategy; a release wants all ten.
+
+`check` runs the integration scenarios as well as the unit tests and the
+package validation, which is why it takes twenty minutes rather than four.
+For the edit loop call a stage directly: `make lint`, `make test`.
 
 ## Reporting
 
 - After `check` or `validate`, give the validator's counts for **both** apps,
-  not a "passed". A warning count that rose is worth a look even when it still
+  not a "passed". After `check`, give the per-scenario line too. A warning count that rose is worth a look even when it still
   passes the gate.
 - After `bump`, show the old and new version and say that `version-sync` ran.
 - Before `promote` and `release`, state in one line what is about to happen
