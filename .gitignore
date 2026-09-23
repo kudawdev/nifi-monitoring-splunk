@@ -14,5 +14,6 @@ output/
 # the TA authors its own for ucc-gen. CI regenerates both on a fresh checkout.
 .config/
 /*.tar.gz
+dist/
 /*-appinspect.json
 /nifi_monitoring/app.manifest

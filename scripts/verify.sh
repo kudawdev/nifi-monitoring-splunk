@@ -1,82 +1,83 @@
 #!/usr/bin/env bash
-# `make verify` for the app-splunk profile: is what we are about to release
-# actually there, and is it the right thing?
+# kudaw-delivery: v1.8.0
+# Confirm the artifacts for this version exist and are what they claim to be — every app
+# the repo ships, since a release attaches them together.
 #
-# For a library this asks a registry. Here the deliverable is local until the
-# release attaches it, so verification is about the packages themselves --
-# they exist, they carry the version the manifest claims, and the add-on
-# inside is the generated one rather than the tree. That last check is the
-# reason this exists: packaging nifi_TA_monitoring/ straight from the tree
-# produces an add-on with no app.conf and no UI, and slim does not complain.
+# In the libreria profile, verify asks the registry. A Splunk app has no intermediate
+# registry: what verify checks is that the .tar.gz was built, that the version INSIDE the
+# package matches the manifest, and that the AppInspect gate came out green. That is what
+# plays the part of staging — the rule that only verified code reaches main.
 #
-#   ARGS=--no-registry   skip the GitHub Release lookup
+# Post-release it also confirms the GitHub Release carries the .tar.gz.
 set -euo pipefail
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO="$(dirname "$HERE")"
-cd "$REPO"
+NEEDS_MANIFEST=1
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/_config.sh"
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/_app.sh"
+cd "$PROJECT_ROOT"
 
-NO_REGISTRY=0
-[[ "${1:-}" == "--no-registry" ]] && NO_REGISTRY=1
-
-VERSION="$(bash "$HERE/version.sh" get)"
+VERSION="$(read_version)"
 failures=0
-note() { printf '  %s %s\n' "$1" "$2"; }
+ok()  { printf '  \xe2\x9c\x93 %s\n' "$1"; }
+bad() { printf '  \xe2\x9c\x97 %s\n' "$1"; failures=$((failures + 1)); }
 
-echo "Verify $VERSION"
-echo
+printf 'verify — %s v%s\n' "$PRODUCT_LABEL" "$VERSION"
 
-for app in nifi_monitoring nifi_TA_monitoring; do
-    tarball="$app-$VERSION.tar.gz"
-    if [[ ! -f "$tarball" ]]; then
-        note "✗" "$tarball is missing — run \`make publish\`"
-        failures=$((failures + 1))
+for i in "${!APP_NAMES[@]}"; do
+    name="${APP_NAMES[$i]}" budget="${APP_BUDGETS[$i]}"
+    TARBALL="$(artifact_path "$name" "$VERSION")"
+    REPORT="$(appinspect_file "$name")"
+    echo
+    echo "$name:"
+
+    if [[ ! -f "$TARBALL" ]]; then
+        bad "missing $TARBALL — run: make package DRY_RUN=0"
         continue
     fi
-    declared="$(tar -xzOf "$tarball" "$app/default/app.conf" 2>/dev/null \
-                | grep -m1 '^version' | tr -d ' \r' | cut -d= -f2)"
-    if [[ "$declared" == "$VERSION" ]]; then
-        note "✓" "$tarball declares $declared"
+    ok "artifact present: $TARBALL"
+
+    # The version of the PACKAGED manifest, not the tree's: an old tarball under a new
+    # name passes any check that only looks at the filename. Every stanza has to agree,
+    # too — that is the failure `bump` exists to prevent, and it belongs in the gate. For
+    # a generated add-on this is also what proves PRE_PACKAGE saw the bumped version.
+    INNER="$(tar -xzOf "$TARBALL" "$name/default/app.conf" 2>/dev/null \
+             | grep -E '^[[:space:]]*version[[:space:]]*=' \
+             | awk -F= '{gsub(/[[:space:]\r]/,"");print $2}' | sort -u | tr '\n' ' ' | sed 's/ $//')"
+    if [[ "$INNER" == "$VERSION" ]]; then
+        ok "packaged app.conf: $INNER (every stanza agrees)"
     else
-        note "✗" "$tarball declares '$declared', expected $VERSION"
-        failures=$((failures + 1))
+        bad "packaged app.conf says '${INNER:-nothing}', the manifest says '$VERSION'"
+    fi
+
+    if [[ -f "$REPORT" ]]; then
+        read -r E F W <<<"$(jq -r '.summary | "\(.error) \(.failure) \(.warning)"' "$REPORT")"
+        if (( E == 0 && F == 0 && W <= budget )); then
+            ok "AppInspect: error=$E failure=$F warning=$W (budget $budget)"
+        else
+            bad "AppInspect outside budget: error=$E failure=$F warning=$W (budget $budget)"
+        fi
+    else
+        bad "missing $REPORT — the artifact never went through the gate"
     fi
 done
 
-# The add-on is generated. These three exist only after ucc-gen has run, so
-# their absence means the tree was packaged instead of output/.
-echo
-echo "The add-on is the generated one:"
-tarball="nifi_TA_monitoring-$VERSION.tar.gz"
-if [[ -f "$tarball" ]]; then
-    # Listed once into a variable rather than piped per member: `grep -q` exits
-    # on the first match, tar takes SIGPIPE, and under `set -o pipefail` the
-    # pipeline then reports failure for a member that is present. This script
-    # said the add-on had been packaged from the tree when it had not.
-    members="$(tar -tzf "$tarball")"
-    for member in default/restmap.conf README/inputs.conf.spec appserver/static/openapi.json; do
-        if grep -q "nifi_TA_monitoring/$member" <<< "$members"; then
-            note "✓" "$member"
+if command -v gh >/dev/null 2>&1 && gh release view "v${VERSION}" >/dev/null 2>&1; then
+    echo
+    attached="$(gh release view "v${VERSION}" --json assets -q '.assets[].name' 2>/dev/null || true)"
+    for name in "${APP_NAMES[@]}"; do
+        if grep -qxF "${name}-${VERSION}.tar.gz" <<< "$attached"; then
+            ok "GitHub Release v$VERSION carries ${name}-${VERSION}.tar.gz"
         else
-            note "✗" "$member is missing — the tree was packaged, not output/"
-            failures=$((failures + 1))
+            bad "GitHub Release v$VERSION exists without ${name}-${VERSION}.tar.gz attached"
         fi
     done
 fi
 
-if (( ! NO_REGISTRY )) && command -v gh >/dev/null 2>&1; then
-    echo
-    echo "Release:"
-    if gh release view "$VERSION" >/dev/null 2>&1; then
-        note "✓" "$VERSION is published"
-    else
-        note "·" "$VERSION is not released yet (expected before \`make release\`)"
-    fi
-fi
-
 echo
 if (( failures )); then
-    echo "$failures problem(s)."
+    echo "$failures problem(s). Do not promote until they are resolved."
     exit 1
 fi
-echo "OK — the packages are what they claim to be."
+echo "OK — the v$VERSION artifacts are publishable."

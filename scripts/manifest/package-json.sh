@@ -1,4 +1,4 @@
-# kudaw-delivery: v1.3.0
+# kudaw-delivery: v1.8.0
 # Manifest flavour: package.json .version — Node / bun projects.
 #
 # A flavour defines exactly two functions over $MANIFEST. Everything else in the facade

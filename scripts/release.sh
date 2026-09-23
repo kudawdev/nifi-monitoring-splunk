@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kudaw-delivery: v1.3.0
+# kudaw-delivery: v1.8.0
 # Tag a released version and publish its GitHub Release.
 #
 # Usage:

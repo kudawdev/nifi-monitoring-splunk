@@ -1,80 +1,65 @@
 #!/usr/bin/env bash
-# Version / release / artifact drift, for `make status`. Informational: it
-# reports and exits 0, even when everything disagrees. Deciding whether a drift
-# matters is the caller's job, and the delivery skill's.
+# kudaw-delivery: v1.8.0
+# Drift report for a Splunk app — informational, never blocks.
 #
-# This one is the repo's, not sealed: the contract cannot know what "published"
-# means for a given profile. Here the artifact is a GitHub Release with both
-# .tar.gz attached, so that is what it looks for.
+# Three coordinates that should agree and drift apart quietly:
+#   manifest   what <app>/default/app.conf says, across every stanza
+#   artifact   the .tar.gz built into dist/, one per app the repo ships
+#   release    the last published tag, and whether this version's release carries the file
 #
-#   ARGS=--no-registry   skip everything that needs the network
-set -uo pipefail
+# `--no-registry` skips the GitHub calls, so it runs offline.
+set -euo pipefail
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO="$(dirname "$HERE")"
-cd "$REPO"
+NEEDS_MANIFEST=1
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/_config.sh"
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/_app.sh"
+cd "$PROJECT_ROOT"
 
 NO_REGISTRY=0
 [[ "${1:-}" == "--no-registry" ]] && NO_REGISTRY=1
 
-VERSION="$(bash "$HERE/version.sh" get)"
-BASELINE="$(bash "$HERE/version.sh" baseline 2>/dev/null || echo "-")"
+VERSION="$(read_version)"
 
-say() { printf '  %-22s %s\n' "$1" "$2"; }
+printf 'Version status — %s\n\n' "$PRODUCT_LABEL"
+printf '  manifest    %s  (%s)\n' "$VERSION" "$MANIFEST"
 
-echo "Status — NiFi Monitoring for Splunk"
-echo
-say "local version" "$VERSION"
-say "last release" "$BASELINE"
-
-# The two apps ship on the same version and main.yml fails the build when they
-# do not, so a drift here is worth seeing before anything else.
-ta_version="$(python3 -c "import json;print(json.load(open('nifi_TA_monitoring/globalConfig.json'))['meta']['version'])" 2>/dev/null || echo "?")"
-manifest_version="$(python3 -c "import json;print(json.load(open('nifi_TA_monitoring/package/app.manifest'))['info']['id']['version'])" 2>/dev/null || echo "?")"
-if [[ "$ta_version" == "$VERSION" && "$manifest_version" == "$VERSION" ]]; then
-    say "add-on derivations" "in step"
+# app.conf declares version in [id] and in [launcher]: if they diverge the app installs
+# with inconsistent metadata and no gate looks at it.
+mapfile -t declared < <(grep -E '^[[:space:]]*version[[:space:]]*=' "$MANIFEST" \
+                        | awk -F= '{gsub(/[[:space:]\r]/,"");print $2}' | sort -u)
+if (( ${#declared[@]} == 1 )); then
+    printf '  stanzas     all at %s\n' "${declared[0]}"
 else
-    say "add-on derivations" "DRIFT — globalConfig $ta_version, app.manifest $manifest_version"
-    echo "                         run \`make version-sync\`"
+    printf '  stanzas     DIVERGE: %s  <- bump with `make bump`, not by hand\n' "${declared[*]}"
 fi
 
-echo
-echo "Working tree:"
-branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')"
-dirty="$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
-say "branch" "$branch$([[ "$branch" == "main" ]] && echo '  — not a working branch')"
-say "uncommitted" "$dirty file(s)"
-if [[ "$BASELINE" != "-" ]]; then
-    say "commits since $BASELINE" "$(git rev-list --count "$BASELINE"..HEAD 2>/dev/null || echo '?')"
-fi
-
-echo
-echo "Packages:"
-for app in nifi_monitoring nifi_TA_monitoring; do
-    if [[ -f "$app-$VERSION.tar.gz" ]]; then
-        say "$app" "built ($(du -h "$app-$VERSION.tar.gz" | cut -f1))"
+for name in "${APP_NAMES[@]}"; do
+    TARBALL="$(artifact_path "$name" "$VERSION")"
+    if [[ -f "$TARBALL" ]]; then
+        printf '  artifact    %s  (%s)\n' "$TARBALL" "$(du -h "$TARBALL" | cut -f1)"
     else
-        say "$app" "not built — \`make package\`"
+        printf '  artifact    %s not built  <- `make package DRY_RUN=0`\n' "$name"
     fi
 done
 
 if (( NO_REGISTRY )); then
-    echo
-    echo "Release: skipped (--no-registry)"
+    printf '  release     (skipped: --no-registry)\n'
     exit 0
 fi
 
-echo
-echo "Release:"
 if ! command -v gh >/dev/null 2>&1; then
-    say "gh" "not installed; cannot check"
+    printf '  release     (gh not installed)\n'
     exit 0
 fi
-if gh release view "$VERSION" >/dev/null 2>&1; then
-    assets="$(gh release view "$VERSION" --json assets \
-              --jq '[.assets[].name] | join(", ")' 2>/dev/null)"
-    say "$VERSION" "published"
-    say "assets" "${assets:-none attached}"
+
+LATEST="$(gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || true)"
+printf '  release     %s\n' "${LATEST:-none}"
+
+if gh release view "v${VERSION}" >/dev/null 2>&1; then
+    ASSETS="$(gh release view "v${VERSION}" --json assets -q '.assets[].name' 2>/dev/null | paste -sd' ' - || true)"
+    printf '  v%s        published, attached: %s\n' "$VERSION" "${ASSETS:-NONE — RELEASE_ASSETS not set?}"
 else
-    say "$VERSION" "not released yet"
+    printf '  v%s        unpublished\n' "$VERSION"
 fi

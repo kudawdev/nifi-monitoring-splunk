@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kudaw-delivery: v1.3.0
+# kudaw-delivery: v1.8.0
 # Everything that touches the project's version number, in one place.
 #
 # Usage:
@@ -15,7 +15,9 @@
 #                                                relative to the repo root
 #
 # `bump` and `set` only write the manifest — they never commit. The commit (and
-# the decision of which level to apply) belongs to the caller.
+# the decision of which level to apply) belongs to the caller. When delivery.conf declares
+# POST_BUMP, they run it right after the write, so a repo whose version also lives in
+# derived files (a UCC add-on: globalConfig.json, app.manifest) leaves the tree consistent.
 #
 # PARAMETERISATION POINT: none. What this repo contributes lives in `delivery.conf`
 # and in scripts/manifest/<flavour>.sh. This file is identical in every repo.
@@ -26,6 +28,10 @@ set -euo pipefail
 NEEDS_MANIFEST=1
 # shellcheck source=/dev/null
 source "$(dirname "${BASH_SOURCE[0]}")/_config.sh"
+
+# Below this share of Conventional Commits in the range, `suggest` warns that its level
+# is a guess. Half is where most of the range is no longer speaking for itself.
+SUGGEST_MIN_COVERAGE=50
 
 # read_version / write_version come from the manifest flavour. The verification is here
 # and not in the flavour: a flavour that forgot to re-read would report success on a
@@ -38,6 +44,48 @@ set_version() {
         echo "Error: wrote '$new' but manifest now reads '$check'" >&2
         return 1
     fi
+    run_post_bump "$new"
+}
+
+# The version's source of truth is one file, but it is not always the only file that
+# carries it: ucc-gen derives globalConfig.json and app.manifest from app.conf, and a
+# generator can only re-derive them once the source has moved. PACKAGES is not the answer —
+# it versions packages independently, and there the copies MUST match. So the repo names
+# the command that re-derives them and the write runs it: without it, `bump` alone leaves
+# the tree inconsistent until someone remembers the second step, which is the step that
+# gets forgotten.
+#
+# It runs from the repo root with NEW_VERSION (and PKG, in a monorepo) in the environment.
+# A failure fails the write, loudly: the manifest has moved and the derived files have not.
+#
+# What it re-derived has to travel in the version's commit, and that commit is made later,
+# by `changelog`, which otherwise commits only the manifest and the CHANGELOG. So the files
+# POST_BUMP changed are recorded — compared against the tree right before it ran, so a
+# file that was already dirty is never swept in — and `changelog` reads the record.
+run_post_bump() {
+    local new="$1"
+    [[ -z "${POST_BUMP:-}" ]] && return 0
+    local before after record
+    before="$(git -C "$PROJECT_ROOT" status --porcelain --untracked-files=no | cut -c4- | sort)"
+    echo "POST_BUMP: $POST_BUMP" >&2
+    if ! (cd "$PROJECT_ROOT" && NEW_VERSION="$new" bash -c "$POST_BUMP") >&2; then
+        echo "Error: POST_BUMP failed. $MANIFEST_REL already reads $new, but whatever" >&2
+        echo "       POST_BUMP derives from it does not: the tree is inconsistent." >&2
+        return 1
+    fi
+    after="$(git -C "$PROJECT_ROOT" status --porcelain --untracked-files=no | cut -c4- | sort)"
+    record="$(post_bump_record)"
+    # `|| true` on the grep: a POST_BUMP that changed nothing (a package with no derived
+    # copy) leaves it no lines, and grep's 1 under pipefail would abort the bump halfway.
+    { comm -13 <(echo "$before") <(echo "$after"); cat "$record" 2>/dev/null || true; } \
+        | { grep -vxF "$MANIFEST_REL" || true; } | sed '/^$/d' | sort -u > "$record.tmp"
+    if [[ -s "$record.tmp" ]]; then
+        mv -f "$record.tmp" "$record"
+        sed 's/^/  re-derived: /' "$record" >&2
+    else
+        rm -f "$record.tmp" "$record"
+    fi
+    return 0
 }
 
 # --- generic ------------------------------------------------------------------
@@ -97,7 +145,7 @@ cmd_suggest() {
     tag="$(last_release_tag)"
     if [[ -n "$tag" ]]; then range="${tag}..HEAD"; else range="HEAD"; fi
 
-    local n_breaking=0 n_feat=0 n_fix=0 n_other=0
+    local n_breaking=0 n_feat=0 n_fix=0 n_other=0 n_unconventional=0
     local -a driving=()
 
     local sha subject body
@@ -114,10 +162,24 @@ cmd_suggest() {
             n_fix=$((n_fix + 1))
         else
             n_other=$((n_other + 1))
+            # `chore:` and `docs:` are classified — they classify as "not shippable". A
+            # subject with no type at all is not: nothing was said about it.
+            [[ "$subject" =~ ^[a-zA-Z]+(\([^\)]*\))?!?: ]] \
+                || n_unconventional=$((n_unconventional + 1))
         fi
     done < <(git -C "$PROJECT_ROOT" log --no-merges --format=%H "$range" 2>/dev/null || true)
 
     local total=$((n_breaking + n_feat + n_fix + n_other))
+
+    # The suggestion is only as good as the prefixes it reads. A repo that does not write
+    # Conventional Commits gets `patch` for a major, with nothing to say it was guessed —
+    # a silent, plausible failure. So the coverage is part of the answer, and below the
+    # threshold it comes with a warning. On stderr under --level-only, so a caller parsing
+    # the level still reads one word.
+    local classified=$((total - n_unconventional)) coverage=100 low_coverage=0
+    (( total > 0 )) && coverage=$((classified * 100 / total))
+    (( total > 0 && coverage < SUGGEST_MIN_COVERAGE )) && low_coverage=1
+    local warning="only ${coverage}% of the commits ($classified/$total) follow Conventional Commits; the level was not derived from the rest. Read the range before trusting it."
 
     # Pre-1.0 rule: while the public API is unstable (0.y.z), SemVer does not
     # force a breaking change to 1.0.0 — convention is to ship it as a minor.
@@ -136,6 +198,7 @@ cmd_suggest() {
     fi
 
     if (( level_only )); then
+        (( low_coverage )) && echo "Warning: $warning" >&2
         printf '%s\n' "$level"
         return 0
     fi
@@ -143,11 +206,15 @@ cmd_suggest() {
     echo "Current version:  $current$( ((pre_1_0)) && echo '  (pre-1.0)')"
     echo "Baseline:         ${tag:-<no release found>}"
     echo "Commits:          $total  (breaking: $n_breaking, feat: $n_feat, fix/perf: $n_fix, other: $n_other)"
+    echo "Classified:       $classified/$total  (${coverage}% Conventional Commits)"
     if [[ "$level" == "none" ]]; then
         echo "Suggested level:  none — nothing shippable since $tag"
         return 0
     fi
     echo "Suggested level:  $level  ->  $current -> $(compute_next "$current" "$level")"
+    if (( low_coverage )); then
+        echo "Warning:          $warning"
+    fi
     if (( n_breaking > 0 && pre_1_0 )); then
         echo "Note:             breaking changes present, but pre-1.0 ships them as a minor."
         echo "                  'major' (-> 1.0.0) is never suggested automatically."

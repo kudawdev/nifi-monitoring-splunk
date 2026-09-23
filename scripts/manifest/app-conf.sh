@@ -1,4 +1,4 @@
-# kudaw-delivery: v1.3.0
+# kudaw-delivery: v1.8.0
 # Manifest flavour: default/app.conf version — Splunk apps and TAs.
 #
 # A flavour defines exactly two functions over $MANIFEST. Everything else in the facade
@@ -17,13 +17,12 @@ read_version() {
 
 write_version() {
     local new="$1"
-    # Un app.conf declara version en MAS DE UNA stanza — [id] y [launcher] como
-    # minimo — y Splunk las quiere iguales: bumpear solo la primera deja la app
-    # con metadatos inconsistentes y nada avisa. De ahi que se reemplacen todas.
+    # An app.conf declares version in MORE THAN ONE stanza — [id] and [launcher] at the
+    # least — and Splunk wants them equal: bumping only the first leaves the app with
+    # inconsistent metadata and nothing says so. Hence every occurrence.
     #
-    # El (\r?)$ final preserva el terminador de linea. Un app.conf escrito desde
-    # Windows viene con CRLF, y normalizar a LF solo la linea que se toca deja el
-    # archivo mixto: ruido en el diff, y un grep del CI que esperaba \r deja de
-    # encontrarlo.
+    # The trailing (\r?)$ preserves the line terminator. An app.conf written from Windows
+    # is CRLF, and normalising just the touched line to LF leaves the file mixed: noise in
+    # the diff, and a CI grep that expected \r stops matching.
     sed -i -E "s|^([[:space:]]*version[[:space:]]*=[[:space:]]*)[^\r]*(\r?)$|\\1${new}\\2|" "$MANIFEST"
 }

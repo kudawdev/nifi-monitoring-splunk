@@ -16,7 +16,7 @@
 
 include delivery.mk
 
-DELIVERY_TASKS_HINT := make build / package / validate; the harness is tests/run.sh
+DELIVERY_TASKS_HINT := make build / validate; the harness is tests/run.sh
 
 SHELL := /bin/bash
 REPO  := $(shell pwd)
@@ -33,7 +33,7 @@ IMAGE := kudaw/appinspect:latest
 DOCKER := docker run --rm -u "$(shell id -u):$(shell id -g)" -e HOME=/w \
           -v "$(REPO):/w" -w /w $(IMAGE)
 
-.PHONY: lint test security check integration build version-sync package validate clean
+.PHONY: lint test security check integration build version-sync validate clean
 
 # Which scenarios `check` runs. `pull_request` is one per NiFi major, per
 # architecture and per strategy -- enough to catch a regression in any of
@@ -69,7 +69,13 @@ check: ## Every gate, in one pass, without stopping at the first failure
 	if [ $$failed -ne 0 ]; then echo "==> check FAILED"; exit 1; fi; \
 	echo "==> check passed"
 
-## --- build and package ------------------------------------------------
+## --- build and validate -----------------------------------------------
+#
+# `package`, the artifact slot, comes from the facade: it runs `build` through
+# PRE_PACKAGE, packages both apps into dist/ from a clean tree and puts each
+# through the gate (delivery.conf). `validate` is the same gate for `check`,
+# on the working tree and without the clean-tree rule, so the edit loop is
+# gated too; its packages stay at the root and never reach a release.
 
 build: ## Generate the TA into output/ (the app needs no generation)
 	@./tests/build-ta.sh
@@ -77,13 +83,9 @@ build: ## Generate the TA into output/ (the app needs no generation)
 version-sync: ## Rewrite the TA's globalConfig and manifest from app.conf
 	@python3 $(TA)/gen_globalconfig.py
 
-package: build ## The two .tar.gz a release attaches
+validate: build ## Package both apps and run slim validate + AppInspect precert, with CI's gate
 	@echo "==> packaging $$(./scripts/version.sh get)"
 	@$(DOCKER) sh -c 'slim package $(APP) && slim package output/$(TA)'
-	@ls -l $(APP)-$$(./scripts/version.sh get).tar.gz \
-	       $(TA)-$$(./scripts/version.sh get).tar.gz
-
-validate: package ## slim validate + AppInspect precert, with CI's gate
 	@v=$$(./scripts/version.sh get); \
 	for app in $(APP) $(TA); do \
 	  echo "==> $$app"; \
@@ -98,5 +100,5 @@ sys.exit(1) if s['error'] or s['failure'] or s['warning'] > $(MAX_WARNING) else 
 	@echo "==> both apps pass the gate"
 
 clean: ## Remove output/, the packages and what slim leaves behind
-	@rm -rf output *.tar.gz *-appinspect.json .config $(APP)/app.manifest
+	@rm -rf output dist *.tar.gz *-appinspect.json .config $(APP)/app.manifest
 	@echo "==> cleaned"

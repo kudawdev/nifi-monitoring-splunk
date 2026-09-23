@@ -46,8 +46,9 @@ make              # every target, grouped
 make check        # lint + unit tests + AppInspect + the integration scenarios
 make integration  # the scenarios alone. PROFILES=release for all ten
 make build        # ucc-gen into output/ (the TA only; the app needs no build)
-make package      # the two .tar.gz a release attaches
-make validate     # slim validate + AppInspect precert, with CI's gate
+make package      # the two release .tar.gz, into dist/: build + gate, clean tree. DRY_RUN=0 to build
+make package DEV=1  # the same two, marked -dev inside, to install and try
+make validate     # package + slim validate + AppInspect precert on the working tree, with CI's gate
 make clean
 ```
 
@@ -56,10 +57,11 @@ is driven through the repo's own `/cicd` skill, which carries the sequence and
 what to confirm. `make contract-check` and `make self-test` verify the facade.
 
 **The version has one source and three derivations.** `make bump` writes
-`nifi_monitoring/default/app.conf` and stops; the TA's `globalConfig.json` and
+`nifi_monitoring/default/app.conf`, and the TA's `globalConfig.json` and
 `package/app.manifest` are rewritten from it by **`make version-sync`**, since
-the TA has no `app.conf` in the tree. Between the two the tree is inconsistent
-and a unit test says so, which is the point. Never edit a version by hand.
+the TA has no `app.conf` in the tree. `bump` runs the sync itself (`POST_BUMP`
+in `delivery.conf`); if it fails, the bump fails and says the tree is
+inconsistent, and a unit test says so too. Never edit a version by hand.
 
 This repository does **not** use Conventional Commits, so `make suggest-level`
 and the changelog generator classify almost everything as `patch` and "Other".

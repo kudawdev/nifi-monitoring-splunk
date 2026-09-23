@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kudaw-delivery: v1.3.0
+# kudaw-delivery: v1.8.0
 # The CHANGELOG.md: the versioned history of releases, and the source the GitHub Release
 # notes are published from.
 #
@@ -156,21 +156,32 @@ HEAD
     commit_entry "$version"
 }
 
-# Manifest + CHANGELOG in one commit. Scoped to those two paths with `git commit -- ...`,
-# so a caller who happens to have other work staged does not ship it by accident.
+# Manifest + CHANGELOG in one commit. Scoped to those paths with `git commit -- ...`, so a
+# caller who happens to have other work staged does not ship it by accident. Plus whatever
+# POST_BUMP re-derived from the manifest, which `bump` recorded: a derived copy of the
+# version left out of this commit is the inconsistency POST_BUMP exists to prevent.
 commit_entry() {
     local version="$1" scope="" msg
     [[ -n "$PKG_NAME" ]] && scope="($PKG_NAME)"
     msg="chore${scope}: bump version to ${version} + changelog"
 
     local -a paths=("$MANIFEST_REL" "${CHANGELOG#"$PROJECT_ROOT/"}")
+    local record derived
+    record="$(post_bump_record)"
+    if [[ -s "$record" ]]; then
+        while IFS= read -r derived; do
+            [[ -n "$(git status --porcelain -- "$derived")" ]] && paths+=("$derived")
+        done < "$record"
+    fi
     if [[ -z "$(git status --porcelain -- "${paths[@]}")" ]]; then
         echo "Nothing to commit: the manifest and the CHANGELOG are already committed."
         return 0
     fi
     git add -- "${paths[@]}"
     git commit -q -m "$msg" -- "${paths[@]}"
+    rm -f "$record"
     echo "Committed: $msg"
+    (( ${#paths[@]} > 2 )) && printf '  with what POST_BUMP re-derived: %s\n' "${paths[*]:2}"
     echo "Not pushed — the push belongs to the promotion."
 }
 

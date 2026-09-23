@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kudaw-delivery: v1.3.0
+# kudaw-delivery: v1.8.0
 # Level 2 of the contract's validation: do the deterministic targets do what they say?
 #
 # Usage:
@@ -41,6 +41,11 @@ if [[ -n "$(git status --porcelain "$MANIFEST_REL")" ]]; then
     exit 2
 fi
 
+# With POST_BUMP the round trip also writes the files derived from the manifest, so the
+# promise widens from "the manifest is back" to "the tree is back". Snapshotted up front:
+# a tree that was dirty before is compared to itself, not to clean.
+tree_before="$(git status --porcelain)"
+
 echo "Version:"
 before="$(bash scripts/version.sh get)"
 if [[ "$before" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -63,6 +68,17 @@ if [[ -z "$(git status --porcelain "$MANIFEST_REL")" ]]; then
 else
     bad "the round trip left $MANIFEST_REL modified — the writer is not reversible"
     git --no-pager diff -- "$MANIFEST_REL" >&2
+fi
+
+if [[ -n "${POST_BUMP:-}" ]]; then
+    # The round trip recorded what POST_BUMP touched, for a `changelog` that is not coming.
+    rm -f "$(post_bump_record)"
+    if [[ "$(git status --porcelain)" == "$tree_before" ]]; then
+        ok "POST_BUMP ran both ways and left the tree as it found it"
+    else
+        bad "POST_BUMP did not restore what it derives — the round trip left changes:"
+        diff <(echo "$tree_before") <(git status --porcelain) >&2 || true
+    fi
 fi
 
 [[ "$(bash scripts/version.sh manifest)" == "$MANIFEST_REL" ]] \

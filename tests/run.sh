@@ -133,7 +133,7 @@ if [ "$BARE" -eq 1 ]; then
 
     The packages to install by hand:
 
-      make package        (from the repo root)
+      make package DEV=1  (from the repo root; the two .tar.gz land in dist/)
 
     The app also needs the two Splunkbase visualisations it depends on; they
     are in tests/additional_apps/. The push path additionally needs the flow

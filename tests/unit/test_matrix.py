@@ -156,10 +156,10 @@ class ExecutableBitTest(unittest.TestCase):
         "../scripts/manifest/app-conf.sh",
         "../scripts/manifest/package-json.sh",
         "../scripts/manifest/pyproject-toml.sh",
-        # This repo's own, the artifact slot of the app-splunk profile plus
-        # the status report, which delivery.mk delegates to the repo too.
+        # The app-splunk profile's own, sealed since facade v1.8.0 learnt to
+        # ship two apps (APP_DIRS in delivery.conf).
         "../scripts/version-status.sh",
-        "../scripts/publish.sh",
+        "../scripts/package.sh",
         "../scripts/verify.sh",
         "integration-matrix.sh",
     ]
@@ -536,6 +536,12 @@ class WorkflowMatrixTest(unittest.TestCase):
                 self.assertEqual(
                     str(self.workflow(name)["env"]["MAX_WARNING"]),
                     local.group(1))
+        # `make package` gates the release artifacts with delivery.conf's value,
+        # so it is the third copy of the same number.
+        conf = open(os.path.join(REPO, "delivery.conf")).read()
+        facade = re.search(r'^APPINSPECT_MAX_WARNING="(\d+)"', conf, re.M)
+        self.assertIsNotNone(facade, "delivery.conf declares no APPINSPECT_MAX_WARNING")
+        self.assertEqual(facade.group(1), local.group(1))
 
     def test_the_makefile_packages_what_the_workflow_packages(self):
         """The TA ships from output/ and the app from the tree. Packaging the
@@ -545,6 +551,16 @@ class WorkflowMatrixTest(unittest.TestCase):
         self.assertIn("slim package output/$(TA)", makefile)
         self.assertIn("slim package $(APP)", makefile)
         self.assertNotIn("slim package $(TA)", makefile)
+
+    def test_the_facade_packages_what_the_workflow_packages(self):
+        """The same rule for `make package`, which reads it from delivery.conf,
+        and PRE_PACKAGE is what makes output/ exist and be current."""
+        conf = open(os.path.join(REPO, "delivery.conf")).read()
+        dirs = re.search(r'^APP_DIRS="([^"]*)"', conf, re.M)
+        self.assertIsNotNone(dirs, "delivery.conf declares no APP_DIRS")
+        paths = [e.split(":")[0] for e in dirs.group(1).split()]
+        self.assertEqual(paths, ["nifi_monitoring", "output/nifi_TA_monitoring"])
+        self.assertRegex(conf, re.compile(r'^PRE_PACKAGE="make [^"]*build"', re.M))
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-# kudaw-delivery: v1.3.0
+# kudaw-delivery: v1.8.0
 #
 # The delivery process, identical in every Kudaw repo. Included by the repo's Makefile,
 # which adds only what genuinely varies: the quality-gate stages of its stack.
@@ -46,10 +46,24 @@ endef
 
 ## General
 .PHONY: help
+# awk reads the makefile as TEXT, so without DELIVERY_HIDE it prints both branches of the
+# profile conditional and offers targets this repo does not define. Someone reads the help,
+# runs `make image` and gets "No rule to make target" — worse than never listing it. The
+# section header is held back until a target under it survives the filter, so a section
+# that belongs entirely to the other profile does not print an empty heading.
+DELIVERY_SLOT_ALL := package publish verify promote-main image-registry image-status image promote-staging promote-prod
+# Deferred (=, not :=): DELIVERY_SLOT is set inside the profile conditional further down,
+# so an immediate expansion here would see it empty and hide every slot target.
+DELIVERY_HIDE = $(filter-out $(DELIVERY_SLOT),$(DELIVERY_SLOT_ALL))
+
 help: ## Show this help
-	@awk 'BEGIN {FS = ":.*## "; print "Delivery targets (day-to-day work: $(DELIVERY_TASKS_HINT))\n"} \
-		/^## /                 { printf "\n\033[1m%s\033[0m\n", substr($$0, 4); next } \
-		/^[a-z][a-z0-9-]*:.*## / { printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2 }' \
+	@DELIVERY_HIDE='$(DELIVERY_HIDE)' awk 'BEGIN {FS = ":.*## "; \
+			split(ENVIRON["DELIVERY_HIDE"], h, " "); for (i in h) hide[h[i]] = 1; \
+			print "Delivery targets (day-to-day work: $(DELIVERY_TASKS_HINT))\n"} \
+		/^## /                 { section = substr($$0, 4); pending = 1; next } \
+		/^[a-z][a-z0-9-]*:.*## / { if ($$1 in hide) next; \
+			if (pending) { printf "\n\033[1m%s\033[0m\n", section; pending = 0 } \
+			printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2 }' \
 		$(MAKEFILE_LIST)
 
 ## Status
@@ -93,15 +107,30 @@ changelog: ## Write the CHANGELOG entry. VERSION=x.y.z (default: current), TITLE
 #
 # A Splunk app takes the three-step shape, not the image one: what it ships is a packaged
 # `.tar.gz` attached to a GitHub Release, it has no registry to push to and no staging
-# environment to deploy to. What plays the part of staging is `verify` — the release has to
-# be there before main advances — so it promotes develop -> main like a library does.
+# environment to deploy to. What plays the part of staging is `verify` — the artifact has
+# to be built and green before main advances — so it promotes develop -> main like a
+# library does.
 #
 # Both delegate to a script of the repo, the way `status` delegates to version-status.sh:
 # WHAT the artifact is, and where it goes, is the one thing the contract cannot generalise.
 ifneq ($(filter $(DELIVERY_PROFILE),libreria app-splunk),)
-.PHONY: publish verify promote-main
+.PHONY: verify promote-main
+
+# The slot's verb is the profile's own. A library PUBLISHES — `publish` uploads to the
+# registry. A Splunk app PACKAGES — nothing is uploaded until `release` attaches the
+# .tar.gz — so calling it `publish` would mean the same command uploads there and only
+# builds here, which is the divergence the canonical names exist to prevent.
+ifeq ($(DELIVERY_PROFILE),app-splunk)
+DELIVERY_SLOT := package verify promote-main
+.PHONY: package
+package: ## Build the artifact. DRY_RUN=0 for the release one, DEV=1 for one to try
+	@bash $(DELIVERY_ROOT)/scripts/package.sh $(if $(DEV),--dev,$(if $(filter 0,$(DRY_RUN)),,--dry-run))
+else
+DELIVERY_SLOT := publish verify promote-main
+.PHONY: publish
 publish: ## Preview the package. DRY_RUN=0 to actually publish. PKG= selects one
 	@bash $(DELIVERY_ROOT)/scripts/publish.sh $(if $(filter 0,$(DRY_RUN)),,--dry-run)
+endif
 
 verify: ## Confirm the published version is visible in the registry
 	@bash $(DELIVERY_ROOT)/scripts/verify.sh $(ARGS)
@@ -109,6 +138,7 @@ verify: ## Confirm the published version is visible in the registry
 promote-main: ## Merge develop -> main and push. Run it after verify is green
 	@bash $(DELIVERY_SCRIPTS)/promote.sh main
 else
+DELIVERY_SLOT := image-registry image-status image promote-staging promote-prod
 .PHONY: image-status image image-registry
 image-registry: ## Print the registry host the image is published to
 	@bash -c 'source $(DELIVERY_ROOT)/delivery.conf; echo "$$REGISTRY"'
@@ -121,18 +151,22 @@ image-status: ## Local version, local build state and registry state of the tag
 # spelled out in a workflow, is how CI and the terminal drift apart.
 image: ## Build + publish the versioned image to ACR. FORCE=1 to replace a published tag
 	@bash $(DELIVERY_ROOT)/scripts/docker-image.sh full $(if $(FORCE),--force,) $(if $(SUFFIX),--suffix=$(SUFFIX),)
-endif
 
-## Release
-.PHONY: release-notes promote-staging promote-prod release
-release-notes: ## Categorised notes to stdout. VERSION=x.y.z (default: current)
-	@bash $(DELIVERY_SCRIPTS)/release-notes.sh $(or $(VERSION),$(delivery_version))
-
+# Promoting through an environment branch belongs to the profile that HAS one. A library
+# and a Splunk app go develop -> main, so offering them `promote-staging` offers a target
+# that merges into a `testing` branch their repo never created.
+.PHONY: promote-staging promote-prod
 promote-staging: ## Merge develop -> testing and push (triggers the staging deploy)
 	@bash $(DELIVERY_SCRIPTS)/promote.sh staging
 
 promote-prod: ## Merge testing -> main and push (triggers the production deploy)
 	@bash $(DELIVERY_SCRIPTS)/promote.sh prod
+endif
+
+## Release
+.PHONY: release-notes release
+release-notes: ## Categorised notes to stdout. VERSION=x.y.z (default: current)
+	@bash $(DELIVERY_SCRIPTS)/release-notes.sh $(or $(VERSION),$(delivery_version))
 
 release: ## Annotated tag on origin/main + GitHub Release. VERSION=x.y.z (default: current)
 	@bash $(DELIVERY_SCRIPTS)/release.sh $(or $(VERSION),$(delivery_version))

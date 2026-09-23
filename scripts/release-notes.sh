@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kudaw-delivery: v1.3.0
+# kudaw-delivery: v1.8.0
 # Build categorised release notes from the Conventional Commits in a range.
 #
 # Usage:
@@ -124,6 +124,17 @@ if (( ${#MAINT[@]} > 0 )); then
 fi
 
 section '📦 Other' "${OTHER[@]}"
+
+# Every commit that did not parse as Conventional Commits lands in Other, so a repo that
+# does not use them gets its whole range there — sixty subjects are not release notes, and
+# the output looks finished. Said on stderr: stdout is the release body, and a warning
+# inside it would be published.
+n_total=$(( ${#BREAKING[@]} + ${#FEATURES[@]} + ${#SECURITY[@]} + ${#FIXES[@]} + ${#PERF[@]} \
+          + ${#REFACTOR[@]} + ${#DOCS[@]} + ${#MAINT[@]} + ${#OTHER[@]} ))
+if (( n_total > 0 && ${#OTHER[@]} * 2 > n_total )); then
+    echo "Warning: ${#OTHER[@]} of $n_total commits are not Conventional Commits and went to" >&2
+    echo "         '📦 Other' verbatim. Edit these notes by hand before they are published." >&2
+fi
 
 if [[ -n "$PREV" ]]; then
     SLUG="$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || true)"

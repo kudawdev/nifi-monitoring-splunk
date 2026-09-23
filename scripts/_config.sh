@@ -1,4 +1,4 @@
-# kudaw-delivery: v1.3.0
+# kudaw-delivery: v1.8.0
 # Shared bootstrap for the delivery scripts: locate the repo, load `delivery.conf`,
 # load the manifest flavour it names.
 #
@@ -100,6 +100,10 @@ fi
 # shellcheck source=/dev/null
 source "$FLAVOUR_FILE"
 fi
+
+# Where `bump` records the files POST_BUMP re-derived, for `changelog` to commit them with
+# the manifest. Inside .git, not the tree: it is state between two commands, not content.
+post_bump_record() { printf '%s/kudaw-delivery-post-bump\n' "$(git -C "$PROJECT_ROOT" rev-parse --absolute-git-dir)"; }
 
 # The repo slug, derived rather than configured: a hardcoded slug is the value that gets
 # copied wrong the first time these scripts move to another repo.

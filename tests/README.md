@@ -91,8 +91,12 @@ setup screen or fills in the form. That is the first thing every user does.
 The packages to install are built from `output/`, not from the tree:
 
 ```
-make package          # from the repo root
+make package DEV=1    # from the repo root; the two .tar.gz land in dist/
 ```
+
+A dev build carries `-dev.<timestamp>` inside its `app.conf`, so Splunk lists
+it apart from a release, and it skips AppInspect. The release packages come
+from `make package DRY_RUN=0`, which needs a clean tree.
 
 The app also needs the two Splunkbase visualisations it depends on, which are
 in `additional_apps/`. For the push path, import the flow from

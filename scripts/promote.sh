@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kudaw-delivery: v1.3.0
+# kudaw-delivery: v1.8.0
 # Promote code between environment branches: develop -> testing -> main.
 #
 # Usage:

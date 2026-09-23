@@ -1,4 +1,4 @@
-# kudaw-delivery: v1.3.0
+# kudaw-delivery: v1.8.0
 # Manifest flavour: TOML [project].version — Python projects (uv / pyproject.toml).
 #
 # A flavour defines exactly two functions over $MANIFEST. Everything else in the facade
