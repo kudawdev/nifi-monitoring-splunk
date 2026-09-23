@@ -1,15 +1,14 @@
 # Configuring NIFI Monitoring Splunk
 
 ## Configuration
-At this stage, all the necessary steps that must be carried out by the side of our nifi instances that are to be monitored will be detailed.
 
-There are two ways of configuration that allow the sending of events to Splunk and their choice depends on the authentication mechanisms that NIFI has enabled.
+This page details the setup on the NiFi side, for the collection strategy
+you already chose in [Choosing a collection strategy](compatibility.md#choosing-a-collection-strategy).
 
-- Direct sending: This configuration will establish NIFI as the main way to send data to Splunk and should be used when NIFI does not have authentication methods enabled.
+- **[Direct Sending](#direct-sending)** configures the **push** strategy.
+- **[Configuration of Nifi Data Input in Splunk](#configuration-of-nifi-data-input-in-splunk)** configures the **pull** strategy.
 
-- Splunk Data Input NiFi: Splunk will be in charge of making requests to the NIFI instances to retrieve the information from the Monitoring API by enabling and using the Data Input NIFI. This configuration should be used when NIFI has basic authentication.
-
-[NOTE] Configure only one methodology, both running will generate duplicate information.
+Configure only one — running both duplicates every event.
 
 ## Direct Sending
 
@@ -185,7 +184,7 @@ Monitoring > Inputs** and click **Create New Input**. Splunk's generic
 or the connection test described below.
 
 **One input covers one NiFi instance** (or one cluster, pointed at any
-node — see [Compatibility](compatibility.md#cluster-and-multiple-instances)).
+node — see [Compatibility](compatibility.md#topology-standalone-multiple-instances-or-cluster)).
 Everything for that instance — which endpoints to poll, which processors and
 process groups to track, TLS, the interval — lives on the same form,
 organized into the groups described below. Create one input per NiFi

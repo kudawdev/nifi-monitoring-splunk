@@ -1,15 +1,15 @@
 # Configuración de NiFi Monitoring Splunk
 
 ## Configuración
-En esta etapa se detallarán los pasos necesarios para el correcto funcionamiento del aplicativo NiFi Monitoring Splunk
 
-Hay dos vías de configuración que permiten el envío de eventos a Splunk y su elección dependerá de los mecanismos de autenticación que NIFI tenga habilitado.
+Esta página detalla la configuración del lado de NiFi para la estrategia
+de recolección que ya elegiste en
+[Elegir una estrategia de recolección](compatibility.es.md#elegir-una-estrategia-de-recoleccion).
 
-- Envío directo: Esta configuración establecerá NIFI como la vía principal para el envío de datos a Splunk por medio de un conjunto de procesadores y debe ser utilizada cuando NIFI no tenga activado métodos de autenticación.
+- **[Envío Directo](#envio-directo)** configura la estrategia **push**.
+- **[Configuración del Data Input Nifi en Splunk](#configuracion-del-data-input-nifi-en-splunk)** configura la estrategia **pull**.
 
-- Splunk Data Input NiFi: Splunk se encargará de realizar peticiones a las instancias de NIFI para rescatar la información del Monitoring API por medio de la habilitación y uso del Data Input NIFI. Esta configuración debe ser utilizada cuando NIFI cuente con autenticación basica.
-
-[NOTA] Configura sólo una metodología, ambas en funcionamiento generarán información duplicada.
+Configura solo una — usar las dos duplica cada evento.
 
 ## Envío Directo
 
@@ -181,18 +181,18 @@ Sí toda la configuración se ejecutó de manera correcta, se iniciará el enví
 
 *Esta configuración debe ser aplicada cuando las instancias de NIFI cuenten con al menos autenticación básica.*
 
-Desde la 2.0.0 el add-on tiene su propia pantalla de configuración. Entrá a
-**Apps > NiFi TA Monitoring > Inputs** y hacé clic en **Create New Input**.
+Desde la 2.0.0 el add-on tiene su propia pantalla de configuración. Entra a
+**Apps > NiFi TA Monitoring > Inputs** y haz clic en **Create New Input**.
 La pantalla genérica de Splunk (*Settings > Data inputs > NiFi*) sigue
 funcionando y escribe el mismo `inputs.conf`, pero no ofrece el formulario
 agrupado, la validación de campos ni la prueba de conexión que se describen
 abajo.
 
 **Un input cubre una instancia de NiFi** (o un cluster, apuntado a
-cualquier nodo — ver [Compatibilidad](compatibility.es.md#cluster-y-multiples-instancias)).
+cualquier nodo — ver [Compatibilidad](compatibility.es.md#topologia-instancia-unica-multiples-instancias-o-cluster)).
 Todo lo referido a esa instancia — qué endpoints consultar, qué
 procesadores y grupos de procesos rastrear, TLS, el intervalo — vive en el
-mismo formulario, organizado en los grupos descritos abajo. Creá un input
+mismo formulario, organizado en los grupos descritos abajo. Crea un input
 por cada instancia de NiFi que quieras monitorear.
 
 Dos cosas más que conviene saber:
@@ -259,7 +259,7 @@ desplegado:
 - **Collect flow metrics** — `GET /flow/metrics/json`. Requiere NiFi 1.16
   o superior. Un NiFi inactivo emite alrededor de 60 muestras por consulta,
   y la estrategia `All components` de abajo escala eso con el tamaño del
-  flow, así que revisá el volumen antes de activarlo.
+  flow, así que revisa el volumen antes de activarlo.
 - **Registries**: nombres de registries separados por coma, ej.
   `NIFI,JVM`. Vacío los recolecta todos.
 - **Strategy**: `All process groups` o `All components`. `All components`
@@ -276,7 +276,7 @@ lista fija de *Endpoints* — ver [Endpoints personalizados](#endpoints-personal
 
 Colapsado por defecto:
 
-- **Verify the TLS certificate**: activado por defecto. Dejalo activado a
+- **Verify the TLS certificate**: activado por defecto. Déjalo activado a
   menos que NiFi use un certificado que no se pueda confiar mediante un
   bundle de CA. Desactivarlo permite que cualquiera capaz de interceptar la
   conexión lea las credenciales y el token.
@@ -292,9 +292,9 @@ Colapsado por defecto:
 - **Interval**: segundos entre consultas, `60` por defecto. Todo endpoint
   activado, incluidos los personalizados, se recolecta en este intervalo.
 - **Index**: el index de destino. Se recomienda un index dedicado, por
-  ejemplo `nifi`. Si no existe, creálo primero.
+  ejemplo `nifi`. Si no existe, créalo primero.
 - **Host field value**: se estampa en cada evento de este input. Vacío usa
-  el nombre de instancia de NiFi de arriba. **En un cluster, poné el
+  el nombre de instancia de NiFi de arriba. **En un cluster, pon el
   nombre del cluster, no de un nodo** — el add-on nombra al nodo en un
   campo separado. Este es también el valor que debe coincidir con una fila
   del [lookup de instancias](#lookup-de-instancias) más abajo.
@@ -302,17 +302,17 @@ Colapsado por defecto:
 ### Endpoints personalizados
 
 La lista fija de *Endpoints* cubre lo que la app trae de fábrica. Si
-necesitás consultar un endpoint REST de NiFi que no está en esa lista, usá
+necesitas consultar un endpoint REST de NiFi que no está en esa lista, usa
 en cambio el apartado **Custom endpoints**: una línea por endpoint, con el
 formato `nombre,path` (por ejemplo
 `queue_stats,/flow/connections/1234-5678-90ab-cdef/status`). El path es
 relativo a la NiFi API URL configurada arriba.
 
-Vos le ponés el nombre; el sourcetype lo pone el add-on. `queue_stats` se
+Tú le pones el nombre; el sourcetype lo pone el add-on. `queue_stats` se
 indexa como `nifi:api:custom:queue_stats`, así que todo lo que declares se
 busca con `nifi:api:custom:*` y nada de lo que declares puede caer en un
 sourcetype que el add-on escribe por su cuenta. Splunk indexa la respuesta
-cruda; si necesitás extracción de campos para ese sourcetype, agregá tu
+cruda; si necesitas extracción de campos para ese sourcetype, agrega tu
 propia stanza en `props.conf`.
 
 Cuatro cosas que conviene saber antes de depender de uno:
@@ -324,7 +324,7 @@ Cuatro cosas que conviene saber antes de depender de uno:
   Escribir el `nifi:api:custom:queue_stats` completo se acepta y significa
   lo mismo que `queue_stats`.
 - **No se admiten marcadores `{id}`.** A diferencia de los campos Status
-  history de arriba, un path custom se pide literal. Escribí el UUID
+  history de arriba, un path custom se pide literal. Escribe el UUID
   completo. El input se niega a guardar un path que contenga `{` o `}` en
   lugar de dejar que falle recién al consultar.
 - **Una consulta fallida no indexa nada.** Si NiFi responde 4xx o 5xx, el
@@ -334,7 +334,7 @@ Cuatro cosas que conviene saber antes de depender de uno:
 - **Editar `inputs.conf` a mano requiere un backslash al final.** El
   textarea acepta un endpoint por línea, pero un archivo `.conf` termina el
   valor en el primer salto de línea sin escapar. Cuando escribas la stanza
-  vos mismo — por ejemplo desde un deployment server — continuá cada línea
+  tú mismo — por ejemplo desde un deployment server — continúa cada línea
   con `\`:
 
 ```
@@ -346,7 +346,7 @@ cluster,/controller/cluster
   con el primer endpoint y descarta el resto. `splunk btool inputs list`
   muestra qué quedó realmente en efecto.
 
-Una vez completado el formulario, hacé clic en **Next** y el input queda creado.
+Una vez completado el formulario, haz clic en **Next** y el input queda creado.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_success.png)
 

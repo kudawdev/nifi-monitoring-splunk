@@ -1,106 +1,109 @@
-# Compatibilidad y elección del método de recolección
+# Compatibilidad y estrategia de recolección
 
-## Versiones soportadas
+Esta página responde dos preguntas independientes:
+
+1. **¿Qué versiones de NiFi y Splunk soporta esta app?** — [Compatibilidad de versiones](#compatibilidad-de-versiones).
+2. **¿Cómo debe llegar la información desde NiFi hasta Splunk?** — [Elegir una estrategia de recolección](#elegir-una-estrategia-de-recoleccion): pull o push, y cuál corresponde a tu entorno.
+
+La estrategia de recolección es independiente de la versión de NiFi:
+decídela con los requisitos de abajo, no con la tabla de versiones de
+arriba.
+
+## Compatibilidad de versiones
 
 | | Soportado | Probado en CI |
 |---|---|---|
 | Apache NiFi | 1.16 – 1.28.1, 2.0 – 2.11 | 1.23.2, 1.28.1, 2.0.0, 2.11.0 |
 | Splunk Enterprise / Cloud | 9.0 – 10.x | 9.4, 10.4 |
 
-NiFi 1.x llegó a fin de vida el 2024-12-08 con la 1.28.1. Sigue funcionando
-con estas apps, pero toda corrección de seguridad del proyecto aterriza ahora
-solo en la línea 2.x.
+- **NiFi 1.x llegó a su fin de vida el 2024-12-08** (último release: 1.28.1). Sigue funcionando con estas apps, pero las correcciones de seguridad nuevas del proyecto NiFi se publican, de aquí en adelante, únicamente para la línea 2.x.
+- **La versión mínima soportada es NiFi 1.16**, porque el endpoint `/flow/metrics/json` no existe en versiones anteriores. Las instancias 1.x más antiguas siguen funcionando, solo que sin ese endpoint de métricas de flujo; esa combinación no está cubierta por el CI.
 
-El piso es NiFi 1.16 porque es donde aparece `/flow/metrics/json`. Las
-instancias 1.x anteriores funcionan sin el endpoint de métricas; esa
-combinación no está cubierta por el CI.
+## Topología: instancia única, múltiples instancias o cluster
 
-## Cluster y múltiples instancias
-
-| Topología | Soportada | Qué configurás |
+| Topología | Soportado | Qué se configura |
 |---|---|---|
-| Una instancia | sí | un input |
-| Varias instancias independientes | sí | un input y una fila del lookup `instance` por cada una |
-| Un cluster de NiFi | sí | **un solo input**, apuntado a cualquier nodo |
+| Una instancia | sí | Un input. |
+| Varias instancias independientes | sí | Un input por instancia, una fila por instancia en el lookup `instance`. |
+| Un cluster de NiFi | sí | **Un input**, apuntado a cualquier nodo. |
 
-Para la app un cluster es **una** instancia, no varias. Apuntá el input a
-cualquier nodo: NiFi responde a nivel cluster desde todos. El add-on detecta
-por su cuenta que está hablando con un cluster y recolecta además los datos
-por nodo — no hay nada que habilitar.
+Un cluster cuenta como **una sola instancia** para esta app, no como
+varias: apunta el input a cualquier nodo, y NiFi responde en nombre de
+todo el cluster. El add-on detecta el cluster por su cuenta y recolecta
+también los datos por nodo — no hay nada que habilitar.
 
-Eso significa que los eventos conservan el `host` que configuraste, que es el
-cluster, y llevan un campo `node` que dice a qué miembro describen. Las
-búsquedas y paneles existentes no se ven afectados; la fila **Cluster** del
-tablero **Nifi TA Monitoring** muestra los miembros, sus roles y el heap por
-nodo, porque el agregado esconde justo al nodo que se está quedando sin heap.
+Los eventos conservan el valor de `host` que configuraste (el nombre del
+cluster) y agregan un campo `node` que identifica a qué miembro del
+cluster corresponde cada evento. En el dashboard **Nifi TA Monitoring**,
+la fila Cluster desglosa esto por miembro, rol y heap por nodo — la vista
+agregada por sí sola ocultaría cuál nodo se está quedando sin recursos.
 
-Dos cosas que solo existen en un cluster:
+Dos cosas existen solo en un cluster:
 
-- **Los bulletins traen el nodo que los emitió**, y los de framework
-  (categorías como *Clustering* o *Primary Node*) describen al cluster y no a
-  un componente, así que no tienen nombre de origen.
-- **En el camino push el flujo corre solo en el nodo primario** para lo que
-  consulta la API, así que un cluster no manda una copia por nodo. El tailing
-  de logs sigue corriendo en todos, porque los archivos de log sí son de cada
-  nodo. Viene resuelto en el flujo que se distribuye; no hay nada que
-  configurar.
+- **Los bulletins llevan el nodo que los generó.** Los bulletins de
+  framework (categorías como *Clustering* o *Primary Node*) describen al
+  cluster mismo, no a un componente, así que no tienen nombre de origen.
+- **En la estrategia push, solo el nodo primario consulta la API.** Un
+  cluster no envía una copia de los mismos datos por cada nodo. El tail de
+  logs sí corre en todos los nodos, porque los archivos de log son por
+  nodo, no por cluster. Esto lo maneja el flow de forma automática; no hay
+  nada que configurar.
 
-## Dos formas de ingresar los datos
+## Elegir una estrategia de recolección
 
-Elige una. Usar las dos duplica cada evento.
+Dos estrategias mutuamente excluyentes llevan los datos de NiFi a Splunk.
+**Elige exactamente una por instancia de NiFi — usar las dos en la misma
+instancia duplica cada evento.**
 
-### Pull — el TA consulta la API REST de NiFi
-
-Splunk le pide los datos a NiFi cada cierto intervalo. **Preferí esta.** No
-hay nada que instalar ni mantener dentro de NiFi, un solo input cubre todas
-las versiones soportadas, y Splunk controla el intervalo, el índice y los
-reintentos.
-
-Requiere que Splunk alcance la API de NiFi. Funciona con un NiFi sin
-autenticación y con uno detrás de single-user o LDAP.
-
-### Push — un flow dentro de NiFi envía al HEC
-
-NiFi envía los datos al HTTP Event Collector de Splunk. Usá esta cuando
-**Splunk no puede alcanzar a NiFi** — NiFi en una DMZ, o una red que solo
-permite conexiones salientes desde él.
-
-El costo es un grupo de 39 procesadores, tres reporting tasks y dos input
-ports Site-to-Site que hay que mantener dentro de tu NiFi, además de un
-archivo de flow distinto por cada versión mayor de NiFi.
-
-### Qué da cada una
-
-| | Pull (TA) | Push (flow) |
+| | Pull | Push |
 |---|---|---|
-| Estado del flujo, diagnóstico, historial | sí | sí |
-| Métricas de flujo (`/flow/metrics`) | sí | no |
+| Qué ocurre | La TA de Splunk consulta la API REST de NiFi en un intervalo. | Un flow dentro de NiFi llama a su propia API y envía el resultado al HTTP Event Collector (HEC) de Splunk. |
+| Dirección de red requerida | Splunk → NiFi | NiFi → Splunk |
+| Autenticación de NiFi soportada | Ninguna, single-user o LDAP | **Únicamente ninguna** |
+| Qué se instala dentro de NiFi | Nada | Un process group (39 procesadores), 3 reporting tasks, 2 puertos de entrada Site-to-Site; un archivo de flow distinto por versión mayor de NiFi |
+| Cuándo usarla | Cuando Splunk puede alcanzar la API de NiFi. **Opción por defecto.** | Cuando Splunk no puede alcanzar NiFi en absoluto — NiFi en una DMZ, o en una red que solo permite conexiones salientes desde NiFi |
+
+!!! warning "Push requiere un NiFi sin autenticación"
+    El flow llama a su propia API REST sin enviar ninguna credencial. Si
+    tu NiFi tiene single-user, LDAP o cualquier otro inicio de sesión
+    habilitado, esa llamada falla con 401 — y no hay ningún ajuste que lo
+    resuelva, porque el flow nunca fue diseñado para autenticarse. Usa
+    pull en su lugar.
+
+### Comparación de funcionalidades
+
+| | Pull | Push |
+|---|---|---|
+| Flow status, diagnostics, status history | sí | sí |
+| Flow metrics (`/flow/metrics`) | sí | no |
 | Detección de versión de NiFi | sí | no |
 | Bulletins individuales | sí, por polling | sí, sin pérdida |
 | `bulletinGroupName` / `bulletinGroupPath` | no | sí |
-| Archivos de log de NiFi | vía Universal Forwarder | vía el flow |
-| Qué instalar dentro de NiFi | nada | 39 procesadores + 3 reporting tasks |
+| Archivos de log de NiFi | vía Universal Forwarder (ver abajo) | vía el flow |
 
-Los bulletins son el único punto donde el camino push es genuinamente mejor:
-una reporting task empuja cada bulletin, mientras que el polling lee un board
-que solo retiene una ventana corta, así que un intervalo mayor que esa
-ventana pierde eventos. El input avisa cuando un poll vuelve lleno, que es la
-señal de que está pasando.
+Los bulletins son el único punto donde push es realmente mejor: una
+reporting task envía cada bulletin en el momento en que ocurre, mientras
+que el polling lee un tablero que solo conserva una ventana corta de
+tiempo — un intervalo más largo que esa ventana pierde eventos. El input
+registra una advertencia cuando un poll vuelve lleno, que es la señal de
+que esto está pasando.
 
-## Logs
+## Recolectar los archivos de log de NiFi
 
-Los dos caminos pueden recolectar los archivos de log de NiFi, y la
-recomendación no es ninguno de los dos: usá un **Universal Forwarder** en el
-host de NiFi. El TA ya trae los monitor inputs, deshabilitados; habilitá los
-que necesites y corregí la ruta.
+Independiente de pull o push: ambas estrategias *pueden* recolectar los
+archivos de log de NiFi, pero la recomendación no es ninguna de las dos.
+**Usa un Universal Forwarder en el host de NiFi.** La TA ya trae los
+monitor inputs para esto, desactivados por defecto — activa los que
+necesites y corrige la ruta.
 
-Un forwarder maneja la rotación y lleva su propio checkpoint, y si Splunk no
-está disponible encola en disco en lugar de generar contrapresión sobre el
-flujo que NiFi también usa para trabajo real.
+Un forwarder maneja la rotación de logs y mantiene su propio checkpoint,
+y si Splunk queda inalcanzable encola en disco en lugar de generar
+presión sobre el mismo flow que NiFi usa para su trabajo real.
 
-`TailFile` dentro del flow sigue soportado para el caso donde un forwarder no
-es opción — NiFi en un contenedor donde no podés agregar un sidecar.
+`TailFile` dentro del flow sigue soportado para cuando un forwarder no es
+una opción — por ejemplo, NiFi corriendo en un contenedor al que no se le
+puede agregar un sidecar.
 
-El TA define cinco sourcetypes de log. `nifi:log:deprecation` conviene
-habilitarlo antes de migrar a NiFi 2.x: registra qué componentes deprecados
-sigue usando la instancia.
+La TA define cinco sourcetypes de log. Activa `nifi:log:deprecation`
+antes de migrar a NiFi 2.x: registra qué componentes deprecados sigue
+usando la instancia.

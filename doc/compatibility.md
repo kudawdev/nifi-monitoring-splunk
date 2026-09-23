@@ -1,102 +1,92 @@
-# Compatibility and choosing a collection path
+# Compatibility and collection strategy
 
-## Supported versions
+This page answers two independent questions:
+
+1. **Which NiFi and Splunk versions does this app support?** — [Version compatibility](#version-compatibility).
+2. **How should data get from NiFi into Splunk?** — [Choosing a collection strategy](#choosing-a-collection-strategy): pull or push, and which one your deployment requires.
+
+The collection strategy is independent of the NiFi version: decide it using the requirements below, not the version table above.
+
+## Version compatibility
 
 | | Supported | Tested in CI |
 |---|---|---|
 | Apache NiFi | 1.16 – 1.28.1, 2.0 – 2.11 | 1.23.2, 1.28.1, 2.0.0, 2.11.0 |
 | Splunk Enterprise / Cloud | 9.0 – 10.x | 9.4, 10.4 |
 
-NiFi 1.x reached end of life on 2024-12-08 with 1.28.1. It still works with
-these apps, but every security fix from the project now lands only on the 2.x
-line.
+- **NiFi 1.x reached end of life on 2024-12-08** (last release: 1.28.1). It still works with these apps, but new NiFi security fixes are published, from here on, only for the 2.x line.
+- **The minimum supported version is NiFi 1.16**, because the `/flow/metrics/json` endpoint does not exist before it. Older 1.x instances still work, just without that flow-metrics endpoint; that combination is not covered by CI.
 
-The floor is NiFi 1.16 because that is where `/flow/metrics/json` appears.
-Older 1.x instances work without the flow-metrics endpoint; that combination
-is not covered by CI.
-
-## Cluster and multiple instances
+## Topology: standalone, multiple instances, or cluster
 
 | Topology | Supported | What you configure |
 |---|---|---|
-| One instance | yes | one input |
-| Several independent instances | yes | one input each, one row each in the `instance` lookup |
-| A NiFi cluster | yes | **one input**, pointed at any node |
+| One instance | yes | One input. |
+| Several independent instances | yes | One input per instance, one row per instance in the `instance` lookup. |
+| A NiFi cluster | yes | **One input**, pointed at any node. |
 
-A cluster is one instance to the app, not several. Point the input at any
-node: NiFi answers cluster-wide from all of them. The add-on works out on its
-own that it is talking to a cluster and collects the per-node data as well --
-there is nothing to enable.
+A cluster counts as **one instance** to this app, not several: point the input at any node, and NiFi answers cluster-wide on its behalf. The add-on detects the cluster on its own and collects per-node data too — there is nothing to enable.
 
-That means events keep the `host` you configured, which is the cluster, and
-carry a `node` field saying which member they describe. Existing searches and
-panels are unaffected; the Cluster row of the **Nifi TA Monitoring** dashboard
-shows members, roles and per-node heap, because the aggregate hides the node
-that is running out of it.
+Events keep the `host` value you configured (the cluster's name) and add a `node` field naming the cluster member each event describes. On the **Nifi TA Monitoring** dashboard, the Cluster row breaks this down by member, role and per-node heap — the aggregate view alone would hide which node is actually running out of resources.
 
-Two things only a cluster has:
+Two things exist only on a cluster:
 
-- **Bulletins carry the node that raised them**, and framework bulletins
-  (categories like *Clustering* or *Primary Node*) describe the cluster rather
-  than a component, so they have no source name.
-- **On the push path the flow runs on the primary node only** for the parts
-  that poll the API, so a cluster does not send one copy per node. Log tailing
-  still runs everywhere, because log files are per node. This is handled by
-  the flow as distributed; nothing to configure.
+- **Bulletins carry the node that raised them.** Framework bulletins (categories such as *Clustering* or *Primary Node*) describe the cluster itself rather than a component, so they have no source name.
+- **On the push strategy, only the primary node polls the API.** A cluster does not send one copy of the same data per node. Log tailing still runs on every node, because log files are per node, not cluster-wide. This is handled by the flow automatically; there is nothing to configure.
 
-## Two ways to get data in
+## Choosing a collection strategy
 
-Pick one. Running both duplicates every event.
+Two mutually exclusive strategies get NiFi's data into Splunk.
+**Pick exactly one per NiFi instance — running both on the same instance
+duplicates every event.**
 
-### Pull — the TA polls NiFi's REST API
+| | Pull | Push |
+|---|---|---|
+| What moves | Splunk's TA polls NiFi's REST API on an interval. | A flow inside NiFi calls its own API and sends the result to Splunk's HTTP Event Collector (HEC). |
+| Network direction required | Splunk → NiFi | NiFi → Splunk |
+| NiFi authentication supported | None, single-user, or LDAP | **None only** |
+| What you install inside NiFi | Nothing | A process group (39 processors), 3 reporting tasks, 2 Site-to-Site input ports; one flow file per NiFi major version |
+| Use when | Splunk can reach NiFi's API. **Default choice.** | Splunk cannot reach NiFi at all — NiFi in a DMZ, or on a network that only permits outbound connections from it |
 
-Splunk asks NiFi for data on an interval. **Prefer this one.** There is
-nothing to install or maintain inside NiFi, one input covers every supported
-version, and Splunk controls the interval, the index and the retries.
+!!! warning "Push requires an unauthenticated NiFi"
+    The flow calls its own REST API without sending any credentials. If
+    your NiFi has single-user, LDAP or any other login enabled, that call
+    fails with 401 — and no setting fixes it, because the flow was never
+    built to authenticate. Use pull instead.
 
-Requires Splunk to reach NiFi's API. Works with an unauthenticated NiFi and
-with one behind single-user or LDAP authentication.
+### Feature comparison
 
-### Push — a flow inside NiFi sends to the HEC
-
-NiFi sends data to Splunk's HTTP Event Collector. Use this when **Splunk
-cannot reach NiFi** — NiFi in a DMZ, or a network that only allows outbound
-connections from it.
-
-The cost is a process group of 39 processors, three reporting tasks and two
-Site-to-Site input ports to maintain inside your NiFi, and a separate flow
-file per NiFi major version.
-
-### What each one gives you
-
-| | Pull (TA) | Push (flow) |
+| | Pull | Push |
 |---|---|---|
 | Flow status, diagnostics, status history | yes | yes |
 | Flow metrics (`/flow/metrics`) | yes | no |
 | NiFi version detection | yes | no |
 | Individual bulletins | yes, by polling | yes, without loss |
 | `bulletinGroupName` / `bulletinGroupPath` | no | yes |
-| NiFi log files | via Universal Forwarder | via the flow |
-| To install inside NiFi | nothing | 39 processors + 3 reporting tasks |
+| NiFi log files | via Universal Forwarder (see below) | via the flow |
 
-Bulletins are the one place the push path is genuinely better: a reporting
-task pushes each bulletin, while polling reads a board that only holds a
-short window, so an interval longer than that window loses events. The input
-warns when a poll comes back full, which is the sign that is happening.
+Bulletins are the one place push is genuinely better: a reporting task
+pushes each bulletin as it happens, while polling reads a board that only
+holds a short window — an interval longer than that window loses events.
+The input logs a warning when a poll comes back full, which is the sign
+that this is happening.
 
-## Logs
+## Collecting NiFi's log files
 
-Both paths can collect NiFi's log files, and the recommendation is neither of
-them: use a **Universal Forwarder** on the NiFi host. The TA already ships
-the monitor inputs, disabled; enable the ones you need and correct the path.
+Independent of pull vs push: both strategies *can* collect NiFi's log
+files, but the recommendation is neither of them. **Use a Universal
+Forwarder on the NiFi host.** The TA ships the monitor inputs for this
+already, disabled by default — enable the ones you need and correct the
+path.
 
-A forwarder handles rotation and keeps its own checkpoint, and if Splunk is
-unreachable it queues on disk instead of backing pressure up into the flow
-that NiFi is also using for real work.
+A forwarder handles log rotation and keeps its own checkpoint, and if
+Splunk becomes unreachable it queues on disk instead of applying
+backpressure to the same flow NiFi uses for real work.
 
-`TailFile` inside the flow stays supported for the case where a forwarder is
-not an option — NiFi in a container where you cannot add a sidecar.
+`TailFile` inside the flow remains supported for when a forwarder is not
+an option — NiFi running in a container you cannot add a sidecar to, for
+example.
 
-The TA defines five log sourcetypes. `nifi:log:deprecation` is worth enabling
-before a move to NiFi 2.x: it records which deprecated components the
-instance is still using.
+The TA defines five log sourcetypes. Enable `nifi:log:deprecation` before
+moving to NiFi 2.x: it records which deprecated components the instance
+is still using.
