@@ -1,15 +1,14 @@
 ---
 name: cicd
 description: >
-  Run this repository's delivery process: the gates, the version bump, the
-  changelog, packaging with AppInspect, and the release. Use it when the
-  request is about moving a change towards main or publishing a version,
-  however it is phrased — "release 2.0.0", "cut the release", "bump the
-  version", "run the checks", "promote to main", "publish the apps", "is this
-  ready to ship?", and the same in Spanish: "liberar 2.0.0", "hacer el
-  release", "bumpear", "correr los checks", "promover a main", "publicar las
-  apps", "está listo para liberar?". Do not use it to write app code, for SPL,
-  or to run one integration scenario — that is tests/run.sh directly.
+  Run this repository's delivery process, as a subcommand: `cicd check`,
+  `cicd status`, `cicd bump [patch|minor|major]`, `cicd changelog`,
+  `cicd package`, `cicd validate`, `cicd promote`, `cicd release`,
+  `cicd audit`. Without a subcommand, report the state and say what is next.
+  Also use it when a request means one of those without naming it — shipping
+  a version, moving a change towards main, or asking whether it is ready.
+  Not for writing app code, not for SPL, and not for running one integration
+  scenario, which is tests/run.sh directly.
 ---
 
 # cicd — delivery for nifi-monitoring-splunk
@@ -19,7 +18,7 @@ attached. The facade (`Makefile` + `scripts/`, sealed by `tech-cicd`) does what
 is deterministic; what lives here is judgement — when to stop, what to confirm,
 how to present the evidence.
 
-**Reimplement none of it.** If an order is not in the table, ask the facade:
+**Reimplement none of it.** If a subcommand is not in the table, ask the facade:
 `make help`, `make version`, `make baseline`, `make status`.
 
 ## What is particular to this repository
@@ -45,9 +44,9 @@ set up:
    the commits yourself, and write the CHANGELOG entry by hand. The 2.0.0 one
    was written that way, and says so at the top.
 
-## Orders
+## Subcommands
 
-| Request | What runs | What you confirm first |
+| Subcommand | What runs | What you confirm first |
 |---|---|---|
 | `check` | `make check` | nothing; it is read-only |
 | `bump [level]` | `make bump LEVEL=<level>`, then **`make version-sync`** | the level, always — `suggest-level` is not reliable here |
