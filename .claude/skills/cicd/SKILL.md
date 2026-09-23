@@ -99,9 +99,11 @@ Before starting, check three things the facade does not look at:
 
 Do not edit `delivery.mk` or `scripts/` — they are sealed. Either it is a value
 that belongs in `delivery.conf`, or it is a change the `tech-cicd` contract
-should absorb for every repository. Four are open today, written up
-for the skill's maintainer in `docs/support/2026-09-23-tech-cicd-adopcion.md`:
-the `app-conf` flavour assumes a single manifest, `contract-check` approves a
-facade whose scripts do not exist because it resolves targets without running
-them, `adopt.sh` installs the scripts without the executable bit, and
-Conventional Commits are assumed rather than checked.
+should absorb for every repository. Four are open today, and none of them
+belongs to this repository. The `app-conf` flavour assumes a single manifest,
+which is why `version-sync` exists. `contract-check` approves a facade whose
+scripts do not exist, because it resolves targets with `make -n` instead of
+running them. `adopt.sh` installs the scripts without the executable bit,
+which git with `core.fileMode` off records as 644. And Conventional Commits
+are assumed rather than measured, so `suggest-level` says `patch` for a major
+here. Raise them with whoever maintains `tech-cicd`, not by editing the copy.
