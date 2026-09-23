@@ -19,6 +19,8 @@ services:
   provision:
     image: busybox:1.37
     environment:
+      # When 1, seeds nothing: run.sh --bare, for installing by hand.
+      BARE: ${BARE:-0}
       # Selects which inputs.conf template to install.
       NIFI_AUTH: ${NIFI_AUTH:-none}
       # Above one, a second input stanza is appended.
@@ -237,6 +239,7 @@ services:
     profiles: ["forwarder"]
     image: busybox:1.37
     environment:
+      BARE: ${BARE:-0}
       UF_HOST: ${UF_HOST:-nifi}
     volumes:
       - uf_etc:/etc-seed
@@ -253,6 +256,7 @@ services:
     profiles: ["forwarder2"]
     image: busybox:1.37
     environment:
+      BARE: ${BARE:-0}
       UF_HOST: ${UF2_HOST:-nifi}
       UF_NODE: ${UF2_NODE:-}
     volumes:

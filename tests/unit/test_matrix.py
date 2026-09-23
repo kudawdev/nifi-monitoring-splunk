@@ -499,3 +499,63 @@ class WorkflowMatrixTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TopologyTest(unittest.TestCase):
+    """`run.sh --list` claims what a profile starts; compose decides it.
+
+    The list is derived from matrix.yml rather than from docker-compose.yml so
+    that `--list` needs no Docker -- which is the point of a listing you run
+    before anything else. That leaves the two free to drift, so this compares
+    them: every long-lived service compose would start for a profile has to be
+    in the list, and nothing else.
+
+    The seed containers are excluded on purpose. They copy files and exit
+    before splunkd is listening, and naming them next to the machines suggests
+    they are part of the environment rather than of its setup.
+    """
+
+    COMPOSE = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "docker-compose.yml")
+
+    @classmethod
+    def setUpClass(cls):
+        try:
+            import yaml
+        except ImportError:  # pragma: no cover - depends on the host
+            raise unittest.SkipTest("PyYAML is not installed")
+        with open(cls.COMPOSE) as handle:
+            cls.services = yaml.safe_load(handle)["services"]
+
+    def compose_would_start(self, profile_name):
+        enabled = set(
+            dict(line.split("=", 1) for line in
+                 matrix.env_for(profile_name).splitlines()
+                 if "=" in line and not line.startswith("#"))
+            ["COMPOSE_PROFILES"].split(",")) - {""}
+        started = set()
+        for name, service in self.services.items():
+            if name.startswith("provision"):
+                continue          # seeds, not machines
+            needed = set(service.get("profiles") or [])
+            if not needed or needed & enabled:
+                started.add(name)
+        return started
+
+    def test_the_listed_containers_are_the_ones_compose_starts(self):
+        for name in matrix.load()["profiles"]:
+            with self.subTest(profile=name):
+                self.assertEqual(
+                    set(matrix.topology(name)), self.compose_would_start(name))
+
+    def test_every_profile_can_be_described(self):
+        """--list <profile> reads fields that a new profile might not set."""
+        for name in matrix.load()["profiles"]:
+            with self.subTest(profile=name):
+                text = matrix.describe(name)
+                self.assertIn("Containers", text)
+                self.assertIn("Strategy", text)
+                self.assertTrue(
+                    text.splitlines()[2].strip(),
+                    "profile %s has no description in matrix.yml" % name)

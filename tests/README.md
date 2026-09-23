@@ -46,15 +46,48 @@ One compose file covers every supported combination. Pick one by name from
 ```
 cd tests
 ./run.sh --list            # show the profiles
+./run.sh --list cluster    # everything about one of them
 ./run.sh                   # default: nifi2-current
 ./run.sh nifi1-legacy      # NiFi 1.23.2 + Splunk 9.4, unsecured
 ./run.sh --keep nifi2-current   # leave the stack up to poke at it
+./run.sh --bare cluster    # the environment only, for installing by hand
 ```
 
 `run.sh` builds the add-on, writes `.env` from the profile, brings the stack
 up, waits for NiFi to answer, runs the assertions, and tears down. It exits
 non-zero if anything fails, so CI can call it directly. `SKIP_TA_BUILD=1`
 reuses the last build, for a quick re-run against unchanged add-on code.
+
+## Testing by hand
+
+```
+./run.sh --bare cluster
+```
+
+Brings up the scenario's machines and installs nothing: no apps, no input,
+no lookup, no flow, and no assertions. Splunk extracts its own `etc/` into
+the empty volume on first boot, so what you get is a virgin Splunk next to
+the NiFi topology the profile describes, and you install and configure
+everything yourself. It prints the URLs, the credentials and the packaging
+command when it is ready.
+
+This is the one path the automated profiles cannot cover, because they exist
+to remove it: the `provision` service seeds `/opt/splunk/etc` before
+`splunkd` first starts, so nothing here ever uploads a `.tar.gz`, reads the
+setup screen or fills in the form. That is the first thing every user does.
+
+The packages to install are built from `output/`, not from the tree:
+
+```
+./build-ta.sh
+cd .. && docker run --rm -u "$(id -u):$(id -g)" -e HOME=/w -v "$PWD:/w" -w /w \
+  kudaw/appinspect:latest sh -c \
+  'slim package output/nifi_TA_monitoring; slim package nifi_monitoring'
+```
+
+The app also needs the two Splunkbase visualisations it depends on, which are
+in `additional_apps/`. For the push path, import the flow from
+`flow_definition/` through NiFi's own UI.
 
 While a stack is up:
 

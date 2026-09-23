@@ -66,9 +66,10 @@ cd tests
 ./run.sh                    # default: nifi2-current
 ./run.sh nifi1-legacy       # NiFi 1.23.2 + Splunk 9.4, unsecured
 ./run.sh --keep nifi2-current
+./run.sh --bare cluster     # the environment only, for installing by hand
 ```
 
-`run.sh` builds the TA, writes `.env` from the profile, brings the stack up, waits for NiFi, runs the assertions and tears down, exiting non-zero on any failure. It seeds the container from `output/`, never from the tree — what is tested is what ships. `SKIP_TA_BUILD=1` reuses the last build. Provisioning is declarative — **no `docker exec` step, and no turning off HEC SSL by hand**; the `provision` service seeds `/opt/splunk/etc` before `splunkd` first starts.
+`run.sh` builds the TA, writes `.env` from the profile, brings the stack up, waits for NiFi, runs the assertions and tears down, exiting non-zero on any failure. It seeds the container from `output/`, never from the tree — what is tested is what ships. `SKIP_TA_BUILD=1` reuses the last build. `--bare` installs nothing at all — no apps, no input, no assertions — which is the only way to exercise installation, the step the provisioning exists to remove. Provisioning is declarative — **no `docker exec` step, and no turning off HEC SSL by hand**; the `provision` service seeds `/opt/splunk/etc` before `splunkd` first starts.
 
 Public docs (MkDocs, see `mkdocs.yml` + `doc/`):
 

@@ -4,7 +4,9 @@
 #   ./run.sh                      # default profile (nifi2-current)
 #   ./run.sh nifi1-legacy         # a named profile from matrix.yml
 #   ./run.sh --list               # list profiles
+#   ./run.sh --list cluster       # everything about one profile
 #   ./run.sh --keep nifi2-current # leave the stack running afterwards
+#   ./run.sh --bare cluster       # the environment only: install nothing
 #
 # Exits non-zero if the stack fails to come up or any assertion fails, so CI
 # can call it directly.
@@ -15,20 +17,45 @@ cd "$(dirname "$0")"
 
 PROFILE="${DEFAULT_PROFILE:-nifi2-current}"
 KEEP=0
+# --bare gives you the scenario's machines and nothing else: no apps, no
+# input, no lookup, no flow, and no assertions. Splunk extracts its own etc/
+# into the empty volume on first boot, so what comes up is a virgin Splunk
+# next to the NiFi topology the profile describes.
+#
+# It exists because the automated profiles cannot cover installation -- they
+# exist precisely to remove that step, seeding /opt/splunk/etc before splunkd
+# first starts. Uploading the .tar.gz, reading the setup screen and filling in
+# the form is the one path nothing here exercises, and it is the first thing
+# every user does.
+BARE=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --list)
+            # With a profile name, everything known about that one; without,
+            # a row each. The row now carries what the version and the auth
+            # mode never answered: which strategy the profile covers and what
+            # it actually starts.
+            if [ -n "${2:-}" ]; then
+                python3 matrix.py --describe "$2"
+                exit 0
+            fi
             python3 - <<'PY'
 import sys
 sys.path.insert(0, ".")
-from matrix import load
+from matrix import load, strategy, topology
 for name, p in load()["profiles"].items():
-    print(f"  {name:<16} NiFi {p['nifi_version']:<8} Splunk {p['splunk_version']:<6} auth={p['nifi_auth']}")
+    print("  %-15s NiFi %-8s Splunk %-5s %-16s %-5s %s" % (
+        name, p["nifi_version"], p["splunk_version"],
+        "auth=" + p["nifi_auth"], strategy(name),
+        " + ".join(topology(name))))
+print()
+print("  ./run.sh --list <profile>   everything about one of them")
 PY
             exit 0
             ;;
         --keep) KEEP=1; shift ;;
+        --bare) BARE=1; KEEP=1; shift ;;
         -h|--help) sed -n '2,12p' "$0" | sed 's/^# \?//'; exit 0 ;;
         -*) echo "unknown option: $1" >&2; exit 2 ;;
         *) PROFILE="$1"; shift ;;
@@ -47,8 +74,11 @@ elif [ ! -d ../output/nifi_TA_monitoring ]; then
     exit 2
 fi
 
-echo "==> profile: $PROFILE"
+echo "==> profile: $PROFILE${BARE:+ (bare: nothing will be installed)}"
 python3 matrix.py "$PROFILE" > .env
+if [ "$BARE" -eq 1 ]; then
+    echo "BARE=1" >> .env
+fi
 cat .env | sed 's/^/    /'
 set -a; . ./.env; set +a
 
@@ -89,6 +119,33 @@ docker compose up -d --wait
 
 echo "==> waiting for NiFi to answer"
 python3 integration/wait_for_nifi.py
+
+if [ "$BARE" -eq 1 ]; then
+    cat <<BARE_NOTES
+
+==> bare environment up. Nothing is installed.
+
+    Splunk      http://localhost:${SPLUNK_WEB_PORT:-38000}   admin / ${SPLUNK_PASSWORD:-Password123}
+    Splunk mgmt https://localhost:${SPLUNK_MGMT_PORT:-38089}
+    NiFi        http://localhost:${NIFI_HTTP_PORT:-38080}/nifi
+                https://localhost:${NIFI_HTTPS_PORT:-38443}/nifi  (single-user profiles;
+                credentials in tests/${NIFI_ENV_FILE#./})
+
+    The packages to install by hand, once tests/build-ta.sh has run:
+
+      docker run --rm -u "\$(id -u):\$(id -g)" -e HOME=/w -v "\$PWD/..:/w" -w /w \\
+        kudaw/appinspect:latest sh -c \\
+        'slim package output/nifi_TA_monitoring; slim package nifi_monitoring'
+
+    The app also needs the two Splunkbase visualisations it depends on; they
+    are in tests/additional_apps/. The push path additionally needs the flow
+    from flow_definition/, imported through NiFi's own UI.
+
+    Tear down with:  cd tests && docker compose down -v
+
+BARE_NOTES
+    exit 0
+fi
 
 echo "==> loading the instance kvstore collection"
 python3 integration/seed_kvstore.py

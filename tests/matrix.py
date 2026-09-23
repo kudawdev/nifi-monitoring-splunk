@@ -205,10 +205,95 @@ def env_for(profile_name):
     return "\n".join(lines) + "\n"
 
 
+def topology(profile_name):
+    """The long-lived containers a profile brings up, in start order.
+
+    Derived from the same fields env_for() turns into COMPOSE_PROFILES, so the
+    two cannot disagree about what runs. The transient seed containers are
+    left out: they copy files and exit before splunkd is listening, and
+    listing them alongside the machines suggests they are part of the
+    environment.
+    """
+    profile = load()["profiles"][profile_name]
+    instances = int(profile.get("instances", 1))
+    clustered = bool(profile.get("cluster"))
+
+    containers = ["splunk", "nifi"]
+    if clustered:
+        containers += ["nifi-node2", "zookeeper"]
+    if instances > 1:
+        containers.append("nifi-b")
+    if profile.get("forwarder"):
+        containers.append("forwarder")
+        if instances > 1 or clustered:
+            containers.append("forwarder2")
+    return containers
+
+
+def strategy(profile_name):
+    """How data leaves NiFi in this profile: the axis matrix.yml calls
+    `collection`, spelled the way section 8.4 of the plan names it."""
+    profile = load()["profiles"][profile_name]
+    if profile.get("collection") == "hec":
+        return "push"
+    return "pull"
+
+
+def describe(profile_name):
+    """Everything known about one profile, for `run.sh --list <name>`."""
+    data = load()
+    profile = data["profiles"][profile_name]
+    env = dict(line.split("=", 1) for line in env_for(profile_name).splitlines()
+               if "=" in line and not line.startswith("#"))
+    instances = int(profile.get("instances", 1))
+    clustered = bool(profile.get("cluster"))
+
+    nifi = "%s, auth=%s" % (profile["nifi_version"], profile["nifi_auth"])
+    if clustered:
+        nifi += ", clustered (2 nodes)"
+    elif instances > 1:
+        nifi += ", %d independent instances" % instances
+
+    how = ("the flow's InvokeHTTP and TailFile push to the HEC"
+           if strategy(profile_name) == "push"
+           else "the TA's modular input polls the REST API")
+    if profile.get("forwarder"):
+        how += "; a Universal Forwarder ships the log files"
+
+    ci = [name for name, names in (data.get("ci") or {}).items()
+          if profile_name in names]
+
+    out = [profile_name, ""]
+    for line in (profile.get("description") or "").split("\n"):
+        if line.strip():
+            out.append("  " + line.strip())
+    out += [
+        "",
+        "  NiFi         %s" % nifi,
+        "  Splunk       %s" % profile["splunk_version"],
+        "  Strategy     %s -- %s" % (strategy(profile_name), how),
+        "  Containers   %s" % ", ".join(topology(profile_name)),
+        "               plus seed containers that copy files and exit",
+        "  Ports        Splunk web %s, mgmt %s, HEC %s; NiFi %s / %s" % (
+            env["SPLUNK_WEB_PORT"], env["SPLUNK_MGMT_PORT"],
+            env["SPLUNK_HEC_PORT"], env["NIFI_HTTP_PORT"], env["NIFI_HTTPS_PORT"]),
+        "  NiFi env     tests/%s" % env["NIFI_ENV_FILE"].lstrip("./"),
+        "  CI           %s" % (", ".join(ci) if ci else "not run by CI"),
+        "  TLS verify   %s" % ("on, against the exported bundle"
+                               if profile.get("tls_verify") else "off"),
+    ]
+    return "\n".join(out) + "\n"
+
+
 def main(argv):
     if len(argv) >= 2 and argv[0] == "--ci":
         for name in load()["ci"][argv[1]]:
             print(name)
+        return 0
+    if argv and argv[0] == "--describe":
+        if len(argv) < 2:
+            raise SystemExit("usage: matrix.py --describe <profile>")
+        sys.stdout.write(describe(argv[1]))
         return 0
     if not argv:
         raise SystemExit("usage: matrix.py <profile> | --ci <pull_request|release>")

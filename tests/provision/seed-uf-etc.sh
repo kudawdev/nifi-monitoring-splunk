@@ -12,6 +12,17 @@
 
 set -eu
 
+# --bare: bring the environment up and install nothing. Splunk then extracts
+# its own etc/ into the empty volume on first boot, which is a virgin Splunk
+# -- no apps, no inputs, no HEC, no index. The point is the one path the
+# automated profiles cannot cover, because they exist to remove it: what an
+# operator actually does, from uploading the .tar.gz to filling in the form.
+if [ "${BARE:-0}" = "1" ]; then
+    echo "seed: BARE=1, installing nothing"
+    exit 0
+fi
+
+
 SEED=/etc-seed
 SRC=/src
 
