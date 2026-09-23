@@ -3,117 +3,70 @@ name: cicd
 description: >
   Run this repository's delivery process, as a subcommand: `cicd check`,
   `cicd status`, `cicd bump [patch|minor|major]`, `cicd changelog`,
-  `cicd package`, `cicd validate`, `cicd promote`, `cicd release`,
-  `cicd audit`. Without a subcommand, report the state and say what is next.
-  Also use it when a request means one of those without naming it — shipping
-  a version, moving a change towards main, or asking whether it is ready.
-  Not for writing app code, not for SPL, and not for running one integration
+  `cicd package`, `cicd validate`, `cicd promote`, `cicd release`.
+  Without a subcommand, report the state and say what is next. Also use it
+  when a request means one of those without naming it — shipping a version,
+  moving a change towards main, or asking whether it is ready. Not for
+  writing app code, not for SPL, and not for running one integration
   scenario, which is tests/run.sh directly.
 ---
 
-# cicd — delivery for nifi-monitoring-splunk
+# cicd
 
-Profile **app-splunk**: the deliverable is a GitHub Release with both `.tar.gz`
-attached. The facade (`Makefile` + `scripts/`, sealed by `tech-cicd`) does what
-is deterministic; what lives here is judgement — when to stop, what to confirm,
-how to present the evidence.
+The deliverable is a GitHub Release with both packaged apps attached. `make`
+does the work; this covers the order, what to confirm, and how to report it.
 
-**Reimplement none of it.** If a subcommand is not in the table, ask the facade:
-`make help`, `make version`, `make baseline`, `make status`.
-
-## What is particular to this repository
-
-Three things that do not follow from the facade, and that decided how it was
-set up:
-
-1. **The version has one source and three derivations.** `make bump` writes
-   `nifi_monitoring/default/app.conf` and stops there. The TA has no
-   `app.conf` in the tree — ucc-gen generates it — so its `globalConfig.json`
-   and `package/app.manifest` are rewritten from that one with
-   **`make version-sync`**. Between the bump and the sync the tree is
-   inconsistent and a unit test says so: that is correct, not a problem.
-   **Never edit a version by hand in the TA's files.**
-
-2. **The TA is not installable from the tree.** `make build` generates it into
-   `output/`. Packaging `nifi_TA_monitoring/` directly produces an add-on with
-   no `app.conf` and no UI, and `slim` will not complain.
-
-3. **This repository does not use Conventional Commits.** `make suggest-level`
-   will say `patch` almost every time, and `make changelog` will file
-   everything under "📦 Other". **Trust neither**: propose the level by reading
-   the commits yourself, and write the CHANGELOG entry by hand. The 2.0.0 one
-   was written that way, and says so at the top.
+Do not reimplement any target. If something is not here, ask: `make help`,
+`make status`, `make version`.
 
 ## Subcommands
 
-| Subcommand | What runs | What you confirm first |
+| Subcommand | Runs | Confirm first |
 |---|---|---|
-| `check` | `make check` | nothing; it is read-only |
-| `bump [level]` | `make bump LEVEL=<level>`, then **`make version-sync`** | the level, always — `suggest-level` is not reliable here |
-| `changelog` | edit `CHANGELOG.md` by hand; `make changelog NO_COMMIT=1` only if you want the scaffold | the wording of the entry |
+| `check` | `make check` | nothing; read-only |
+| `status` | `make status` | nothing |
+| `bump [level]` | `make bump LEVEL=<level>`, then `make version-sync` | the level, always |
+| `changelog` | edit `CHANGELOG.md`, then `make changelog NO_COMMIT=1` if you want the scaffold | the wording |
 | `package` | `make package` | nothing |
 | `validate` | `make validate` | nothing |
-| `promote` | `make promote-main` | **yes, always**: it merges to `main` and pushes |
-| `release` | `make release` | **yes, always**: it creates the tag and the GitHub Release |
-| `status` | `make status` | nothing |
-| `audit` | `adopt.sh <repo> --check`, from the `tech-cicd` plugin | nothing |
+| `promote` | `make promote-main` | **yes**: merges to `main` and pushes |
+| `release` | `make release` | **yes**: creates the tag and the release |
 
-`publish` and `verify` are the profile's artifact slot and are this
-repository's own scripts, not sealed ones. `publish --dry-run` and `publish`
-do the same work — a Splunk app has no registry, the artifact is the pair of
-`.tar.gz` that `release` attaches — but the real one refuses a dirty tree and
-a version that is already released. `verify` checks that the packages declare
-the version they should and that the add-on inside them is the generated one:
-packaging `nifi_TA_monitoring/` from the tree produces something slim accepts
-and Splunk cannot use.
-
-## The sequence
+## Sequence
 
 ```
 check → bump → version-sync → changelog → validate → promote → release
 ```
 
-Before starting, check three things the facade does not look at:
+## Three things to get right
 
-- The tree is clean and you are on the working branch, not on `main`.
-- `make status` reports no drift you cannot explain.
-- For a release: **the integration matrix has run.** `make check` runs the unit
-  tests and AppInspect, not the ten scenarios. Those are
-  `cd tests && ./run.sh <profile>` or the `integration` job of `main.yml`.
+1. **`bump` is not finished until `version-sync` runs.** `bump` writes one
+   file; the add-on's version is derived from it and has to be rewritten.
+   Between the two the tree is inconsistent and a unit test fails, which is
+   the intended warning. Never edit a version by hand.
 
-## How to present the evidence
+2. **The add-on is generated.** `make build` produces it; packaging the source
+   directory yields something that installs and does nothing, and the
+   packaging tool does not complain. `make validate` checks for this.
 
-- After `check`, show the AppInspect summary for **both apps** with their
-  numbers (`error`, `failure`, `warning`), not a "passed". The gate is 13
-  warnings and today they are 5 and 12: a number that goes up is worth looking
-  at even when it still passes.
-- After `bump`, show the old version and the new one, and **confirm that
-  `version-sync` ran** — it is the step people forget.
-- Before `promote` and before `release`, say in one line what is about to
-  happen and wait for the yes. Both are irreversible in practice: a push to
-  `main` and a public tag.
-- When something fails, show the target's raw output. Do not summarise it: the
-  facade's message says what to do.
+3. **Commit subjects here are not Conventional Commits.** `make suggest-level`
+   and the changelog generator will misclassify almost everything. Choose the
+   level by reading the commits, and write the changelog entry by hand.
 
-## When something does not fit
+## Before a release
 
-Do not edit `delivery.mk` or `scripts/` — they are sealed. Either it is a value
-that belongs in `delivery.conf`, or it is a change the `tech-cicd` contract
-should absorb for every repository. Four were found while adopting the
-facade on 2026-09-23, none of them this repository's, and all four are filed
-upstream with whoever maintains `tech-cicd`:
+- Clean tree, on a working branch, not on `main`.
+- `make status` shows no drift you cannot explain.
+- The integration matrix has run. `make check` covers the unit tests and the
+  package validation, not the ten scenarios — those are
+  `cd tests && ./run.sh <profile>`.
 
-- The `app-conf` flavour assumes a single manifest. That is why `version-sync`
-  exists, and why `bump` alone is not enough here.
-- `contract-check` approves a facade whose scripts do not exist: it resolves
-  targets with `make -n` rather than running them. Passing it is not proof the
-  facade runs.
-- `adopt.sh` writes the scripts at mode 700, which git with `core.fileMode`
-  off records as 644 — permission denied on a fresh clone.
-- Conventional Commits are assumed rather than measured, so `suggest-level`
-  says `patch` for a major.
+## Reporting
 
-Until a newer facade lands they are worked around here, and **`cicd audit` is
-how you find out that one has**: the repo cannot know its seal is out of date,
-only that it is self-consistent. When the seals move, re-adopt and check
-whether `version-sync` and the three repo scripts are still needed.
+- After `check` or `validate`, give the validator's counts for **both** apps,
+  not a "passed". A warning count that rose is worth a look even when it still
+  passes the gate.
+- After `bump`, show the old and new version and say that `version-sync` ran.
+- Before `promote` and `release`, state in one line what is about to happen
+  and wait for a yes. Both are irreversible.
+- On failure, show the raw output. The message says what to do.
