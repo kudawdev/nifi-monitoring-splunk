@@ -99,11 +99,21 @@ Before starting, check three things the facade does not look at:
 
 Do not edit `delivery.mk` or `scripts/` — they are sealed. Either it is a value
 that belongs in `delivery.conf`, or it is a change the `tech-cicd` contract
-should absorb for every repository. Four are open today, and none of them
-belongs to this repository. The `app-conf` flavour assumes a single manifest,
-which is why `version-sync` exists. `contract-check` approves a facade whose
-scripts do not exist, because it resolves targets with `make -n` instead of
-running them. `adopt.sh` installs the scripts without the executable bit,
-which git with `core.fileMode` off records as 644. And Conventional Commits
-are assumed rather than measured, so `suggest-level` says `patch` for a major
-here. Raise them with whoever maintains `tech-cicd`, not by editing the copy.
+should absorb for every repository. Four were found while adopting the
+facade on 2026-09-23, none of them this repository's, and all four are filed
+upstream with whoever maintains `tech-cicd`:
+
+- The `app-conf` flavour assumes a single manifest. That is why `version-sync`
+  exists, and why `bump` alone is not enough here.
+- `contract-check` approves a facade whose scripts do not exist: it resolves
+  targets with `make -n` rather than running them. Passing it is not proof the
+  facade runs.
+- `adopt.sh` writes the scripts at mode 700, which git with `core.fileMode`
+  off records as 644 — permission denied on a fresh clone.
+- Conventional Commits are assumed rather than measured, so `suggest-level`
+  says `patch` for a major.
+
+Until a newer facade lands they are worked around here, and **`cicd audit` is
+how you find out that one has**: the repo cannot know its seal is out of date,
+only that it is self-consistent. When the seals move, re-adopt and check
+whether `version-sync` and the three repo scripts are still needed.
