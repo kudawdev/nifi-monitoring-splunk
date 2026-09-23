@@ -34,20 +34,22 @@ Also in this repo:
 
 ## Common commands
 
-Build the add-on first — everything below needs `output/nifi_TA_monitoring/`:
+The `Makefile` is the facade: it runs what CI runs, inside the same
+`kudaw/appinspect:latest` image, so the slim and AppInspect versions are the
+ones that gate the release. Docker and Python 3 are the only prerequisites.
 
 ```
-./tests/build-ta.sh          # creates .venv-ucc on first run, then ucc-gen build
+make              # what each target does
+make build        # ucc-gen into output/ (the TA only; the app needs no build)
+make package      # the two .tar.gz a release attaches
+make validate     # slim validate + AppInspect precert, with CI's gate
+make test         # the unit suite against the built add-on
+make clean
 ```
 
-Packaging & validation (run inside the `kudaw/appinspect:latest` container used by CI, or with equivalent local tooling). Note the TA is packaged from `output/`, the app from the tree:
-
-```
-slim package nifi_monitoring
-slim package output/nifi_TA_monitoring
-slim validate nifi_monitoring-<version>.tar.gz
-splunk-appinspect inspect nifi_monitoring-<version>.tar.gz --output-file appinspect_result.json --mode precert
-```
+`make build` is `./tests/build-ta.sh`, which creates `.venv-ucc` on first run.
+The TA is packaged from `output/`, the app from the tree — reading the version
+from `nifi_monitoring/default/app.conf`, the same file the workflow reads.
 
 AppInspect is the gate. `main.yml` fails if `summary.error > 0`, `failure > 0`, or `warning > MAX_WARNING` (currently `13`; measured per app, 5 for the app and 12 for the TA).
 

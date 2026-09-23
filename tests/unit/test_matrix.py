@@ -8,6 +8,7 @@ parity test matters more than either parser on its own.
 """
 
 import os
+import re
 import sys
 import unittest
 
@@ -16,6 +17,8 @@ if TESTS_DIR not in sys.path:
     sys.path.insert(0, TESTS_DIR)
 
 import matrix  # noqa: E402
+
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 REQUIRED_PROFILE_KEYS = {"nifi_version", "splunk_version", "nifi_auth"}
 
@@ -495,6 +498,32 @@ class WorkflowMatrixTest(unittest.TestCase):
                 commands = " ".join(str(step.get("run", "")) for step in steps)
                 self.assertIn("unittest discover", commands)
                 self.assertNotIn("TODO", commands)
+
+    def test_the_makefile_gate_matches_the_workflows(self):
+        """`make validate` exists so a person runs what CI runs.
+
+        The warning ceiling is the one number the two share, and a Makefile
+        that allowed more than the workflow would pass locally and fail on the
+        release -- which is the drift the facade is there to remove, arriving
+        by the facade itself.
+        """
+        makefile = open(os.path.join(REPO, "Makefile")).read()
+        local = re.search(r"^MAX_WARNING \?= (\d+)", makefile, re.M)
+        self.assertIsNotNone(local, "the Makefile declares no MAX_WARNING")
+        for name in self.WORKFLOWS:
+            with self.subTest(workflow=name):
+                self.assertEqual(
+                    str(self.workflow(name)["env"]["MAX_WARNING"]),
+                    local.group(1))
+
+    def test_the_makefile_packages_what_the_workflow_packages(self):
+        """The TA ships from output/ and the app from the tree. Packaging the
+        TA from the tree would produce an add-on with no app.conf and no UI,
+        and slim would not complain (UI-3)."""
+        makefile = open(os.path.join(REPO, "Makefile")).read()
+        self.assertIn("slim package output/$(TA)", makefile)
+        self.assertIn("slim package $(APP)", makefile)
+        self.assertNotIn("slim package $(TA)", makefile)
 
 
 if __name__ == "__main__":

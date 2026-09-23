@@ -7,3 +7,12 @@ __pycache__/
 tests/.env
 .venv-ucc/
 output/
+
+# Left behind by `make package`. slim writes its cache into $HOME, which the
+# Makefile points at the repo so the container can write it, and it generates
+# an app.manifest inside any app that has none -- nifi_monitoring, since only
+# the TA authors its own for ucc-gen. CI regenerates both on a fresh checkout.
+.config/
+/*.tar.gz
+/*-appinspect.json
+/nifi_monitoring/app.manifest

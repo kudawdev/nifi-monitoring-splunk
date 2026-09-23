@@ -79,10 +79,7 @@ setup screen or fills in the form. That is the first thing every user does.
 The packages to install are built from `output/`, not from the tree:
 
 ```
-./build-ta.sh
-cd .. && docker run --rm -u "$(id -u):$(id -g)" -e HOME=/w -v "$PWD:/w" -w /w \
-  kudaw/appinspect:latest sh -c \
-  'slim package output/nifi_TA_monitoring; slim package nifi_monitoring'
+make package          # from the repo root
 ```
 
 The app also needs the two Splunkbase visualisations it depends on, which are

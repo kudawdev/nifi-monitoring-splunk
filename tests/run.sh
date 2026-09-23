@@ -131,11 +131,9 @@ if [ "$BARE" -eq 1 ]; then
                 https://localhost:${NIFI_HTTPS_PORT:-38443}/nifi  (single-user profiles;
                 credentials in tests/${NIFI_ENV_FILE#./})
 
-    The packages to install by hand, once tests/build-ta.sh has run:
+    The packages to install by hand:
 
-      docker run --rm -u "\$(id -u):\$(id -g)" -e HOME=/w -v "\$PWD/..:/w" -w /w \\
-        kudaw/appinspect:latest sh -c \\
-        'slim package output/nifi_TA_monitoring; slim package nifi_monitoring'
+      make package        (from the repo root)
 
     The app also needs the two Splunkbase visualisations it depends on; they
     are in tests/additional_apps/. The push path additionally needs the flow

@@ -65,8 +65,9 @@ notes live in `docs/` and are not published.
 ## Testing
 
 ```
-./tests/build-ta.sh                   # generate the add-on into output/
-cd tests/unit && python3 -m unittest discover -v
+make build                            # generate the add-on into output/
+make test                             # the unit suite
+make validate                         # package both apps and run AppInspect
 ```
 
 ```
