@@ -119,14 +119,14 @@ class EveryReadFieldIsConfigurableTest(unittest.TestCase):
 
 
 class VersionAgreementTest(unittest.TestCase):
-    """The TA's version now lives in four places, three of them new.
+    """One source, three derivations, and a test because nothing enforces it.
 
-    It used to be two stanzas of one app.conf. Since the migration app.conf
-    is generated, so the source of truth moved to globalConfig.json and
-    app.manifest -- and ucc-gen rewrites globalConfig's copy from whatever
-    --ta-version it was given, which is a way for the two to drift apart
-    without anyone editing either. The app is unchanged and still has to
-    match, because main.yml fails the build when the two apps disagree.
+    `make bump` writes nifi_monitoring/default/app.conf and stops; the TA's
+    globalConfig.json and app.manifest are regenerated from it by
+    gen_globalconfig.py. A bump without that regeneration leaves the add-on
+    on the old version, and ucc-gen would happily build it. This is what says
+    so -- and it is meant to fail between `make bump` and `make version-sync`,
+    which is the point.
     """
 
     def versions(self):
@@ -135,12 +135,9 @@ class VersionAgreementTest(unittest.TestCase):
             REPO, "nifi_TA_monitoring", "package", "app.manifest")))
         app_conf = configparser.ConfigParser(strict=False, interpolation=None)
         app_conf.read(os.path.join(REPO, "nifi_monitoring", "default", "app.conf"))
-        with open(GENERATOR) as handle:
-            generator = re.search(r'^VERSION = "([^"]+)"', handle.read(), re.M)
         return {
             "globalConfig.json": global_config()["meta"]["version"],
             "package/app.manifest": manifest["info"]["id"]["version"],
-            "gen_globalconfig.py": generator.group(1) if generator else None,
             "nifi_monitoring [launcher]": app_conf["launcher"]["version"],
             "nifi_monitoring [id]": app_conf["id"]["version"],
         }

@@ -1,61 +1,79 @@
-# Local build, packaging and validation.
+# Delivery facade (sealed, from tech-cicd) plus this repo's stages.
 #
-# The same three steps CI runs, callable by a person. They used to be a Docker
-# one-liner pasted into the README, tests/README.md and the output of
-# `run.sh --bare`, which is three copies free to drift from the workflow that
-# actually ships the apps.
+# `make help` lists everything. The stages below are the part that is ours:
+# what lint, test and security mean for two Splunk apps, and how they are
+# built, packaged and validated.
 #
 # Everything runs inside kudaw/appinspect:latest, the image CI uses, so the
 # slim and AppInspect versions here are the ones that gate the release. The
 # only local prerequisites are Docker and Python 3.
-#
-#   make            # what each target does
-#   make build      # generate the TA into output/
-#   make package    # build, then the two .tar.gz a release attaches
-#   make validate   # package, then slim validate + AppInspect precert
-#   make test       # the unit suite, against the built add-on
-#   make clean      # drop output/ and the packages
+
+include delivery.mk
+
+DELIVERY_TASKS_HINT := make build / package / validate; the harness is tests/run.sh
 
 SHELL := /bin/bash
 REPO  := $(shell pwd)
 APP   := nifi_monitoring
 TA    := nifi_TA_monitoring
 
-# Read from the app the workflow reads it from, not declared here: a version in
-# a Makefile is a second source of truth that nothing checks.
-VERSION := $(shell grep -m1 '^version' $(APP)/default/app.conf | tr -d ' ' | cut -d= -f2)
-
-# CI's gate. Measured per app: 5 for the app, 12 for the TA.
+# CI's gate, measured per app: 5 for the app, 12 for the TA. A unit test fails
+# if this and the workflows' MAX_WARNING disagree.
 MAX_WARNING ?= 13
 
 IMAGE := kudaw/appinspect:latest
-# HOME must be writable: slim creates ~/.config on first run, and the image's
+# HOME must be writable: slim creates ~/.config on first run and the image's
 # default HOME is not writable by the invoking uid.
 DOCKER := docker run --rm -u "$(shell id -u):$(shell id -g)" -e HOME=/w \
           -v "$(REPO):/w" -w /w $(IMAGE)
 
-.DEFAULT_GOAL := help
-.PHONY: help build package validate test clean
+.PHONY: lint test security check build version-sync package validate clean
 
-help: ## Show this help
-	@echo "Building $(APP) and $(TA) $(VERSION)"
-	@echo
-	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) \
-	  | awk 'BEGIN{FS=":.*## "}{printf "  \033[1m%-10s\033[0m %s\n", $$1, $$2}'
+## --- stages -----------------------------------------------------------
+
+lint: ## Shell and Python syntax across the harness and the add-on
+	@echo "==> lint"
+	@find . -name '*.sh' -not -path './output/*' -not -path './.venv*' \
+	    -not -path './.git/*' -print0 | xargs -0 -n1 bash -n
+	@find nifi_TA_monitoring tests -name '*.py' -not -path '*/output/*' \
+	    -print0 | xargs -0 -n1 python3 -m py_compile
+	@echo "    ok"
+
+test: build ## The unit suite, against the built add-on
+	@echo "==> test"
+	@cd tests/unit && REQUIRE_BUILT_TA=1 python3 -m unittest discover
+
+security: validate ## AppInspect precert is the security gate for a Splunk app
+	@echo "==> security: covered by validate (AppInspect precert)"
+
+check: ## Every gate, in one pass, without stopping at the first failure
+	@failed=0; \
+	$(MAKE) --no-print-directory lint    || failed=1; \
+	$(MAKE) --no-print-directory test    || failed=1; \
+	$(MAKE) --no-print-directory validate|| failed=1; \
+	if [ $$failed -ne 0 ]; then echo "==> check FAILED"; exit 1; fi; \
+	echo "==> check passed"
+
+## --- build and package ------------------------------------------------
 
 build: ## Generate the TA into output/ (the app needs no generation)
 	@./tests/build-ta.sh
 
-package: build ## Build the two .tar.gz a release attaches
-	@echo "==> packaging $(VERSION)"
+version-sync: ## Rewrite the TA's globalConfig and manifest from app.conf
+	@python3 $(TA)/gen_globalconfig.py
+
+package: build ## The two .tar.gz a release attaches
+	@echo "==> packaging $$(./scripts/version.sh get)"
 	@$(DOCKER) sh -c 'slim package $(APP) && slim package output/$(TA)'
-	@ls -l $(APP)-$(VERSION).tar.gz $(TA)-$(VERSION).tar.gz
+	@ls -l $(APP)-$$(./scripts/version.sh get).tar.gz \
+	       $(TA)-$$(./scripts/version.sh get).tar.gz
 
 validate: package ## slim validate + AppInspect precert, with CI's gate
-	@for app in $(APP) $(TA); do \
+	@v=$$(./scripts/version.sh get); \
+	for app in $(APP) $(TA); do \
 	  echo "==> $$app"; \
-	  $(DOCKER) sh -c "slim validate $$app-$(VERSION).tar.gz" || exit 1; \
-	  $(DOCKER) sh -c "splunk-appinspect inspect $$app-$(VERSION).tar.gz \
+	  $(DOCKER) sh -c "slim validate $$app-$$v.tar.gz" || exit 1; \
+	  $(DOCKER) sh -c "splunk-appinspect inspect $$app-$$v.tar.gz \
 	      --output-file $$app-appinspect.json --mode precert >/dev/null" || exit 1; \
 	  python3 -c "import json,sys; \
 s=json.load(open('$$app-appinspect.json'))['summary']; print('   ', s); \
@@ -63,9 +81,6 @@ sys.exit(1) if s['error'] or s['failure'] or s['warning'] > $(MAX_WARNING) else 
 	    || { echo "    FAILED the gate (max $(MAX_WARNING) warnings)"; exit 1; }; \
 	done
 	@echo "==> both apps pass the gate"
-
-test: build ## Run the unit suite against the built add-on
-	@cd tests/unit && REQUIRE_BUILT_TA=1 python3 -m unittest discover
 
 clean: ## Remove output/, the packages and what slim leaves behind
 	@rm -rf output *.tar.gz *-appinspect.json .config $(APP)/app.manifest

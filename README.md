@@ -65,10 +65,13 @@ notes live in `docs/` and are not published.
 ## Testing
 
 ```
+make check                            # lint + unit tests + package + AppInspect
 make build                            # generate the add-on into output/
-make test                             # the unit suite
 make validate                         # package both apps and run AppInspect
 ```
+
+Delivery — version, changelog, promotion and release — goes through `make`
+too; `make help` lists it, and `CHANGELOG.md` is the record.
 
 ```
 cd tests

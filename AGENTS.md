@@ -34,22 +34,35 @@ Also in this repo:
 
 ## Common commands
 
-The `Makefile` is the facade: it runs what CI runs, inside the same
-`kudaw/appinspect:latest` image, so the slim and AppInspect versions are the
-ones that gate the release. Docker and Python 3 are the only prerequisites.
+The `Makefile` is the delivery facade: `delivery.mk` + `scripts/` come sealed
+from the `tech-cicd` plugin and are never edited here — what does not fit goes
+in `delivery.conf` or back to the contract. The stages are ours. Everything
+runs inside `kudaw/appinspect:latest`, the image CI uses, so the slim and
+AppInspect versions are the ones that gate the release. Docker and Python 3
+are the only prerequisites.
 
 ```
-make              # what each target does
+make              # every target, grouped
+make check        # lint + unit tests + package + AppInspect, in one pass
 make build        # ucc-gen into output/ (the TA only; the app needs no build)
 make package      # the two .tar.gz a release attaches
 make validate     # slim validate + AppInspect precert, with CI's gate
-make test         # the unit suite against the built add-on
 make clean
 ```
 
-`make build` is `./tests/build-ta.sh`, which creates `.venv-ucc` on first run.
-The TA is packaged from `output/`, the app from the tree — reading the version
-from `nifi_monitoring/default/app.conf`, the same file the workflow reads.
+Delivery proper — `status`, `bump`, `changelog`, `promote-main`, `release` —
+is driven through the repo's own `/cicd` skill, which carries the sequence and
+what to confirm. `make contract-check` and `make self-test` verify the facade.
+
+**The version has one source and three derivations.** `make bump` writes
+`nifi_monitoring/default/app.conf` and stops; the TA's `globalConfig.json` and
+`package/app.manifest` are rewritten from it by **`make version-sync`**, since
+the TA has no `app.conf` in the tree. Between the two the tree is inconsistent
+and a unit test says so, which is the point. Never edit a version by hand.
+
+This repository does **not** use Conventional Commits, so `make suggest-level`
+and the changelog generator classify almost everything as `patch` and "Other".
+Both are unreliable here on purpose — see `.claude/skills/cicd/SKILL.md`.
 
 AppInspect is the gate. `main.yml` fails if `summary.error > 0`, `failure > 0`, or `warning > MAX_WARNING` (currently `13`; measured per app, 5 for the app and 12 for the TA).
 

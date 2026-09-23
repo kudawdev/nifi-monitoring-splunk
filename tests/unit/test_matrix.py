@@ -135,12 +135,27 @@ class ExecutableBitTest(unittest.TestCase):
     developer never sees.
     """
 
-    #: Executed directly rather than handed to an interpreter.
+    #: Executed directly rather than handed to an interpreter. Paths are
+    #: relative to tests/; the delivery facade lives above it, and its scripts
+    #: arrive from `adopt.sh` at mode 700 -- which git, with fileMode off,
+    #: records as 644 like any other new file.
     SCRIPTS = [
         "run.sh",
+        "build-ta.sh",
         "provision/nifi/start-unsecured.sh",
         "provision/seed-splunk-etc.sh",
         "provision/seed-uf-etc.sh",
+        "../scripts/_config.sh",
+        "../scripts/changelog.sh",
+        "../scripts/contract-check.sh",
+        "../scripts/promote.sh",
+        "../scripts/release-notes.sh",
+        "../scripts/release.sh",
+        "../scripts/self-test.sh",
+        "../scripts/version.sh",
+        "../scripts/manifest/app-conf.sh",
+        "../scripts/manifest/package-json.sh",
+        "../scripts/manifest/pyproject-toml.sh",
     ]
 
     def recorded_mode(self, relative):

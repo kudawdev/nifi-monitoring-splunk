@@ -34,8 +34,10 @@ if [ ! -x "$VENV/bin/ucc-gen" ]; then
     fi
 fi
 
-VERSION=$(sed -n 's/^ *"version": *"\([0-9][^"]*\)".*/\1/p' \
-    nifi_TA_monitoring/globalConfig.json | head -1)
+# One source for the version, the same file `make bump` writes and the release
+# workflow reads. globalConfig.json and app.manifest derive from it.
+VERSION=$(sed -n 's/^ *version *= *\(.*\)/\1/p' \
+    nifi_monitoring/default/app.conf | head -1 | tr -d ' \r')
 echo "==> building nifi_TA_monitoring $VERSION into output/"
 
 "$VENV/bin/ucc-gen" build \
