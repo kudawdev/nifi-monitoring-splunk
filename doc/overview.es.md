@@ -62,7 +62,7 @@ instancia configurada, buscables sin abrir una terminal en cada host.
 ### Status History
 
 Status history de los procesadores y grupos de procesos configurados en
-[Status history](configuration.es.md#4-status-history) — throughput,
+[Status history](configuration-pull.es.md#4-status-history) — throughput,
 flow files en cola y los demás contadores del Status History propio de
 NiFi, por instancia a lo largo del tiempo.
 

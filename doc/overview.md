@@ -61,7 +61,7 @@ instance, searchable without opening a terminal on each host.
 ### Status History
 
 Status history of the processors and process groups configured under
-[Status history](configuration.md#4-status-history) — throughput, queued
+[Status history](configuration-pull.md#4-status-history) — throughput, queued
 flow files and NiFi's other Status History counters, per instance over
 time.
 

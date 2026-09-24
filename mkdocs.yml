@@ -20,7 +20,10 @@ nav:
   - Overview: overview.md
   - Compatibility and collection strategy: compatibility.md
   - Install NIFI Monitoring: installation.md
-  - NIFI Configuration: configuration.md
+  - NIFI Configuration:
+      - Choose a strategy: configuration.md
+      - "Push strategy: Direct Sending": configuration-push.md
+      - "Pull strategy: Splunk Data Input NiFi": configuration-pull.md
   - Data Reference: references.md
   - Upgrading to 2.0.0: upgrading.md
   - Contribute: contributing.md
@@ -91,6 +94,9 @@ plugins:
           Compatibility and collection strategy: Compatibilidad y estrategia de recolección
           Install NIFI Monitoring: Instalar NIFI Monitoring
           NIFI Configuration: Configuración de NIFI
+          Choose a strategy: Elegir una estrategia
+          "Push strategy: Direct Sending": "Estrategia push: Envío Directo"
+          "Pull strategy: Splunk Data Input NiFi": "Estrategia pull: Splunk Data Input NiFi"
           Data Reference: Referencia de Datos
           Upgrading to 2.0.0: Actualizar a 2.0.0
           Contribute: Contribuya
