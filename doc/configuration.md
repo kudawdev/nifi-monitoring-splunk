@@ -32,17 +32,17 @@ The result of this query will return the list of hosts that must be configured i
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/sourcetype_search.png)
 
-If the lookup is correctly configured, the information can be accessed from the Overview panel.
+!!! note "No results in that search?"
+    The NiFi processes have to already be sending data for this search to
+    return anything:
+
+    1. Push strategy: start the NiFi flow — see [Start the flow](configuration-push.md#5-start-the-flow).
+    2. Pull strategy: the configured data inputs must be enabled.
+
+    ![image](/nifi-monitoring-splunk/assets/images/splunk/4_configure_instances.png)
+
+Once the lookup has a row for each host, the information becomes accessible from the Overview panel.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_overview_lookup.png)
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/3_configure_instances.png)
-
-No results in that search?
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/4_configure_instances.png)
-
-For it to return any, the NiFi processes must be running correctly:
-
-1. Push strategy: start the NiFi flow — see [Start the flow](configuration-push.md#5-start-the-flow).
-2. Pull strategy: the configured data inputs must be enabled.

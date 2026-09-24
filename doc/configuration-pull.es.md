@@ -1,46 +1,33 @@
 # Estrategia pull: Splunk Data Input NiFi
 
 La TA consulta la API REST de NiFi en un intervalo y escribe lo que
-recibe — no corre nada dentro de NiFi. ¿No estás seguro de que esta es
-la estrategia que necesitás? Ver
+recibe. **Con esta estrategia no se configura nada dentro de NiFi** — ni
+procesadores, ni parameter context o variables, ni controller services,
+ni reporting tasks. NiFi queda exactamente como está; todo lo de abajo
+pasa del lado de Splunk. ¿No estás seguro de que esta es la estrategia
+que necesitás? Ver
 [Elegir una estrategia de recolección](compatibility.es.md#elegir-una-estrategia-de-recoleccion).
 
 *Esta es la estrategia que deben usar las instancias de NiFi con al menos
 autenticación básica.*
 
 Requiere **Nifi Monitoring TA** ya instalada (ver
-[Instalar NIFI Monitoring](installation.es.md)) — es la app que
-configura toda esta página.
+[Instalar NIFI Monitoring](installation.es.md)).
 
 Ve a **Apps > NiFi TA Monitoring > Inputs** y haz clic en **Create New
-Input**. Ahí completás los ocho grupos de campos descritos más abajo —
-uno por cada instancia de NiFi que quieras monitorear.
+Input**. Un input cubre una instancia de NiFi completa (o un cluster
+entero, apuntado a cualquier nodo — ver
+[Compatibilidad](compatibility.es.md#topologia-instancia-unica-multiples-instancias-o-cluster));
+creá uno por cada instancia que quieras monitorear.
 
-**Un input cubre una instancia de NiFi completa** (o un cluster entero,
-apuntado a cualquier nodo — ver [Compatibilidad](compatibility.es.md#topologia-instancia-unica-multiples-instancias-o-cluster)).
-No hace falta un input distinto por cada endpoint: todo lo de esa
-instancia — qué endpoints consultar, qué procesadores y grupos de
-procesos rastrear, TLS, el intervalo — vive en el mismo formulario.
+**Los pasos 1 a 3 alcanzan para un setup básico.** Los pasos 4 a 8 vienen
+colapsados en el propio formulario — son opcionales, volvé a ellos solo
+si necesitás esa función puntual.
 
 !!! note "La pantalla genérica de Splunk también funciona, pero conviene evitarla"
     *Settings > Data inputs > NiFi* escribe el mismo `inputs.conf`, pero
-    no tiene el formulario agrupado, la validación de campos ni el
-    **Test connection** que se describen abajo.
-
-Dos cosas más que conviene saber, fuera de los ocho grupos:
-
-- **Configuration > Logging**, fuera del input, define cuánto escribe el
-  add-on en `splunkd.log`. Por defecto es `INFO`, que es una línea por
-  request por endpoint por intervalo. En una instancia que consulta varios
-  NiFi eso es casi todo lo que el add-on deja en `_internal`; `WARNING`
-  conserva los problemas y descarta el resto.
-- **Test connection**, dentro del formulario del input junto a las
-  credenciales, hace las mismas dos llamadas que hace el input — el login y
-  `GET /system-diagnostics` — con los valores que están en pantalla, y dice
-  qué respondió. No guarda nada. Configurar bien un input de NiFi implica
-  acertar al mismo tiempo la URL, el esquema, el certificado y las
-  credenciales; sin esto los cuatro fallan igual, unos minutos después, en
-  un log.
+    no tiene el formulario agrupado, la validación de campos ni el Test
+    connection del paso 2.
 
 ## 1. Instancia de NiFi
 
@@ -57,7 +44,10 @@ Dos cosas más que conviene saber, fuera de los ocho grupos:
   `POST /access/token` y envía el JWT recibido en cada request siguiente.
 - **Username** / **Password**: requeridos salvo que Authentication sea
   `None`.
-- **Test connection**: ver arriba.
+- **Test connection**: junto a las credenciales, hace las mismas dos
+  llamadas que hace el input — el login y `GET /system-diagnostics` —
+  con los valores que están en pantalla, y dice qué respondió, sin
+  guardar nada.
 
 ## 3. Endpoints
 
@@ -131,14 +121,17 @@ Colapsado por defecto:
   campo separado. Este es también el valor que debe coincidir con una fila
   del [lookup de instancias](configuration.es.md#lookup-de-instancias).
 
+Aparte de estos ocho grupos, **Configuration > Logging** (fuera del
+input) define cuánto escribe el add-on en `splunkd.log` — `INFO` por
+defecto, `WARNING` si solo te interesan los problemas.
+
 ## Endpoints personalizados
 
-La lista fija de *Endpoints* cubre lo que la app trae de fábrica. Si
-necesitas consultar un endpoint REST de NiFi que no está en esa lista, usa
-en cambio el apartado **Custom endpoints**: una línea por endpoint, con el
-formato `nombre,path` (por ejemplo
-`queue_stats,/flow/connections/1234-5678-90ab-cdef/status`). El path es
-relativo a la NiFi API URL configurada arriba.
+Opcional — solo si necesitás consultar un endpoint REST de NiFi que no
+está en la lista fija de *Endpoints* del paso 3. Usá el apartado **Custom
+endpoints**: una línea por endpoint, con el formato `nombre,path` (por
+ejemplo `queue_stats,/flow/connections/1234-5678-90ab-cdef/status`). El
+path es relativo a la NiFi API URL configurada arriba.
 
 Tú le pones el nombre; el sourcetype lo pone el add-on. `queue_stats` se
 indexa como `nifi:api:custom:queue_stats`, así que todo lo que declares se

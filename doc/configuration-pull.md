@@ -1,45 +1,32 @@
 # Pull strategy: Splunk Data Input NiFi
 
-The TA polls NiFi's REST API on an interval and writes what it gets back
-— nothing runs inside NiFi. Not sure this is the strategy you need? See
+The TA polls NiFi's REST API on an interval and writes what it gets
+back. **Nothing gets configured inside NiFi for this strategy** — no
+processors, no parameter context or variables, no controller services,
+no reporting tasks. NiFi stays exactly as it is; everything below
+happens on the Splunk side. Not sure this is the strategy you need? See
 [Choosing a collection strategy](compatibility.md#choosing-a-collection-strategy).
 
 *This strategy is what NiFi instances with at least basic authentication
 must use.*
 
 Requires **Nifi Monitoring TA** already installed (see
-[Install NIFI Monitoring](installation.md)) — that is the app this
-whole page configures.
+[Install NIFI Monitoring](installation.md)).
 
 Go to **Apps > NiFi TA Monitoring > Inputs** and click **Create New
-Input**. There you fill in the eight field groups described below — one
-input per NiFi instance you want to monitor.
+Input**. One input covers a whole NiFi instance (or a whole cluster,
+pointed at any node — see
+[Compatibility](compatibility.md#topology-standalone-multiple-instances-or-cluster));
+create one per instance you want to monitor.
 
-**One input covers a whole NiFi instance** (or a whole cluster, pointed
-at any node — see [Compatibility](compatibility.md#topology-standalone-multiple-instances-or-cluster)).
-You don't need a separate input per endpoint: everything for that
-instance — which endpoints to poll, which processors and process groups
-to track, TLS, the interval — lives on the same form.
+**Steps 1 through 3 are enough for a basic setup.** Steps 4 through 8
+are collapsed in the form itself — optional, come back to them only if
+you need that specific feature.
 
 !!! note "Splunk's generic screen also works, but avoid it"
     *Settings > Data inputs > NiFi* writes the same `inputs.conf`, but has
-    none of the grouped form, the field validation or the **Test
-    connection** described below.
-
-Two more things worth knowing, outside the eight groups:
-
-- **Configuration > Logging**, outside the input itself, sets how much the
-  add-on writes to `splunkd.log`. It is `INFO` by default, which is one line
-  per request per endpoint per interval. On an instance polling several
-  NiFis that is most of what the add-on puts in `_internal`; `WARNING` keeps
-  the problems and drops the rest.
-- **Test connection**, inside the input form next to the credentials,
-  performs the same two calls the input performs -- the login and
-  `GET /system-diagnostics` -- with the values currently on screen, and says
-  what came back. It saves nothing. Getting a NiFi input right means getting
-  the URL, the scheme, the certificate and the credentials right at the same
-  time; without this they all fail the same way, some minutes later, in a
-  log.
+    none of the grouped form, the field validation or the Test connection
+    from step 2.
 
 ## 1. NiFi instance
 
@@ -56,7 +43,10 @@ Two more things worth knowing, outside the eight groups:
   `POST /access/token` and sends the JWT it gets back on every following
   request.
 - **Username** / **Password**: required unless Authentication is `None`.
-- **Test connection**: see above.
+- **Test connection**: next to the credentials, performs the same two
+  calls the input performs -- the login and `GET /system-diagnostics` --
+  with the values currently on screen, and says what came back, without
+  saving anything.
 
 ## 3. Endpoints
 
@@ -127,11 +117,15 @@ Collapsed by default:
   also the value that must match a row in the
   [instance lookup](configuration.md#instance-lookup).
 
+Besides these eight groups, **Configuration > Logging** (outside the
+input) sets how much the add-on writes to `splunkd.log` — `INFO` by
+default, `WARNING` if you only care about problems.
+
 ## Custom endpoints
 
-The fixed list under *Endpoints* covers what the app ships with. If you need
-to poll a NiFi REST endpoint that is not on that list, use the **Custom
-endpoints** section instead: one line per endpoint, as `name,path` (e.g.
+Optional — only if you need to poll a NiFi REST endpoint that is not on
+the fixed list from step 3. Use the **Custom endpoints** section: one
+line per endpoint, as `name,path` (e.g.
 `queue_stats,/flow/connections/1234-5678-90ab-cdef/status`). The path is
 relative to the NiFi API URL configured above.
 

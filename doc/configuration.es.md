@@ -33,18 +33,18 @@ El resultado de esta búsqueda retornará el listado de host que deben ser confi
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/sourcetype_search.png)
 
-Si el lookup está correctamente configurado la información podrá ser accesible desde el panel Overview.
+!!! note "¿No hay resultados en esa búsqueda?"
+    Los procesos de NiFi ya tienen que estar mandando datos para que esta
+    búsqueda devuelva algo:
+
+    1. Estrategia push: inicia el flow de NiFi — ver [Inicia el flow](configuration-push.es.md#5-inicia-el-flow).
+    2. Estrategia pull: los data inputs configurados deben estar habilitados.
+
+    ![image](/nifi-monitoring-splunk/assets/images/splunk/4_configure_instances.png)
+
+Una vez que el lookup tiene una fila por cada host, la información queda
+accesible desde el panel Overview.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_overview_lookup.png)
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/3_configure_instances.png)
-
-¿No hay resultados en esa búsqueda?
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/4_configure_instances.png)
-
-Para que retorne resultados, los procesos de NiFi deben estar ejecutándose
-correctamente:
-
-1. Estrategia push: inicia el flow de NiFi — ver [Inicia el flow](configuration-push.es.md#5-inicia-el-flow).
-2. Estrategia pull: los data inputs configurados deben estar habilitados.
