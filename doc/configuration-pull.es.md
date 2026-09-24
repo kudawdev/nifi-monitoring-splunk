@@ -8,21 +8,26 @@ la estrategia que necesitás? Ver
 *Esta es la estrategia que deben usar las instancias de NiFi con al menos
 autenticación básica.*
 
-Desde la 2.0.0 el add-on tiene su propia pantalla de configuración. Entra a
-**Apps > NiFi TA Monitoring > Inputs** y haz clic en **Create New Input**.
-La pantalla genérica de Splunk (*Settings > Data inputs > NiFi*) sigue
-funcionando y escribe el mismo `inputs.conf`, pero no ofrece el formulario
-agrupado, la validación de campos ni la prueba de conexión que se describen
-abajo.
+Requiere **Nifi Monitoring TA** ya instalada (ver
+[Instalar NIFI Monitoring](installation.es.md)) — es la app que
+configura toda esta página.
 
-**Un input cubre una instancia de NiFi** (o un cluster, apuntado a
-cualquier nodo — ver [Compatibilidad](compatibility.es.md#topologia-instancia-unica-multiples-instancias-o-cluster)).
-Todo lo referido a esa instancia — qué endpoints consultar, qué
-procesadores y grupos de procesos rastrear, TLS, el intervalo — vive en el
-mismo formulario, organizado en los grupos descritos abajo. Crea un input
-por cada instancia de NiFi que quieras monitorear.
+Ve a **Apps > NiFi TA Monitoring > Inputs** y haz clic en **Create New
+Input**. Ahí completás los ocho grupos de campos descritos más abajo —
+uno por cada instancia de NiFi que quieras monitorear.
 
-Dos cosas más que conviene saber:
+**Un input cubre una instancia de NiFi completa** (o un cluster entero,
+apuntado a cualquier nodo — ver [Compatibilidad](compatibility.es.md#topologia-instancia-unica-multiples-instancias-o-cluster)).
+No hace falta un input distinto por cada endpoint: todo lo de esa
+instancia — qué endpoints consultar, qué procesadores y grupos de
+procesos rastrear, TLS, el intervalo — vive en el mismo formulario.
+
+!!! note "La pantalla genérica de Splunk también funciona, pero conviene evitarla"
+    *Settings > Data inputs > NiFi* escribe el mismo `inputs.conf`, pero
+    no tiene el formulario agrupado, la validación de campos ni el
+    **Test connection** que se describen abajo.
+
+Dos cosas más que conviene saber, fuera de los ocho grupos:
 
 - **Configuration > Logging**, fuera del input, define cuánto escribe el
   add-on en `splunkd.log`. Por defecto es `INFO`, que es una línea por

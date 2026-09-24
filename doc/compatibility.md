@@ -36,23 +36,37 @@ Two things exist only on a cluster:
 
 ## Choosing a collection strategy
 
-Two mutually exclusive strategies get NiFi's data into Splunk.
+Two mutually exclusive ways get NiFi's data into Splunk:
+
+- **Pull**: Splunk's TA calls NiFi's REST API on an interval and writes
+  what it gets back. Nothing runs inside NiFi.
+- **Push**: a flow running inside NiFi calls NiFi's own API and sends the
+  result to Splunk's HTTP Event Collector (HEC). Nothing on Splunk's side
+  has to reach NiFi.
+
 **Pick exactly one per NiFi instance — running both on the same instance
 duplicates every event.**
 
+### Which one to use
+
+**Use pull, unless both of the following are true:**
+
+1. Splunk genuinely cannot reach NiFi's API — NiFi sits in a DMZ, or on a
+   network that only allows outbound connections from it.
+2. Your NiFi has **no authentication enabled at all**. Push calls NiFi's
+   own API without sending any credentials. If NiFi requires a login
+   (single-user, LDAP, or anything else), that call fails with 401, and
+   no setting fixes it — the flow was never built to authenticate.
+
+If either of those does not hold for your environment, use pull: it is
+the default choice, it works whether or not NiFi has authentication
+enabled, and it requires installing nothing inside NiFi.
+
 | | Pull | Push |
 |---|---|---|
-| What moves | Splunk's TA polls NiFi's REST API on an interval. | A flow inside NiFi calls its own API and sends the result to Splunk's HTTP Event Collector (HEC). |
 | Network direction required | Splunk → NiFi | NiFi → Splunk |
 | NiFi authentication supported | None, single-user, or LDAP | **None only** |
 | What you install inside NiFi | Nothing | A process group (39 processors), 3 reporting tasks, 2 Site-to-Site input ports; one flow file per NiFi major version |
-| Use when | Splunk can reach NiFi's API. **Default choice.** | Splunk cannot reach NiFi at all — NiFi in a DMZ, or on a network that only permits outbound connections from it |
-
-!!! warning "Push requires an unauthenticated NiFi"
-    The flow calls its own REST API without sending any credentials. If
-    your NiFi has single-user, LDAP or any other login enabled, that call
-    fails with 401 — and no setting fixes it, because the flow was never
-    built to authenticate. Use pull instead.
 
 ### Feature comparison
 

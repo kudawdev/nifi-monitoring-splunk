@@ -63,8 +63,8 @@ si el almacenamiento te importa más que la historia.
 
 ### El flow definition se divide por versión de NiFi
 
-`flow_definition/` ahora tiene `nifi-1.x/` y `nifi-2.x/`. Si usas el camino
-push, importa el que corresponde a tu NiFi. Ver
+`flow_definition/` ahora tiene `nifi-1.x/` y `nifi-2.x/`. Si usas la
+estrategia push, importa el que corresponde a tu NiFi. Ver
 [Compatibilidad](compatibility.es.md).
 
 El template XML se movió a `nifi-1.x/`. NiFi 2.x eliminó el soporte de
@@ -80,7 +80,7 @@ templates.
 4. Revisa cada input de NiFi: si apunta a un NiFi con HTTPS, configura el CA
    bundle o desactiva la verificación.
 5. Saca `endpoint_site_to_site` de tus inputs si está.
-6. Solo si usas el camino push: reimporta el flow de tu versión de NiFi y
+6. Solo si usas la estrategia push: reimporta el flow de tu versión de NiFi y
    pasa los ajustes al parameter context (2.x) o a las variables (1.x).
 
 ## Novedades de este release
@@ -96,4 +96,4 @@ templates.
   2.x.
 - **`nifi:log:request`**, el log de acceso HTTP de NiFi.
 - Un **panel de inventario** con la versión de NiFi y de Java de cada
-  instancia, y por qué camino llegaron sus datos.
+  instancia, y con qué estrategia llegaron sus datos.

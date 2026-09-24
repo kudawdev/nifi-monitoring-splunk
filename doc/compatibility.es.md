@@ -51,24 +51,38 @@ Dos cosas existen solo en un cluster:
 
 ## Elegir una estrategia de recolección
 
-Dos estrategias mutuamente excluyentes llevan los datos de NiFi a Splunk.
+Dos formas mutuamente excluyentes llevan los datos de NiFi a Splunk:
+
+- **Pull**: la TA de Splunk consulta la API REST de NiFi en un intervalo
+  y escribe lo que recibe. No corre nada dentro de NiFi.
+- **Push**: un flow que corre dentro de NiFi llama a la propia API de
+  NiFi y envía el resultado al HTTP Event Collector (HEC) de Splunk. Del
+  lado de Splunk no hay que alcanzar a NiFi para nada.
+
 **Elige exactamente una por instancia de NiFi — usar las dos en la misma
 instancia duplica cada evento.**
 
+### Cuál usar
+
+**Usa pull, a menos que se cumplan las dos condiciones siguientes:**
+
+1. Splunk realmente no puede alcanzar la API de NiFi — NiFi está en una
+   DMZ, o en una red que solo permite conexiones salientes desde él.
+2. Tu NiFi **no tiene ninguna autenticación habilitada**. Push llama a
+   la propia API de NiFi sin enviar ninguna credencial. Si NiFi exige
+   login (single-user, LDAP, o cualquier otro), esa llamada falla con
+   401, y no hay ningún ajuste que lo resuelva — el flow nunca fue
+   diseñado para autenticarse.
+
+Si alguna de esas dos condiciones no se cumple en tu entorno, usa pull:
+es la opción por defecto, funciona con o sin autenticación en NiFi, y no
+requiere instalar nada dentro de NiFi.
+
 | | Pull | Push |
 |---|---|---|
-| Qué ocurre | La TA de Splunk consulta la API REST de NiFi en un intervalo. | Un flow dentro de NiFi llama a su propia API y envía el resultado al HTTP Event Collector (HEC) de Splunk. |
 | Dirección de red requerida | Splunk → NiFi | NiFi → Splunk |
 | Autenticación de NiFi soportada | Ninguna, single-user o LDAP | **Únicamente ninguna** |
 | Qué se instala dentro de NiFi | Nada | Un process group (39 procesadores), 3 reporting tasks, 2 puertos de entrada Site-to-Site; un archivo de flow distinto por versión mayor de NiFi |
-| Cuándo usarla | Cuando Splunk puede alcanzar la API de NiFi. **Opción por defecto.** | Cuando Splunk no puede alcanzar NiFi en absoluto — NiFi en una DMZ, o en una red que solo permite conexiones salientes desde NiFi |
-
-!!! warning "Push requiere un NiFi sin autenticación"
-    El flow llama a su propia API REST sin enviar ninguna credencial. Si
-    tu NiFi tiene single-user, LDAP o cualquier otro inicio de sesión
-    habilitado, esa llamada falla con 401 — y no hay ningún ajuste que lo
-    resuelva, porque el flow nunca fue diseñado para autenticarse. Usa
-    pull en su lugar.
 
 ### Comparación de funcionalidades
 

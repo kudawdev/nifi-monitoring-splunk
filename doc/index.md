@@ -15,7 +15,7 @@ It ships as two apps:
 - [Lookup File Editor](https://splunkbase.splunk.com/app/1724/)
 - [Status Indicator - Custom Visualization](https://splunkbase.splunk.com/app/3119/)
 
-Next: [Compatibility and choosing a collection path](compatibility.md) —
+Next: [Compatibility and collection strategy](compatibility.md) —
 the first decision to make before installing anything.
 
 ## Support

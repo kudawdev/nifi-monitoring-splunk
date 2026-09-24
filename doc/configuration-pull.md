@@ -7,20 +7,26 @@ The TA polls NiFi's REST API on an interval and writes what it gets back
 *This strategy is what NiFi instances with at least basic authentication
 must use.*
 
-As of 2.0.0 the add-on has its own configuration page. Open **Apps > NiFi TA
-Monitoring > Inputs** and click **Create New Input**. Splunk's generic
-*Settings > Data inputs > NiFi* screen still works and writes the same
-`inputs.conf`, but it does not offer the grouped form, the field validation
-or the connection test described below.
+Requires **Nifi Monitoring TA** already installed (see
+[Install NIFI Monitoring](installation.md)) — that is the app this
+whole page configures.
 
-**One input covers one NiFi instance** (or one cluster, pointed at any
-node — see [Compatibility](compatibility.md#topology-standalone-multiple-instances-or-cluster)).
-Everything for that instance — which endpoints to poll, which processors and
-process groups to track, TLS, the interval — lives on the same form,
-organized into the groups described below. Create one input per NiFi
-instance you want to monitor.
+Go to **Apps > NiFi TA Monitoring > Inputs** and click **Create New
+Input**. There you fill in the eight field groups described below — one
+input per NiFi instance you want to monitor.
 
-Two more things worth knowing:
+**One input covers a whole NiFi instance** (or a whole cluster, pointed
+at any node — see [Compatibility](compatibility.md#topology-standalone-multiple-instances-or-cluster)).
+You don't need a separate input per endpoint: everything for that
+instance — which endpoints to poll, which processors and process groups
+to track, TLS, the interval — lives on the same form.
+
+!!! note "Splunk's generic screen also works, but avoid it"
+    *Settings > Data inputs > NiFi* writes the same `inputs.conf`, but has
+    none of the grouped form, the field validation or the **Test
+    connection** described below.
+
+Two more things worth knowing, outside the eight groups:
 
 - **Configuration > Logging**, outside the input itself, sets how much the
   add-on writes to `splunkd.log`. It is `INFO` by default, which is one line

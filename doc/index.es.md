@@ -15,7 +15,7 @@ Se distribuye como dos apps:
 - [Lookup File Editor](https://splunkbase.splunk.com/app/1724/)
 - [Status Indicator – Custom Visualization](https://splunkbase.splunk.com/app/3119/)
 
-Siguiente: [Compatibilidad y métodos de recolección](compatibility.es.md)
+Siguiente: [Compatibilidad y estrategia de recolección](compatibility.es.md)
 — la primera decisión antes de instalar nada.
 
 ## Soporte

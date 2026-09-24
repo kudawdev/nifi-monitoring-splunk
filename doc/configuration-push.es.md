@@ -6,6 +6,11 @@ Splunk no hay que alcanzar a NiFi para nada. ¿No estás seguro de que esta
 es la estrategia que necesitás? Ver
 [Elegir una estrategia de recolección](compatibility.es.md#elegir-una-estrategia-de-recoleccion).
 
+Requiere las dos apps ya instaladas (ver
+[Instalar NIFI Monitoring](installation.es.md)): **Nifi Monitoring TA**
+parsea los eventos que manda este flow, aunque en esta estrategia no
+configures ningún input dentro de ella.
+
 ## 1. Configura el HTTP Event Collector (HEC) en Splunk
 
 Un HTTP Event Collector (HEC) recibe eventos de NiFi por HTTP o HTTPS.
