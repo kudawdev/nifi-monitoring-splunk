@@ -92,6 +92,7 @@ En cualquiera de los dos casos, los ajustes son los mismos:
 
 | Ajuste | Qué es |
 |---|---|
+| `instance_name` | El `host` con que se envían los eventos `nifi:api:*`: el `host` de la fila de este NiFi en la lookup `instance`. **Obligatorio en un cluster**, donde la API se consulta desde el nodo primario — si queda vacío, cada evento lleva el nombre del nodo que sea primario en ese momento, que cambia en cada failover y no coincide con la lookup, así que el overview muestra el cluster como Down. Vacío usa el hostname del nodo, que es lo correcto para un NiFi de un solo nodo. Los logs siempre llevan el nombre del nodo |
 | `nifi_api_url` | La API REST de esta instancia, ej. `http://127.0.0.1:8080/nifi-api/` |
 | `nifi_path` | Directorio de instalación de NiFi, para leer sus logs. En cluster, la misma ruta en cada nodo |
 | `process_groups_list` | Ids de los grupos de procesos a monitorear, uno por línea |

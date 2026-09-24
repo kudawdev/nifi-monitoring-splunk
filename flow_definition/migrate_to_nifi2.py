@@ -250,6 +250,13 @@ def variables_to_parameters(root, report):
                            "another one's component ids.",
         "process_groups_list": "REQUIRED. Ids of the process groups to monitor, "
                                "one per line. Empty by design.",
+        "instance_name": "The Splunk host for the nifi:api:* events: the host "
+                         "column of this NiFi's row in the instance lookup. "
+                         "Required on a cluster, where the API is polled from "
+                         "the primary node and the node's name changes on "
+                         "every failover. Empty uses the node's hostname, "
+                         "which is right for a single node. Logs always keep "
+                         "the node's name.",
     }
 
     parameters = []

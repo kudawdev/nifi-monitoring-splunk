@@ -9,6 +9,7 @@ convenient shortcut.
 Run by run.sh only for profiles whose collection path is `hec`.
 """
 
+import csv
 import json
 import os
 import ssl
@@ -300,6 +301,25 @@ def main():
     return 0
 
 
+def instance_name():
+    """The host the flow gives its nifi:api:* events, or "" for the default.
+
+    On a cluster the API is polled from the primary node, so the node's own
+    hostname would name the cluster after whichever node won the election --
+    the instance lookup's row would match only when that happens to be the
+    node sharing its name, and the overview would report the cluster Down
+    otherwise. The value is the host column of the lookup's row, read from
+    the file seed_kvstore.py loads, so the two cannot drift apart.
+
+    A single node keeps the empty default, so the fallback to the node's
+    hostname is what every other push profile exercises.
+    """
+    if env("CLUSTER", "0") != "1":
+        return ""
+    with open(os.path.join(TESTS_DIR, "provision", "splunk", "instance.csv")) as handle:
+        return next(csv.DictReader(handle))["host"]
+
+
 def provision_one():
     # One flow artefact per NiFi line: 2.x removed templates and the variable
     # registry, so the 1.x file is not merely older, it is configured through
@@ -330,6 +350,7 @@ def provision_one():
             ("nifi_path", "/opt/nifi/nifi-current/"),
             ("processors_list", ""),
             ("process_groups_list", ""),
+            ("instance_name", instance_name()),
         ])
         print("    variable registry filled in")
         finish(group_id)
@@ -352,6 +373,7 @@ def provision_one():
          else "http://localhost:8080/nifi-api", False),
         ("processors_list", "", False),
         ("process_groups_list", "", False),
+        ("instance_name", instance_name(), False),
     ])
     print("    parameter context filled in")
     finish(group_id)

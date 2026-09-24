@@ -3456,6 +3456,7 @@
               "canonical-value-lookup-cache-size": "100",
               "sourcetype": "nifi:api:system_diagnostics",
               "source": "nifi_self_rest_api",
+              "splunk_host": "#{instance_name}",
               "Stateful Variables Initial Value": null
             },
             "propertyDescriptors": {
@@ -3486,6 +3487,12 @@
               "source": {
                 "name": "source",
                 "displayName": "source",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "splunk_host": {
+                "name": "splunk_host",
+                "displayName": "splunk_host",
                 "identifiesControllerService": false,
                 "sensitive": false
               },
@@ -3667,6 +3674,7 @@
               "canonical-value-lookup-cache-size": "100",
               "sourcetype": "nifi:api:flow_status",
               "source": "nifi_self_rest_api",
+              "splunk_host": "#{instance_name}",
               "Stateful Variables Initial Value": null
             },
             "propertyDescriptors": {
@@ -3697,6 +3705,12 @@
               "source": {
                 "name": "source",
                 "displayName": "source",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "splunk_host": {
+                "name": "splunk_host",
+                "displayName": "splunk_host",
                 "identifiesControllerService": false,
                 "sensitive": false
               },
@@ -3746,6 +3760,7 @@
               "canonical-value-lookup-cache-size": "100",
               "sourcetype": "nifi:api:processors_history",
               "source": "nifi_self_rest_api",
+              "splunk_host": "#{instance_name}",
               "Stateful Variables Initial Value": null
             },
             "propertyDescriptors": {
@@ -3776,6 +3791,12 @@
               "source": {
                 "name": "source",
                 "displayName": "source",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "splunk_host": {
+                "name": "splunk_host",
+                "displayName": "splunk_host",
                 "identifiesControllerService": false,
                 "sensitive": false
               },
@@ -3825,6 +3846,7 @@
               "canonical-value-lookup-cache-size": "100",
               "sourcetype": "nifi:api:process_groups_history",
               "source": "nifi_self_rest_api",
+              "splunk_host": "#{instance_name}",
               "Stateful Variables Initial Value": null
             },
             "propertyDescriptors": {
@@ -3855,6 +3877,12 @@
               "source": {
                 "name": "source",
                 "displayName": "source",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "splunk_host": {
+                "name": "splunk_host",
+                "displayName": "splunk_host",
                 "identifiesControllerService": false,
                 "sensitive": false
               },
@@ -5456,7 +5484,7 @@
               "Put Response Body In Attribute": null,
               "Use Chunked Encoding": "false",
               "Follow Redirects": "True",
-              "Remote URL": "#{splunk_hec}/services/collector/raw?sourcetype=${sourcetype}&host=${hostname(true)}&source=${source}",
+              "Remote URL": "#{splunk_hec}/services/collector/raw?sourcetype=${sourcetype}&host=${splunk_host:replaceEmpty(${hostname(true)}):urlEncode()}&source=${source}",
               "form-body-form-name": null,
               "Content-Type": "${mime.type}",
               "flow-file-naming-strategy": "RANDOM",
@@ -6169,6 +6197,13 @@
     "NiFi Monitoring": {
       "name": "NiFi Monitoring",
       "parameters": [
+        {
+          "name": "instance_name",
+          "description": "The Splunk host for the nifi:api:* events: the host column of this NiFi's row in the instance lookup. Required on a cluster, where the API is polled from the primary node and the node's name changes on every failover. Empty uses the node's hostname, which is right for a single node. Logs always keep the node's name.",
+          "sensitive": false,
+          "provided": false,
+          "value": ""
+        },
         {
           "name": "nifi_api_url",
           "description": "This NiFi's REST API, e.g. http://localhost:8080/nifi-api",

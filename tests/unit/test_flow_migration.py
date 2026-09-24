@@ -277,3 +277,68 @@ class PrimaryNodeExecutionTest(unittest.TestCase):
                 continue  # timer-driven regardless of what is wired into it
             with self.subTest(processor=processor.get("name")):
                 self.assertNotIn(processor["identifier"], destinations)
+
+
+class InstanceHostTest(unittest.TestCase):
+    """What host the flow gives the events it sends (decision C-1).
+
+    The API sources run on the primary node, so the node's own hostname names
+    a cluster after whichever node won the election: the instance lookup's row
+    matches only by luck, and the overview reports the cluster Down. The API
+    labels carry splunk_host from instance_name; everything else -- the logs,
+    which really are per node -- falls back to the node's hostname.
+
+    Checked on both flows: the 1.x one is distributed too, and a cluster
+    running it has the same primary node.
+    """
+
+    FLOWS = {"nifi-2.x": (SHIPPED, "#{instance_name}"),
+             "nifi-1.x": (SOURCE, "${instance_name}")}
+
+    def labels(self, flow):
+        return [p for p in processors(flow) if properties(p).get("sourcetype")]
+
+    def test_the_api_labels_carry_the_instance_name(self):
+        for line, (path, reference) in self.FLOWS.items():
+            with open(path) as handle:
+                flow = json.load(handle)
+            for processor in self.labels(flow):
+                props = properties(processor)
+                with self.subTest(flow=line, sourcetype=props["sourcetype"]):
+                    if props["sourcetype"].startswith("nifi:api:"):
+                        self.assertEqual(props.get("splunk_host"), reference)
+                    else:
+                        self.assertNotIn("splunk_host", props,
+                                         "only the cluster-wide API events are "
+                                         "the instance's; logs are the node's")
+
+    def test_the_hec_call_falls_back_to_the_node_hostname(self):
+        for line, (path, _) in self.FLOWS.items():
+            with open(path) as handle:
+                flow = json.load(handle)
+            urls = [v for p in processors(flow) for v in properties(p).values()
+                    if isinstance(v, str) and "/services/collector" in v]
+            with self.subTest(flow=line):
+                self.assertEqual(len(urls), 1)
+                self.assertIn("host=${splunk_host:replaceEmpty(${hostname(true)})",
+                              urls[0])
+
+    def test_instance_name_ships_empty(self):
+        """Empty keeps a single node exactly as it was; a shipped value would
+        name every installation after the one it was exported from."""
+        with open(SHIPPED) as handle:
+            flow = json.load(handle)
+        parameters = {p["name"]: p for c in flow["parameterContexts"].values()
+                      for p in c["parameters"]}
+        self.assertEqual(parameters["instance_name"].get("value", ""), "")
+        with open(SOURCE) as handle:
+            self.assertEqual(json.load(handle)["flowContents"]["variables"]["instance_name"], "")
+
+    def test_the_template_matches_the_flow(self):
+        """The 1.x template is edited by hand alongside the flow, so nothing
+        else notices when one of the two is left behind."""
+        template = open(os.path.join(FLOW_DIR, "nifi-1.x",
+                                     "NifiMonitoringTemplate.xml")).read()
+        self.assertEqual(template.count("<value>${instance_name}</value>"), 4)
+        self.assertIn("<key>instance_name</key>", template)
+        self.assertIn("host=${splunk_host:replaceEmpty(${hostname(true)})", template)

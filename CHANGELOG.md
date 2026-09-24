@@ -67,6 +67,12 @@ long form of what follows.
 - The JWT and the bulletin cursor moved out of a `.env` inside the app, which
   was lost on reinstall and could be clobbered between two inputs.
 - The 2.x flow definition no longer duplicates work across cluster nodes.
+- On a cluster, the flow sends its API events under the instance's name
+  instead of the primary node's. It used to name the cluster after whichever
+  node won the election, which the instance lookup matched only by chance: the
+  overview reported the cluster Down and the node as an instance of its own.
+  Set the new `instance_name` setting on a cluster; a single NiFi can leave it
+  empty. Applies to the 1.x flow and template too.
 
 ### 🔧 Maintenance
 
@@ -74,6 +80,6 @@ long form of what follows.
   `inputs.conf` defaults, which closed four fields that were implemented and
   documented but unreachable from the UI.
 - A test harness with ten scenarios — every supported NiFi version and
-  architecture against both collection strategies — plus 305 unit tests.
+  architecture against both collection strategies — plus 310 unit tests.
 - Delivery runs through `make`; `tests/README.md` has the rest.
 

@@ -522,10 +522,16 @@ class DashboardPanelTest(IntegrationTestCase):
         carry executionNode PRIMARY, so nothing is collected at all until the
         election settles, and the first diagnostics can be a couple of minutes
         behind the flow being started.
+
+        The wait is on a host the lookup configures, not on any host. The
+        panels group by host, so diagnostics arriving under a host the lookup
+        does not know -- a cluster node's name, on the push path -- leave the
+        configured row empty just as surely as no diagnostics at all.
         """
         wait_for_events(
             self.splunk,
             'index=nifi sourcetype="nifi:api:system_diagnostics" '
+            '[| inputlookup instance | fields host] '
             '| stats count by host',
             minimum=1, timeout=420)
 
@@ -1265,6 +1271,28 @@ class PushPathTest(IntegrationTestCase):
             "%s flow_status events in one 10s bucket: the flow is running on "
             "more than one node" % rows[0]["worst"],
         )
+
+    def test_the_api_events_name_the_instance_not_the_node(self):
+        """Decision C-1 on the push path. The flow used to send every event
+        with host = the sending node's hostname; once the API sources were
+        pinned to the primary, that named the cluster after whichever node
+        won the election, which matches the instance lookup only by luck --
+        the overview then reports the cluster Down and the node as a phantom
+        instance. instance_name gives the API events the lookup's host."""
+        if not self.profile_cluster:
+            self.skipTest("a single node's hostname is its instance name")
+        wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:*" | stats count by host',
+            minimum=1, timeout=420,
+        )
+        sent = {r["host"] for r in search(
+            self.splunk, 'index=nifi sourcetype="nifi:api:*" | stats count by host')}
+        configured = {r["host"] for r in search(
+            self.splunk, '| inputlookup instance | fields host')}
+        self.assertEqual(sent, configured,
+                         "the API events carry host %s, the instance lookup "
+                         "configures %s" % (sorted(sent), sorted(configured)))
 
     def test_the_logs_still_come_from_every_node(self):
         """The other half of the same fix. Pinning the API sources must not
