@@ -226,6 +226,109 @@ class IngestTest(IntegrationTestCase):
         )
 
 
+class FormCreatedInputTest(IntegrationTestCase):
+    """An input created the way the configuration form creates one.
+
+    Every other input in this harness is written into inputs.conf before
+    splunkd starts, with its password in cleartext. That is not how anyone
+    installs the add-on: the form posts to UCC's REST handler, which encrypts
+    the password into storage/passwords and leaves a mask in inputs.conf. The
+    add-on read that mask as a new password, failed to store it, found no
+    credential and never authenticated -- and nothing here noticed, because
+    nothing here went through the form.
+
+    The events go to main, not nifi, so the assertions about the provisioned
+    input are not looking at a second one.
+    """
+
+    collection = "pull"
+    NAME = "form_input"
+    HANDLER = "/servicesNS/nobody/nifi_TA_monitoring/nifi_TA_monitoring_nifi"
+
+    @classmethod
+    def nifi_credentials(cls):
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            env("NIFI_ENV_FILE", ""))
+        values = {}
+        if os.path.isfile(path):
+            with open(path) as handle:
+                for line in handle:
+                    if "=" in line and not line.lstrip().startswith("#"):
+                        key, value = line.strip().split("=", 1)
+                        values[key] = value
+        return (values.get("SINGLE_USER_CREDENTIALS_USERNAME"),
+                values.get("SINGLE_USER_CREDENTIALS_PASSWORD"))
+
+    def setUp(self):
+        super().setUp()
+        username, password = self.nifi_credentials()
+        if not password:
+            self.skipTest("an unauthenticated NiFi: the form stores no password")
+        if not getattr(type(self), "created", False):
+            fields = {
+                "name": self.NAME,
+                "api_url": "https://nifi:8443/nifi-api/",
+                "auth_type": "basic",
+                "username": username,
+                "password": password,
+                "endpoint_flow_status": "1",
+                "endpoint_system_diagnostics": "1",
+                "endpoint_bulletin_board": "0",
+                "interval": "60",
+                "index": "main",
+                "output_mode": "json",
+            }
+            if self.profile_tls_verify:
+                fields.update(verify_tls="1", ca_bundle="/opt/nifi-certs/nifi.pem")
+            else:
+                fields.update(verify_tls="0")
+            self.splunk.post(self.HANDLER, **fields)
+            type(self).created = True
+
+    @classmethod
+    def tearDownClass(cls):
+        if getattr(cls, "created", False):
+            try:
+                cls.splunk.delete("%s/%s" % (cls.HANDLER, cls.NAME))
+            except Exception:  # noqa: BLE001 - the stack is torn down anyway
+                pass
+        super().tearDownClass()
+
+    def test_inputs_conf_holds_only_the_mask(self):
+        rows = search(
+            self.splunk,
+            '| rest /servicesNS/nobody/nifi_TA_monitoring/configs/conf-inputs '
+            '| search title="nifi://%s" | fields password' % self.NAME)
+        self.assertTrue(rows, "the form did not create the stanza")
+        self.assertTrue(set(rows[0].get("password", "")) <= {"*"},
+                        "inputs.conf holds the password in cleartext")
+
+    def test_the_password_is_stored_in_uccs_realm(self):
+        rows = search(
+            self.splunk,
+            '| rest /servicesNS/nobody/nifi_TA_monitoring/storage/passwords '
+            '| search realm="__REST_CREDENTIAL__#nifi_TA_monitoring#data/inputs/nifi" '
+            'username="%s*" | stats count' % self.NAME)
+        self.assertGreater(int(rows[0]["count"]) if rows else 0, 0)
+
+    def test_the_input_collects(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=main host=%s sourcetype="nifi:api:flow_status" | stats count by host' % self.NAME,
+            minimum=1, timeout=420)
+        self.assertTrue(rows and int(rows[0]["count"]) > 0,
+                        "the form-created input indexed nothing")
+
+    def test_the_input_found_its_password(self):
+        self.test_the_input_collects()
+        rows = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" '
+            '("No password found for input %s" OR "Password cannot contain all") '
+            '| stats count' % self.NAME)
+        self.assertEqual(int(rows[0]["count"]) if rows else 0, 0)
+
+
 class VersionDetectionTest(IntegrationTestCase):
     collection = "pull"
     """The TA detects which NiFi it is talking to and records it.

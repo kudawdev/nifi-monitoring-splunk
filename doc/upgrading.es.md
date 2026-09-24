@@ -61,6 +61,17 @@ Activar la aceleración es lo que más mejora la latencia de los paneles:
 El costo es un summary tsidx por bucket dentro de ese rango. Acortá el rango
 si el almacenamiento te importa más que la historia.
 
+### Las contraseñas se guardan por input
+
+El add-on 1.x guardaba cada contraseña de NiFi bajo el **usuario** de NiFi,
+así que dos inputs con el mismo usuario compartían una contraseña. La
+pantalla de configuración ahora la guarda por **input**, cifrada, al guardar
+el input.
+
+Un input que viene de 1.x sigue funcionando con la contraseña que guardó
+1.x, y deja un aviso en el log que lo dice. Abrilo en la página **Inputs**,
+escribí la contraseña y guardalo: desde ahí tiene la suya.
+
 ### El flow definition se divide por versión de NiFi
 
 `flow_definition/` ahora tiene `nifi-1.x/` y `nifi-2.x/`. Si usás el camino
@@ -80,7 +91,9 @@ templates.
 4. Revisá cada input de NiFi: si apunta a un NiFi con HTTPS, configurá el CA
    bundle o desactivá la verificación.
 5. Sacá `endpoint_site_to_site` de tus inputs si está.
-6. Solo si usás el camino push: reimportá el flow de tu versión de NiFi y
+6. Abrí cada input que use usuario y contraseña, escribí la contraseña y
+   guardalo.
+7. Solo si usás el camino push: reimportá el flow de tu versión de NiFi y
    pasá los ajustes al parameter context (2.x) o a las variables (1.x).
 
 ## Novedades de este release

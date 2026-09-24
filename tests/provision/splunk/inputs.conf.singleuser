@@ -1,9 +1,11 @@
 # TA input for the single-user NiFi profile.
 #
-# The password is stored in cleartext here only so the input can bootstrap:
-# on its first run nifi.py moves it into storage/passwords and rewrites this
-# value to the mask. That first-run behaviour is itself part of what the
-# integration assertions cover.
+# The password is in cleartext here because this stanza is written before
+# splunkd starts, which is the one way of configuring the add-on that does not
+# go through the form. nifi.py accepts it, with a warning, and the form's REST
+# handler encrypts it into storage/passwords the first time the Inputs page
+# lists it. The form's own path -- encrypted on save, a mask in this file --
+# is what FormCreatedInputTest covers.
 [nifi://nifi]
 api_url = https://nifi:8443/nifi-api/
 auth_type = basic

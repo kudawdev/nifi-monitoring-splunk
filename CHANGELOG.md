@@ -31,6 +31,10 @@ long form of what follows.
   thing an operator can do for panel latency.
 - **The add-on now appears in the app menu**, because its configuration moved
   to a screen of its own.
+- **Passwords are stored per input**, encrypted by the configuration screen
+  when the input is saved. 1.x stored them per NiFi username, so two inputs
+  with the same user shared one. A 1.x input keeps working, with a warning,
+  until it is opened and saved again.
 
 ### ✨ Features
 
@@ -67,6 +71,9 @@ long form of what follows.
 - The JWT and the bulletin cursor moved out of a `.env` inside the app, which
   was lost on reinstall and could be clobbered between two inputs.
 - The 2.x flow definition no longer duplicates work across cluster nodes.
+- An input with no **Host** sends its events under the input's name, as the
+  form says. They carried splunkd's placeholder, `$decideOnStartup`, which
+  matched no instance and so appeared on no dashboard.
 - On a cluster, the flow sends its API events under the instance's name
   instead of the primary node's. It used to name the cluster after whichever
   node won the election, which the instance lookup matched only by chance: the

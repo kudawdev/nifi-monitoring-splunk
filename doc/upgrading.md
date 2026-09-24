@@ -61,6 +61,16 @@ latency:
 The cost is one tsidx summary per bucket in that range. Shorten the range if
 storage matters more to you than history.
 
+### Passwords are stored per input
+
+The 1.x add-on stored each NiFi password under the NiFi **username**, so two
+inputs with the same user shared one password. The configuration screen now
+stores it per **input**, encrypted, when the input is saved.
+
+An input carried over from 1.x keeps working with the password 1.x stored,
+and logs a warning saying so. Open it on the **Inputs** page, type the
+password and save it: from then on it has its own.
+
 ### The flow definition is split by NiFi version
 
 `flow_definition/` now holds `nifi-1.x/` and `nifi-2.x/`. If you use the push
@@ -78,7 +88,9 @@ The XML template moved to `nifi-1.x/`. NiFi 2.x removed template support.
 4. Check each NiFi input: if it targets an HTTPS NiFi, set the CA bundle or
    turn verification off.
 5. Remove `endpoint_site_to_site` from your inputs if it is there.
-6. Only if you use the push path: re-import the flow for your NiFi version
+6. Open each input that uses a username and password, type the password and
+   save it.
+7. Only if you use the push path: re-import the flow for your NiFi version
    and move the settings into the parameter context (2.x) or variables (1.x).
 
 ## New in this release

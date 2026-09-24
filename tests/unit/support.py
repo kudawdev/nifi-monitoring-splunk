@@ -29,6 +29,16 @@ from ta_paths import TA_BUILT, TA_SOURCE, built_available, require_built  # noqa
 TA_DIR = TA_SOURCE
 
 
+class CredentialNotExistException(Exception):
+    """Stands in for solnlib's, which the code catches by type."""
+
+
+def _solnlib_credentials_stub():
+    stub = mock.MagicMock()
+    stub.CredentialNotExistException = CredentialNotExistException
+    return stub
+
+
 def load_nifi_module():
     """Import nifi_TA_monitoring/bin/nifi.py with its runtime deps stubbed.
 
@@ -58,6 +68,11 @@ def load_nifi_module():
         # sys.path for the real runtime; here sys.path is already whatever the
         # test needs, and importing it would undo that.
         "import_declare_test": mock.MagicMock(),
+        # The real solnlib imports requests and splunklib at module level, so
+        # against the stubs above it does not load. nifi.py only takes
+        # CredentialManager from it; tests patch that on the module.
+        "solnlib": mock.MagicMock(),
+        "solnlib.credentials": _solnlib_credentials_stub(),
     }
     with mock.patch.dict(sys.modules, stubs):
         if "nifi" in sys.modules:
