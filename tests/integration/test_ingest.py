@@ -189,20 +189,45 @@ class IngestTest(IntegrationTestCase):
         """The other half of TA-7. Asking first is only an improvement if it
         is asked once: a login per request would trade a bounded handful of
         401s for an unbounded number of round trips, which is worse. The token
-        goes to storage/passwords, so the second process finds it there."""
+        goes to storage/passwords, so the next run finds it there.
+
+        Measured per run of the input, not in total. It used to allow four
+        logins across the whole stack, a number with two things folded into
+        it that are not the defect: how many inputs the profile has, and
+        whether NiFi was still starting when splunkd first ran them. A run
+        that could not get a token asks again on every endpoint -- correctly,
+        there is nothing to reuse -- so one slow NiFi on multi-instance, plus
+        the input FormCreatedInputTest adds, came to seven and failed a
+        healthy stack. What the assertion is about is a run that *had* a
+        token and asked again, and that is what is counted.
+        """
         self.skip_unless_the_input_logs_in()
-        rows = search(
+        runs = self.logins_by_run()
+        self.assertTrue(any(int(r["logins"]) for r in runs),
+                        "the input never logged in at all")
+        repeated = [r for r in runs
+                    if int(r["failures"]) == 0 and int(r["logins"]) > 1]
+        self.assertEqual(
+            repeated, [],
+            "runs that logged in more than once with a token in hand: the "
+            "token is not being reused across requests: %s" % repeated)
+
+    def logins_by_run(self):
+        """Logins and token failures, per run of the input.
+
+        Every line the input writes carries `Nifi Log pid="<uuid>"`, drawn
+        once per process, and a process is one run of one input.
+        """
+        return search(
             self.splunk,
             'index=_internal sourcetype=splunkd "Nifi Log pid=" '
-            '"No stored token for input" | stats count',
+            '("No stored token for input" OR "Could not obtain a token" '
+            'OR "Token renewal failed") '
+            '| rex "Nifi Log pid=\\"(?<run>[^\\"]+)\\"" '
+            '| stats count(eval(searchmatch("\\"No stored token for input\\""))) as logins '
+            'count(eval(searchmatch("\\"Could not obtain a token\\" OR '
+            '\\"Token renewal failed\\""))) as failures by run',
             earliest="-1h",
-        )
-        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
-        self.assertGreater(count, 0, "the input never logged in at all")
-        # One per input process, and a container can be recreated once.
-        self.assertLessEqual(
-            count, 4,
-            "%d logins: the token is not being reused across requests" % count,
         )
 
     def test_a_healthy_input_errors_zero_times(self):
@@ -407,10 +432,24 @@ class BulletinPollingTest(IntegrationTestCase):
     """
 
     def test_the_bulletin_poll_reports_no_errors(self):
+        """Errors of the poll itself, not of a run that had no token.
+
+        A run that could not authenticate -- NiFi still starting when splunkd
+        first ran the input -- also fails to read the bulletin board, and
+        says so at ERROR. That is the authentication failing, which is
+        logged and asserted on its own; counting it here made this test fail
+        on a slow start, intermittently, for a poll that was fine.
+        """
         rows = search(
             self.splunk,
             'index=_internal sourcetype=splunkd "Nifi Log pid=" '
-            '"bulletin board" log_level=ERROR | stats count',
+            '(("bulletin board" log_level=ERROR) OR "Could not obtain a token" '
+            'OR "Token renewal failed") '
+            '| rex "Nifi Log pid=\\"(?<run>[^\\"]+)\\"" '
+            '| stats count(eval(searchmatch("\\"bulletin board\\" log_level=ERROR"))) as errors '
+            'count(eval(searchmatch("\\"Could not obtain a token\\" OR '
+            '\\"Token renewal failed\\""))) as failures by run '
+            '| where failures = 0 | stats sum(errors) as count',
             earliest="-1h",
         )
         count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
