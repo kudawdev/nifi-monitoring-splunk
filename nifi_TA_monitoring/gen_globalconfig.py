@@ -12,11 +12,27 @@ Run it, commit the JSON it produces; a unit test fails if they drift.
 
 import json
 import os
+import re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.dirname(HERE)
 TARGET = os.path.join(HERE, "globalConfig.json")
+MANIFEST = os.path.join(HERE, "package", "app.manifest")
 
-VERSION = "2.0.0"
+# The version has one source, and it is not this file. `make bump` writes
+# nifi_monitoring/default/app.conf -- the manifest the delivery facade and the
+# release workflow both read -- and everything else derives from it. The two
+# apps must ship on the same version anyway, so a second declaration here
+# would only be a second thing to forget.
+APP_CONF = os.path.join(REPO, "nifi_monitoring", "default", "app.conf")
+
+
+def version():
+    with open(APP_CONF) as handle:
+        found = re.search(r"^\s*version\s*=\s*(\S+)", handle.read(), re.M)
+    if not found:
+        raise SystemExit("no version in %s" % APP_CONF)
+    return found.group(1)
 
 
 def length(label, maximum, minimum=1):
@@ -347,7 +363,7 @@ def build():
         "meta": {
             "name": "nifi_TA_monitoring",
             "restRoot": "nifi_TA_monitoring",
-            "version": VERSION,
+            "version": version(),
             "displayName": "NiFi TA Monitoring",
             "schemaVersion": "0.0.10",
             "checkForUpdates": True,
@@ -416,8 +432,25 @@ def build():
     }
 
 
+def sync_manifest():
+    """app.manifest carries the version too, and ucc-gen reads it.
+
+    Rewritten rather than hand-edited for the same reason globalConfig is:
+    after a bump these two and app.conf have to agree, and a unit test fails
+    when they do not.
+    """
+    with open(MANIFEST) as handle:
+        manifest = json.load(handle)
+    manifest["info"]["id"]["version"] = version()
+    with open(MANIFEST, "w") as handle:
+        json.dump(manifest, handle, indent=4)
+        handle.write("\n")
+
+
 if __name__ == "__main__":
     with open(TARGET, "w") as handle:
         json.dump(build(), handle, indent=4)
         handle.write("\n")
-    print("wrote %s" % os.path.normpath(TARGET))
+    sync_manifest()
+    print("wrote %s and %s at version %s"
+          % (os.path.basename(TARGET), os.path.basename(MANIFEST), version()))

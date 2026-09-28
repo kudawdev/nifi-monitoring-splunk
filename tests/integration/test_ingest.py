@@ -189,20 +189,45 @@ class IngestTest(IntegrationTestCase):
         """The other half of TA-7. Asking first is only an improvement if it
         is asked once: a login per request would trade a bounded handful of
         401s for an unbounded number of round trips, which is worse. The token
-        goes to storage/passwords, so the second process finds it there."""
+        goes to storage/passwords, so the next run finds it there.
+
+        Measured per run of the input, not in total. It used to allow four
+        logins across the whole stack, a number with two things folded into
+        it that are not the defect: how many inputs the profile has, and
+        whether NiFi was still starting when splunkd first ran them. A run
+        that could not get a token asks again on every endpoint -- correctly,
+        there is nothing to reuse -- so one slow NiFi on multi-instance, plus
+        the input FormCreatedInputTest adds, came to seven and failed a
+        healthy stack. What the assertion is about is a run that *had* a
+        token and asked again, and that is what is counted.
+        """
         self.skip_unless_the_input_logs_in()
-        rows = search(
+        runs = self.logins_by_run()
+        self.assertTrue(any(int(r["logins"]) for r in runs),
+                        "the input never logged in at all")
+        repeated = [r for r in runs
+                    if int(r["failures"]) == 0 and int(r["logins"]) > 1]
+        self.assertEqual(
+            repeated, [],
+            "runs that logged in more than once with a token in hand: the "
+            "token is not being reused across requests: %s" % repeated)
+
+    def logins_by_run(self):
+        """Logins and token failures, per run of the input.
+
+        Every line the input writes carries `Nifi Log pid="<uuid>"`, drawn
+        once per process, and a process is one run of one input.
+        """
+        return search(
             self.splunk,
             'index=_internal sourcetype=splunkd "Nifi Log pid=" '
-            '"No stored token for input" | stats count',
+            '("No stored token for input" OR "Could not obtain a token" '
+            'OR "Token renewal failed") '
+            '| rex "Nifi Log pid=\\"(?<run>[^\\"]+)\\"" '
+            '| stats count(eval(searchmatch("\\"No stored token for input\\""))) as logins '
+            'count(eval(searchmatch("\\"Could not obtain a token\\" OR '
+            '\\"Token renewal failed\\""))) as failures by run',
             earliest="-1h",
-        )
-        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
-        self.assertGreater(count, 0, "the input never logged in at all")
-        # One per input process, and a container can be recreated once.
-        self.assertLessEqual(
-            count, 4,
-            "%d logins: the token is not being reused across requests" % count,
         )
 
     def test_a_healthy_input_errors_zero_times(self):
@@ -224,6 +249,109 @@ class IngestTest(IntegrationTestCase):
             "%d errors from an input with nothing wrong with it: %s"
             % (total, unexpected),
         )
+
+
+class FormCreatedInputTest(IntegrationTestCase):
+    """An input created the way the configuration form creates one.
+
+    Every other input in this harness is written into inputs.conf before
+    splunkd starts, with its password in cleartext. That is not how anyone
+    installs the add-on: the form posts to UCC's REST handler, which encrypts
+    the password into storage/passwords and leaves a mask in inputs.conf. The
+    add-on read that mask as a new password, failed to store it, found no
+    credential and never authenticated -- and nothing here noticed, because
+    nothing here went through the form.
+
+    The events go to main, not nifi, so the assertions about the provisioned
+    input are not looking at a second one.
+    """
+
+    collection = "pull"
+    NAME = "form_input"
+    HANDLER = "/servicesNS/nobody/nifi_TA_monitoring/nifi_TA_monitoring_nifi"
+
+    @classmethod
+    def nifi_credentials(cls):
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            env("NIFI_ENV_FILE", ""))
+        values = {}
+        if os.path.isfile(path):
+            with open(path) as handle:
+                for line in handle:
+                    if "=" in line and not line.lstrip().startswith("#"):
+                        key, value = line.strip().split("=", 1)
+                        values[key] = value
+        return (values.get("SINGLE_USER_CREDENTIALS_USERNAME"),
+                values.get("SINGLE_USER_CREDENTIALS_PASSWORD"))
+
+    def setUp(self):
+        super().setUp()
+        username, password = self.nifi_credentials()
+        if not password:
+            self.skipTest("an unauthenticated NiFi: the form stores no password")
+        if not getattr(type(self), "created", False):
+            fields = {
+                "name": self.NAME,
+                "api_url": "https://nifi:8443/nifi-api/",
+                "auth_type": "basic",
+                "username": username,
+                "password": password,
+                "endpoint_flow_status": "1",
+                "endpoint_system_diagnostics": "1",
+                "endpoint_bulletin_board": "0",
+                "interval": "60",
+                "index": "main",
+                "output_mode": "json",
+            }
+            if self.profile_tls_verify:
+                fields.update(verify_tls="1", ca_bundle="/opt/nifi-certs/nifi.pem")
+            else:
+                fields.update(verify_tls="0")
+            self.splunk.post(self.HANDLER, **fields)
+            type(self).created = True
+
+    @classmethod
+    def tearDownClass(cls):
+        if getattr(cls, "created", False):
+            try:
+                cls.splunk.delete("%s/%s" % (cls.HANDLER, cls.NAME))
+            except Exception:  # noqa: BLE001 - the stack is torn down anyway
+                pass
+        super().tearDownClass()
+
+    def test_inputs_conf_holds_only_the_mask(self):
+        rows = search(
+            self.splunk,
+            '| rest /servicesNS/nobody/nifi_TA_monitoring/configs/conf-inputs '
+            '| search title="nifi://%s" | fields password' % self.NAME)
+        self.assertTrue(rows, "the form did not create the stanza")
+        self.assertTrue(set(rows[0].get("password", "")) <= {"*"},
+                        "inputs.conf holds the password in cleartext")
+
+    def test_the_password_is_stored_in_uccs_realm(self):
+        rows = search(
+            self.splunk,
+            '| rest /servicesNS/nobody/nifi_TA_monitoring/storage/passwords '
+            '| search realm="__REST_CREDENTIAL__#nifi_TA_monitoring#data/inputs/nifi" '
+            'username="%s*" | stats count' % self.NAME)
+        self.assertGreater(int(rows[0]["count"]) if rows else 0, 0)
+
+    def test_the_input_collects(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=main host=%s sourcetype="nifi:api:flow_status" | stats count by host' % self.NAME,
+            minimum=1, timeout=420)
+        self.assertTrue(rows and int(rows[0]["count"]) > 0,
+                        "the form-created input indexed nothing")
+
+    def test_the_input_found_its_password(self):
+        self.test_the_input_collects()
+        rows = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" '
+            '("No password found for input %s" OR "Password cannot contain all") '
+            '| stats count' % self.NAME)
+        self.assertEqual(int(rows[0]["count"]) if rows else 0, 0)
 
 
 class VersionDetectionTest(IntegrationTestCase):
@@ -304,10 +432,24 @@ class BulletinPollingTest(IntegrationTestCase):
     """
 
     def test_the_bulletin_poll_reports_no_errors(self):
+        """Errors of the poll itself, not of a run that had no token.
+
+        A run that could not authenticate -- NiFi still starting when splunkd
+        first ran the input -- also fails to read the bulletin board, and
+        says so at ERROR. That is the authentication failing, which is
+        logged and asserted on its own; counting it here made this test fail
+        on a slow start, intermittently, for a poll that was fine.
+        """
         rows = search(
             self.splunk,
             'index=_internal sourcetype=splunkd "Nifi Log pid=" '
-            '"bulletin board" log_level=ERROR | stats count',
+            '(("bulletin board" log_level=ERROR) OR "Could not obtain a token" '
+            'OR "Token renewal failed") '
+            '| rex "Nifi Log pid=\\"(?<run>[^\\"]+)\\"" '
+            '| stats count(eval(searchmatch("\\"bulletin board\\" log_level=ERROR"))) as errors '
+            'count(eval(searchmatch("\\"Could not obtain a token\\" OR '
+            '\\"Token renewal failed\\""))) as failures by run '
+            '| where failures = 0 | stats sum(errors) as count',
             earliest="-1h",
         )
         count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
@@ -522,10 +664,16 @@ class DashboardPanelTest(IntegrationTestCase):
         carry executionNode PRIMARY, so nothing is collected at all until the
         election settles, and the first diagnostics can be a couple of minutes
         behind the flow being started.
+
+        The wait is on a host the lookup configures, not on any host. The
+        panels group by host, so diagnostics arriving under a host the lookup
+        does not know -- a cluster node's name, on the push path -- leave the
+        configured row empty just as surely as no diagnostics at all.
         """
         wait_for_events(
             self.splunk,
             'index=nifi sourcetype="nifi:api:system_diagnostics" '
+            '[| inputlookup instance | fields host] '
             '| stats count by host',
             minimum=1, timeout=420)
 
@@ -1265,6 +1413,28 @@ class PushPathTest(IntegrationTestCase):
             "%s flow_status events in one 10s bucket: the flow is running on "
             "more than one node" % rows[0]["worst"],
         )
+
+    def test_the_api_events_name_the_instance_not_the_node(self):
+        """Decision C-1 on the push path. The flow used to send every event
+        with host = the sending node's hostname; once the API sources were
+        pinned to the primary, that named the cluster after whichever node
+        won the election, which matches the instance lookup only by luck --
+        the overview then reports the cluster Down and the node as a phantom
+        instance. instance_name gives the API events the lookup's host."""
+        if not self.profile_cluster:
+            self.skipTest("a single node's hostname is its instance name")
+        wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:*" | stats count by host',
+            minimum=1, timeout=420,
+        )
+        sent = {r["host"] for r in search(
+            self.splunk, 'index=nifi sourcetype="nifi:api:*" | stats count by host')}
+        configured = {r["host"] for r in search(
+            self.splunk, '| inputlookup instance | fields host')}
+        self.assertEqual(sent, configured,
+                         "the API events carry host %s, the instance lookup "
+                         "configures %s" % (sorted(sent), sorted(configured)))
 
     def test_the_logs_still_come_from_every_node(self):
         """The other half of the same fix. Pinning the API sources must not

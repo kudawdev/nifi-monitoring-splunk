@@ -69,7 +69,7 @@ time.
 
 ### NiFi Instances
 
-Opens the [Instance Lookup](installation.md#instance-lookup): every
+Opens the [Instance Lookup](instance-lookup.md): every
 monitored instance or cluster needs a row here before its data shows in
 the panels above.
 

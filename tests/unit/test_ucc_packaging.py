@@ -119,14 +119,14 @@ class EveryReadFieldIsConfigurableTest(unittest.TestCase):
 
 
 class VersionAgreementTest(unittest.TestCase):
-    """The TA's version now lives in four places, three of them new.
+    """One source, three derivations, and a test because nothing enforces it.
 
-    It used to be two stanzas of one app.conf. Since the migration app.conf
-    is generated, so the source of truth moved to globalConfig.json and
-    app.manifest -- and ucc-gen rewrites globalConfig's copy from whatever
-    --ta-version it was given, which is a way for the two to drift apart
-    without anyone editing either. The app is unchanged and still has to
-    match, because main.yml fails the build when the two apps disagree.
+    `make bump` writes nifi_monitoring/default/app.conf and stops; the TA's
+    globalConfig.json and app.manifest are regenerated from it by
+    gen_globalconfig.py. A bump without that regeneration leaves the add-on
+    on the old version, and ucc-gen would happily build it. This is what says
+    so -- and it is meant to fail between `make bump` and `make version-sync`,
+    which is the point.
     """
 
     def versions(self):
@@ -135,12 +135,9 @@ class VersionAgreementTest(unittest.TestCase):
             REPO, "nifi_TA_monitoring", "package", "app.manifest")))
         app_conf = configparser.ConfigParser(strict=False, interpolation=None)
         app_conf.read(os.path.join(REPO, "nifi_monitoring", "default", "app.conf"))
-        with open(GENERATOR) as handle:
-            generator = re.search(r'^VERSION = "([^"]+)"', handle.read(), re.M)
         return {
             "globalConfig.json": global_config()["meta"]["version"],
             "package/app.manifest": manifest["info"]["id"]["version"],
-            "gen_globalconfig.py": generator.group(1) if generator else None,
             "nifi_monitoring [launcher]": app_conf["launcher"]["version"],
             "nifi_monitoring [id]": app_conf["id"]["version"],
         }
@@ -215,6 +212,47 @@ class BuiltAddonTest(unittest.TestCase):
         with open(os.path.join(TA_BUILT, "bin", "nifi.py"), "rb") as handle:
             built = handle.read()
         self.assertEqual(source, built)
+
+
+class SpecAgreesWithSchemeTest(unittest.TestCase):
+    """splunkd reads two descriptions of the input and they have to agree.
+
+    ucc-gen writes every form field into inputs.conf.spec; nifi.py's
+    get_scheme() declares the arguments. A spec parameter the scheme does not
+    declare becomes *required on create*, and the form then cannot save an
+    input at all -- which is what the Test connection button did: "The
+    following required arguments are missing: test_connection". Nothing else
+    notices, because the harness writes its inputs into inputs.conf rather
+    than creating them the way the form does.
+    """
+
+    #: Parameters splunkd itself defines for every input.
+    SPLUNK_OWNED = {"host", "index", "interval", "source", "sourcetype",
+                    "disabled", "python.version", "python.required"}
+
+    def setUp(self):
+        reason = require_built()
+        if reason:
+            self.skipTest(reason)
+        from support import load_nifi_module
+        nifi, _ = load_nifi_module()
+        self.scheme = {a.name: a for a in nifi.NiFiScript().get_scheme().arguments}
+
+    def spec_parameters(self):
+        with open(os.path.join(TA_BUILT, "README", "inputs.conf.spec")) as handle:
+            return set(re.findall(r"(?m)^([A-Za-z_.]+)\s*=", handle.read()))
+
+    def test_every_spec_parameter_is_declared_in_the_scheme(self):
+        for name in sorted(self.spec_parameters() - self.SPLUNK_OWNED):
+            with self.subTest(parameter=name):
+                self.assertIn(name, self.scheme,
+                              "%s is in the spec but not in get_scheme(), so "
+                              "splunkd requires it on create" % name)
+
+    def test_the_test_connection_button_is_never_required(self):
+        argument = self.scheme["test_connection"]
+        self.assertFalse(argument.required_on_create)
+        self.assertFalse(argument.required_on_edit)
 
 
 if __name__ == "__main__":

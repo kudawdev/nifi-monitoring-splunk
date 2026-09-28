@@ -8,6 +8,7 @@ parity test matters more than either parser on its own.
 """
 
 import os
+import re
 import sys
 import unittest
 
@@ -16,6 +17,8 @@ if TESTS_DIR not in sys.path:
     sys.path.insert(0, TESTS_DIR)
 
 import matrix  # noqa: E402
+
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 REQUIRED_PROFILE_KEYS = {"nifi_version", "splunk_version", "nifi_auth"}
 
@@ -132,12 +135,33 @@ class ExecutableBitTest(unittest.TestCase):
     developer never sees.
     """
 
-    #: Executed directly rather than handed to an interpreter.
+    #: Executed directly rather than handed to an interpreter. Paths are
+    #: relative to tests/; the delivery facade lives above it, and its scripts
+    #: arrive from `adopt.sh` at mode 700 -- which git, with fileMode off,
+    #: records as 644 like any other new file.
     SCRIPTS = [
         "run.sh",
+        "build-ta.sh",
         "provision/nifi/start-unsecured.sh",
         "provision/seed-splunk-etc.sh",
         "provision/seed-uf-etc.sh",
+        "../scripts/_config.sh",
+        "../scripts/changelog.sh",
+        "../scripts/contract-check.sh",
+        "../scripts/promote.sh",
+        "../scripts/release-notes.sh",
+        "../scripts/release.sh",
+        "../scripts/self-test.sh",
+        "../scripts/version.sh",
+        "../scripts/manifest/app-conf.sh",
+        "../scripts/manifest/package-json.sh",
+        "../scripts/manifest/pyproject-toml.sh",
+        # The app-splunk profile's own, sealed since facade v1.8.0 learnt to
+        # ship two apps (APP_DIRS in delivery.conf).
+        "../scripts/version-status.sh",
+        "../scripts/package.sh",
+        "../scripts/verify.sh",
+        "integration-matrix.sh",
     ]
 
     def recorded_mode(self, relative):
@@ -495,6 +519,48 @@ class WorkflowMatrixTest(unittest.TestCase):
                 commands = " ".join(str(step.get("run", "")) for step in steps)
                 self.assertIn("unittest discover", commands)
                 self.assertNotIn("TODO", commands)
+
+    def test_the_makefile_gate_matches_the_workflows(self):
+        """`make validate` exists so a person runs what CI runs.
+
+        The warning ceiling is the one number the two share, and a Makefile
+        that allowed more than the workflow would pass locally and fail on the
+        release -- which is the drift the facade is there to remove, arriving
+        by the facade itself.
+        """
+        makefile = open(os.path.join(REPO, "Makefile")).read()
+        local = re.search(r"^MAX_WARNING \?= (\d+)", makefile, re.M)
+        self.assertIsNotNone(local, "the Makefile declares no MAX_WARNING")
+        for name in self.WORKFLOWS:
+            with self.subTest(workflow=name):
+                self.assertEqual(
+                    str(self.workflow(name)["env"]["MAX_WARNING"]),
+                    local.group(1))
+        # `make package` gates the release artifacts with delivery.conf's value,
+        # so it is the third copy of the same number.
+        conf = open(os.path.join(REPO, "delivery.conf")).read()
+        facade = re.search(r'^APPINSPECT_MAX_WARNING="(\d+)"', conf, re.M)
+        self.assertIsNotNone(facade, "delivery.conf declares no APPINSPECT_MAX_WARNING")
+        self.assertEqual(facade.group(1), local.group(1))
+
+    def test_the_makefile_packages_what_the_workflow_packages(self):
+        """The TA ships from output/ and the app from the tree. Packaging the
+        TA from the tree would produce an add-on with no app.conf and no UI,
+        and slim would not complain (UI-3)."""
+        makefile = open(os.path.join(REPO, "Makefile")).read()
+        self.assertIn("slim package output/$(TA)", makefile)
+        self.assertIn("slim package $(APP)", makefile)
+        self.assertNotIn("slim package $(TA)", makefile)
+
+    def test_the_facade_packages_what_the_workflow_packages(self):
+        """The same rule for `make package`, which reads it from delivery.conf,
+        and PRE_PACKAGE is what makes output/ exist and be current."""
+        conf = open(os.path.join(REPO, "delivery.conf")).read()
+        dirs = re.search(r'^APP_DIRS="([^"]*)"', conf, re.M)
+        self.assertIsNotNone(dirs, "delivery.conf declares no APP_DIRS")
+        paths = [e.split(":")[0] for e in dirs.group(1).split()]
+        self.assertEqual(paths, ["nifi_monitoring", "output/nifi_TA_monitoring"])
+        self.assertRegex(conf, re.compile(r'^PRE_PACKAGE="make [^"]*build"', re.M))
 
 
 if __name__ == "__main__":

@@ -67,6 +67,7 @@ Right-click on the NiFiMonitoring box > *Variables*, and set:
 
 | Setting | What it is |
 |---|---|
+| `instance_name` | The `host` the `nifi:api:*` events are sent with: the `host` of this NiFi's row in the `instance` lookup. **Required on a cluster**, where the API is polled from the primary node — left empty, each event carries the name of whichever node is primary, which changes on every failover and does not match the lookup, so the overview reports the cluster Down. Empty uses the node's hostname, which is right for a single NiFi. Logs always carry the node's name |
 | `nifi_api_url` | This instance's REST API, e.g. `http://127.0.0.1:8080/nifi-api/` |
 | `nifi_path` | NiFi's install directory, used to tail its logs. On a cluster, the same path on every node |
 | `process_groups_list` | Ids of the process groups to monitor, one per line |
@@ -166,4 +167,4 @@ Right-click the process group and select **Start**.
 ![image](/nifi-monitoring-splunk/assets/images/nifi/enable_sending_1.png)
 
 Data now flows to Splunk. For it to appear in the app's panels, also
-configure the [Instance Lookup](installation.md#instance-lookup).
+configure the [Instance Lookup](instance-lookup.md).

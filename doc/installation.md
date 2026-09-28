@@ -26,47 +26,4 @@ After installing the TA, its parsing and indexing objects are in place:
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/ta_objects.png)
 
-## Instance Lookup
-
-Configure this regardless of collection strategy — without it, no
-dashboard panel shows data.
-
-Go to Configuration > NiFi Instances to access the Lookups configuration
-view.
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/1_configure_instances.png)
-
-Complete the information in the fields, where the cluster label is to
-associate a group of nodes and host is the name of the instance.
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/2_configure_instances.png)
-
-To obtain the name of the host, execute the following search with a time
-range of the last 60 minutes.
-
-**Splunk Query**  
-```index=* sourcetype=nifi* | dedup host | table host ```
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/sourcetype_search.png)
-
-The result of this query will return the list of hosts that must be
-configured in the lookup.
-
-!!! note "No results in that search?"
-    The NiFi processes have to already be sending data for this search to
-    return anything:
-
-    1. Push strategy: start the NiFi flow — see [Start the flow](configuration-push.md#5-start-the-flow).
-    2. Pull strategy: the configured data inputs must be enabled.
-
-    ![image](/nifi-monitoring-splunk/assets/images/splunk/4_configure_instances.png)
-
-Once the lookup has a row for each host, the information becomes
-accessible from the Overview panel.
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_overview_lookup.png)
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/3_configure_instances.png)
-
-Next: pick your version and collection strategy in the sidebar, under
-**Configure Nifi Monitoring 1.2** or **Configure Nifi Monitoring 2.0**.
+Next: [Instance Lookup](instance-lookup.md).

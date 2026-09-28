@@ -53,6 +53,18 @@ cd tests
 ./run.sh --bare cluster    # the environment only, for installing by hand
 ```
 
+Or a whole set at once, which is what `make check` calls:
+
+```
+./integration-matrix.sh                 # pull_request: one per axis
+./integration-matrix.sh release         # all ten
+./integration-matrix.sh cluster nifi2-hec
+```
+
+It builds the add-on once, runs each scenario in turn and reports a line per
+scenario. It never stops at the first failure: a run this long should come
+back with the whole picture.
+
 `run.sh` builds the add-on, writes `.env` from the profile, brings the stack
 up, waits for NiFi to answer, runs the assertions, and tears down. It exits
 non-zero if anything fails, so CI can call it directly. `SKIP_TA_BUILD=1`
@@ -79,11 +91,12 @@ setup screen or fills in the form. That is the first thing every user does.
 The packages to install are built from `output/`, not from the tree:
 
 ```
-./build-ta.sh
-cd .. && docker run --rm -u "$(id -u):$(id -g)" -e HOME=/w -v "$PWD:/w" -w /w \
-  kudaw/appinspect:latest sh -c \
-  'slim package output/nifi_TA_monitoring; slim package nifi_monitoring'
+make package DEV=1    # from the repo root; the two .tar.gz land in dist/
 ```
+
+A dev build carries `-dev.<timestamp>` inside its `app.conf`, so Splunk lists
+it apart from a release, and it skips AppInspect. The release packages come
+from `make package DRY_RUN=0`, which needs a clean tree.
 
 The app also needs the two Splunkbase visualisations it depends on, which are
 in `additional_apps/`. For the push path, import the flow from

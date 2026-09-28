@@ -62,33 +62,13 @@ Repeat for every NiFi instance you want to monitor.
 
 ## 2. Configure the Instance Lookup
 
-Every host that sends data needs a row here, regardless of collection
-strategy — without it, the Overview panel has nothing to show.
+Same for any version — see
+[Instance Lookup](instance-lookup.md).
 
-Open the **Nifi Monitoring** app (not the TA):
+Then go to **Nifi Monitor Overview**, in the **Nifi Monitoring** app, and
+check that the configuration worked:
 
-![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_monitoring_home.png)
-
-In the left sidebar, go to **Configuration > NiFi Instances**. This opens
-the lookup editor on the `instance` lookup:
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/instance_lookup_editor.png)
-
-To find the exact host values to enter, run (last 60 minutes):
-
-```
-index=* sourcetype=nifi* | dedup host | table host
-```
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/sourcetype_search.png)
-
-No results? The input from step 1 has to already be running and enabled.
-
-Add one row per host, with the cluster it belongs to.
-
-Once every host has a row, the Overview panel picks it up:
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_overview_lookup.png)
+![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_overview_check.png)
 
 ## 3. (Optional) Collect NiFi's log files
 

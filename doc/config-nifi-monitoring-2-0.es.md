@@ -63,29 +63,10 @@ Repite para cada instancia de NiFi que quieras monitorear.
 
 ## 2. Configurar el Instance Lookup
 
-Cada host que envía datos necesita una fila acá, sin importar la
-estrategia de recolección — sin esto, el panel Overview no tiene nada que
-mostrar.
+Igual para cualquier versión — ver
+[Lookup de Instancias](instance-lookup.es.md).
 
-Abre la app **Nifi Monitoring** (no la TA):
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_monitoring_home.png)
-
-En la barra lateral izquierda, ve a **Configuration > NiFi Instances**.
-Esto abre el editor de lookups sobre el lookup `instance`:
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/instance_lookup_editor.png)
-
-Para encontrar los valores exactos de host a ingresar, ejecuta (últimos 60
-minutos):
-
-```
-index=* sourcetype=nifi* | dedup host | table host
-```
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/sourcetype_search.png)
-
-Ve a **Nifi Monitor Overview**, en la app **Nifi Monitoring**, y
+Después, ve a **Nifi Monitor Overview**, en la app **Nifi Monitoring**, y
 comprueba que la configuración quedó bien:
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_overview_check.png)

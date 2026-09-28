@@ -25,6 +25,8 @@ nav:
       - "Pull Strategy": configuration-pull.md
   - Configure Nifi Monitoring 2.0:
       - "Pull strategy": config-nifi-monitoring-2-0.md
+      - "Push strategy (draft)": config-nifi-monitoring-2-0-push.md
+  - Instance Lookup: instance-lookup.md
   - Data Reference: references.md
   - Upgrading to 2.0.0: upgrading.md
   - Contribute: contributing.md
@@ -96,7 +98,9 @@ plugins:
           Compatibility and collection strategy: Compatibilidad y estrategia de recolección
           Configure Nifi Monitoring 2.0: Configurar Nifi Monitoring 2.0
           "Pull strategy": Estrategia pull
+          "Push strategy (draft)": Estrategia push (borrador)
           Install NIFI Monitoring: Instalar NIFI Monitoring
+          Instance Lookup: Lookup de Instancias
           Configure Nifi Monitoring 1.2: Configurar Nifi Monitoring 1.2
           "Push Strategy": "Estrategia Push"
           "Pull Strategy": "Estrategia Pull"

@@ -150,7 +150,7 @@ Collapsed by default:
   the NiFi instance name above. **On a cluster, set this to the cluster,
   not a node** — the add-on names the node in a separate field. This is
   also the value that must match a row in the
-  [instance lookup](installation.md#instance-lookup).
+  [instance lookup](instance-lookup.md).
 
 Besides these eight groups, **Configuration > Logging** (outside the
 input) sets how much the add-on writes to `splunkd.log` — `INFO` by
@@ -208,4 +208,4 @@ After completing the form, click **Next** and the input is created.
 Repeat this once for every NiFi instance you want to monitor.
 
 Once an input is running, also configure the
-[Instance Lookup](installation.md#instance-lookup).
+[Instance Lookup](instance-lookup.md).

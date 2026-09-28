@@ -1,0 +1,38 @@
+# Instance Lookup
+
+Configure this regardless of app version or collection strategy —
+without it, no dashboard panel shows data.
+
+Requires [NIFI Monitoring installed](installation.md).
+
+Open the **Nifi Monitoring** app (not the TA):
+
+![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_monitoring_home.png)
+
+In the left sidebar, go to **Configuration > NiFi Instances**. This opens
+the lookup editor on the `instance` lookup:
+
+![image](/nifi-monitoring-splunk/assets/images/splunk/instance_lookup_editor.png)
+
+To find the exact host values to enter, run (last 60 minutes):
+
+```
+index=* sourcetype=nifi* | dedup host | table host
+```
+
+![image](/nifi-monitoring-splunk/assets/images/splunk/sourcetype_search.png)
+
+!!! note "No results in that search?"
+    The NiFi processes have to already be sending data for this search to
+    return anything:
+
+    1. Push strategy: start the NiFi flow — see [Start the flow](configuration-push.md#5-start-the-flow).
+    2. Pull strategy: the configured data inputs must be enabled.
+
+Add one row per host, with the cluster it belongs to. Once every host has
+a row, the Overview panel picks it up:
+
+![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_overview_lookup.png)
+
+Next: pick your version and collection strategy in the sidebar, under
+**Configure Nifi Monitoring 1.2** or **Configure Nifi Monitoring 2.0**.

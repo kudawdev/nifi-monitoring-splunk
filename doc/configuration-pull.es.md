@@ -158,7 +158,7 @@ Colapsado por defecto:
   el nombre de instancia de NiFi de arriba. **En un cluster, pon el
   nombre del cluster, no de un nodo** — el add-on nombra al nodo en un
   campo separado. Este es también el valor que debe coincidir con una fila
-  del [lookup de instancias](installation.es.md#lookup-de-instancias).
+  del [lookup de instancias](instance-lookup.es.md).
 
 Aparte de estos ocho grupos, **Configuration > Logging** (fuera del
 input) define cuánto escribe el add-on en `splunkd.log` — `INFO` por
@@ -217,4 +217,4 @@ Una vez completado el formulario, haz clic en **Next** y el input queda creado.
 Repite este proceso por cada instancia de NiFi que quieras monitorear.
 
 Una vez que un input esté corriendo, configura también el
-[Lookup de Instancias](installation.es.md#lookup-de-instancias).
+[Lookup de Instancias](instance-lookup.es.md).

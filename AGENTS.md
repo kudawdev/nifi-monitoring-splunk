@@ -34,20 +34,38 @@ Also in this repo:
 
 ## Common commands
 
-Build the add-on first — everything below needs `output/nifi_TA_monitoring/`:
+The `Makefile` is the delivery facade: `delivery.mk` + `scripts/` come sealed
+from the `tech-cicd` plugin and are never edited here — what does not fit goes
+in `delivery.conf` or back to the contract. The stages are ours. Everything
+runs inside `kudaw/appinspect:latest`, the image CI uses, so the slim and
+AppInspect versions are the ones that gate the release. Docker and Python 3
+are the only prerequisites.
 
 ```
-./tests/build-ta.sh          # creates .venv-ucc on first run, then ucc-gen build
+make              # every target, grouped
+make check        # lint + unit tests + AppInspect + the integration scenarios
+make integration  # the scenarios alone. PROFILES=release for all ten
+make build        # ucc-gen into output/ (the TA only; the app needs no build)
+make package      # the two release .tar.gz, into dist/: build + gate, clean tree. DRY_RUN=0 to build
+make package DEV=1  # the same two, marked -dev inside, to install and try
+make validate     # package + slim validate + AppInspect precert on the working tree, with CI's gate
+make clean
 ```
 
-Packaging & validation (run inside the `kudaw/appinspect:latest` container used by CI, or with equivalent local tooling). Note the TA is packaged from `output/`, the app from the tree:
+Delivery proper — `status`, `bump`, `changelog`, `promote-main`, `release` —
+is driven through the repo's own `/cicd` skill, which carries the sequence and
+what to confirm. `make contract-check` and `make self-test` verify the facade.
 
-```
-slim package nifi_monitoring
-slim package output/nifi_TA_monitoring
-slim validate nifi_monitoring-<version>.tar.gz
-splunk-appinspect inspect nifi_monitoring-<version>.tar.gz --output-file appinspect_result.json --mode precert
-```
+**The version has one source and three derivations.** `make bump` writes
+`nifi_monitoring/default/app.conf`, and the TA's `globalConfig.json` and
+`package/app.manifest` are rewritten from it by **`make version-sync`**, since
+the TA has no `app.conf` in the tree. `bump` runs the sync itself (`POST_BUMP`
+in `delivery.conf`); if it fails, the bump fails and says the tree is
+inconsistent, and a unit test says so too. Never edit a version by hand.
+
+This repository does **not** use Conventional Commits, so `make suggest-level`
+and the changelog generator classify almost everything as `patch` and "Other".
+Both are unreliable here on purpose — see `.claude/skills/cicd/SKILL.md`.
 
 AppInspect is the gate. `main.yml` fails if `summary.error > 0`, `failure > 0`, or `warning > MAX_WARNING` (currently `13`; measured per app, 5 for the app and 12 for the TA).
 
