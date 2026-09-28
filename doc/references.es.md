@@ -1,6 +1,6 @@
 # Sourcetypes
 
-Los distintos sourcetypes utilizados por la aplicación entregan un tipo de información que les corresponde. La mayoría provienen del input modular de la TA, que consulta la API REST de NiFi (la ruta **pull**); `nifi:reporting:task` y `nifi:reporting:bulletin` provienen de las reporting tasks propias de NiFi, que envían al HEC de Splunk (la ruta **push**) — ver [Configuración](configuration.es.md).
+Los distintos sourcetypes utilizados por la aplicación entregan un tipo de información que les corresponde. La mayoría provienen del input modular de la TA, que consulta la API REST de NiFi (la ruta **pull**); `nifi:reporting:task` y `nifi:reporting:bulletin` provienen de las reporting tasks propias de NiFi, que envían al HEC de Splunk (la ruta **push**) — ver [Compatibilidad y estrategia de recolección](compatibility.es.md#elegir-una-estrategia-de-recoleccion).
 
 ### Logs
 

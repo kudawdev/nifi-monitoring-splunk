@@ -5,7 +5,7 @@ recibe. **Con esta estrategia no se configura nada dentro de NiFi** — ni
 procesadores, ni parameter context o variables, ni controller services,
 ni reporting tasks. NiFi queda exactamente como está; todo lo de abajo
 pasa del lado de Splunk. ¿No estás seguro de que esta es la estrategia
-que necesitás? Ver
+que necesitas? Ver
 [Elegir una estrategia de recolección](compatibility.es.md#elegir-una-estrategia-de-recoleccion).
 
 *Esta es la estrategia que deben usar las instancias de NiFi con al menos
@@ -18,11 +18,11 @@ Ve a **Apps > NiFi TA Monitoring > Inputs** y haz clic en **Create New
 Input**. Un input cubre una instancia de NiFi completa (o un cluster
 entero, apuntado a cualquier nodo — ver
 [Compatibilidad](compatibility.es.md#topologia-instancia-unica-multiples-instancias-o-cluster));
-creá uno por cada instancia que quieras monitorear.
+crea uno por cada instancia que quieras monitorear.
 
 **Los pasos 1 a 3 alcanzan para un setup básico.** Los pasos 4 a 8 vienen
-colapsados en el propio formulario — son opcionales, volvé a ellos solo
-si necesitás esa función puntual.
+colapsados en el propio formulario — son opcionales, vuelve a ellos solo
+si necesitas esa función puntual.
 
 !!! note "La pantalla genérica de Splunk también funciona, pero conviene evitarla"
     *Settings > Data inputs > NiFi* escribe el mismo `inputs.conf`, pero
@@ -107,6 +107,45 @@ Colapsado por defecto:
   `/opt/splunk/etc/apps/nifi_TA_monitoring/local/nifi-ca.pem`. Vacío usa el
   almacén de confianza del sistema.
 
+### Cómo conseguir un certificado para el CA bundle
+
+Salta esto si el certificado de NiFi ya está firmado por una CA que el
+sistema operativo confía -- deja *CA bundle path* vacío y pasa a
+[Advanced](#8-advanced).
+
+Si no, exporta el certificado que presenta NiFi y entrégaselo a Splunk
+como su propia CA, que es como se ve en la práctica una CA privada:
+
+1. Consigue el certificado desde el propio NiFi, desde cualquier máquina
+    que pueda alcanzarlo (reemplaza `<nifi-host>` y `<puerto>` por los
+    valores del paso 1):
+
+    ```
+    openssl s_client -connect <nifi-host>:<puerto> -servername <nifi-host> \
+      </dev/null 2>/dev/null | openssl x509 > nifi-ca.pem
+    ```
+
+2. Cópialo al servidor de Splunk, dentro del directorio `local` del TA,
+    con el usuario con el que corre Splunk (habitualmente `splunk`) como
+    dueño:
+
+    ```
+    sudo install -o splunk -g splunk -m 0644 nifi-ca.pem \
+      /opt/splunk/etc/apps/nifi_TA_monitoring/local/nifi-ca.pem
+    ```
+
+    `install` crea el directorio que falte con el dueño correcto en un
+    solo paso. Crear ese directorio primero por tu cuenta -- un `mkdir`
+    simple, o cualquier cosa corrida como `root` -- lo deja en manos de
+    `root`, y
+    Splunk, que corre con su propio usuario, después no puede escribir
+    nada más ahí tampoco, ni siquiera las credenciales de este mismo
+    input: guardar el input falla con `Data could not be written ...
+    passwords.conf: Permission denied`.
+
+3. Pon **CA bundle path** en esa misma ruta,
+    `/opt/splunk/etc/apps/nifi_TA_monitoring/local/nifi-ca.pem`.
+
 ## 8. Advanced
 
 Colapsado por defecto:
@@ -119,7 +158,7 @@ Colapsado por defecto:
   el nombre de instancia de NiFi de arriba. **En un cluster, pon el
   nombre del cluster, no de un nodo** — el add-on nombra al nodo en un
   campo separado. Este es también el valor que debe coincidir con una fila
-  del [lookup de instancias](configuration.es.md#lookup-de-instancias).
+  del [lookup de instancias](installation.es.md#lookup-de-instancias).
 
 Aparte de estos ocho grupos, **Configuration > Logging** (fuera del
 input) define cuánto escribe el add-on en `splunkd.log` — `INFO` por
@@ -127,8 +166,8 @@ defecto, `WARNING` si solo te interesan los problemas.
 
 ## Endpoints personalizados
 
-Opcional — solo si necesitás consultar un endpoint REST de NiFi que no
-está en la lista fija de *Endpoints* del paso 3. Usá el apartado **Custom
+Opcional — solo si necesitas consultar un endpoint REST de NiFi que no
+está en la lista fija de *Endpoints* del paso 3. Usa el apartado **Custom
 endpoints**: una línea por endpoint, con el formato `nombre,path` (por
 ejemplo `queue_stats,/flow/connections/1234-5678-90ab-cdef/status`). El
 path es relativo a la NiFi API URL configurada arriba.
@@ -177,14 +216,5 @@ Una vez completado el formulario, haz clic en **Next** y el input queda creado.
 
 Repite este proceso por cada instancia de NiFi que quieras monitorear.
 
-!!! note "La siguiente captura es de antes de la 2.0.0"
-    Muestra los tres inputs separados que el add-on requería antes —
-    endpoints, status history de procesadores y status history de grupos
-    de procesos — en vez del input único y agrupado que se describe arriba.
-    Recapturarla está pendiente; lo que hoy corresponde ver es una fila por
-    instancia de NiFi bajo **Data Inputs > NiFi**, no tres.
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_4.png)
-
 Una vez que un input esté corriendo, configura también el
-[Lookup de Instancias](configuration.es.md#lookup-de-instancias).
+[Lookup de Instancias](installation.es.md#lookup-de-instancias).

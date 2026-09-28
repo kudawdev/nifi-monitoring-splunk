@@ -121,3 +121,86 @@ puede agregar un sidecar.
 La TA define cinco sourcetypes de log. Activa `nifi:log:deprecation`
 antes de migrar a NiFi 2.x: registra qué componentes deprecados sigue
 usando la instancia.
+
+### Configurar el Universal Forwarder
+
+1. **Instala un Universal Forwarder en el host de NiFi.** Instalación
+    estándar de Splunk — ver la
+    [documentación oficial del Universal Forwarder](https://docs.splunk.com/Documentation/Forwarder)
+    si no lo hiciste antes.
+
+2. **Instala `nifi_TA_monitoring` en ese mismo forwarder** — el mismo
+    paquete que instalaste en el indexer/search head, no uno distinto.
+    Cópialo dentro de `$SPLUNK_HOME/etc/apps/` del forwarder, o distribúyelo
+    por un deployment server si administras el forwarder de esa forma.
+
+3. **Activa los monitores de log que necesites y confirma la ruta.** No
+    edites el `default/inputs.conf` de la TA — pon los cambios en
+    `$SPLUNK_HOME/etc/apps/nifi_TA_monitoring/local/inputs.conf` (crea el
+    archivo si no existe todavía), y pon `disabled = false` en cada
+    monitor que quieras, por ejemplo:
+
+    ```
+    [monitor:///opt/nifi/nifi-current/logs/nifi-app*.log]
+    disabled = false
+    sourcetype = nifi:log:app
+    index = nifi
+
+    [monitor:///opt/nifi/nifi-current/logs/nifi-deprecation*.log]
+    disabled = false
+    sourcetype = nifi:log:deprecation
+    index = nifi
+
+    [monitor:///opt/nifi/nifi-current/logs/nifi-user*.log]
+    disabled = false
+    sourcetype = nifi:log:user
+    index = nifi
+
+    [monitor:///opt/nifi/nifi-current/logs/nifi-bootstrap*.log]
+    disabled = false
+    sourcetype = nifi:log:bootstrap
+    index = nifi
+
+    [monitor:///opt/nifi/nifi-current/logs/nifi-request*.log]
+    disabled = false
+    sourcetype = nifi:log:request
+    index = nifi
+    ```
+
+    Son los cinco sourcetypes que define la TA. Comenta o borra el stanza
+    de cualquiera que no necesites.
+
+    La ruta de arriba coincide con la imagen oficial del contenedor de
+    NiFi. Una instalación por paquete guarda los logs donde apunte
+    `NIFI_HOME` en cambio — revisa `nifi.properties`
+    (`org.apache.nifi.bootstrap.ConfigurableLogging`) o busca directamente
+    `nifi-app.log` en disco, y corrige la ruta `monitor://` en cada
+    stanza que actives si es distinta.
+
+4. **Apunta el forwarder al indexer.** En
+    `$SPLUNK_HOME/etc/system/local/outputs.conf`:
+
+    ```
+    [tcpout]
+    defaultGroup = default-autolb-group
+
+    [tcpout:default-autolb-group]
+    server = <host-del-indexer>:9997
+    ```
+
+    El indexer también necesita tener la recepción habilitada en el
+    9997 — **Settings > Forwarding and receiving > Configure receiving >
+    New Receiving Port** si todavía no lo está.
+
+5. **Reinicia el forwarder**: `$SPLUNK_HOME/bin/splunk restart`.
+
+6. **Verifica desde el indexer o el search head**:
+
+    ```
+    index=* sourcetype=nifi:log:* | stats count by sourcetype
+    ```
+
+    Un sourcetype en cero puede ser porque todavía no tiene nada que
+    registrar (`nifi:log:deprecation` en una instancia tranquila, por
+    ejemplo) o porque la ruta sigue mal — revisa el paso 3 de nuevo antes
+    de asumir que el forwarder en sí está roto.

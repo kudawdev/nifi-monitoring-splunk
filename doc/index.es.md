@@ -1,7 +1,26 @@
 # Introducción
 
-Nifi Monitoring centraliza la visibilidad de múltiples instancias de
-Apache NiFi — standalone o en cluster — en Splunk.
+**Nifi Monitoring** centraliza en Splunk la visibilidad operativa de tus
+instancias de Apache NiFi — una sola, varias independientes, o en
+cluster. En un solo lugar tenés:
+
+- **Estado del flujo**: procesadores corriendo, detenidos o inválidos, y
+  datos en cola.
+- **Diagnóstico del sistema**: heap, threads y uso de disco por
+  repositorio, por nodo.
+- **Bulletins**: los errores y advertencias que genera NiFi, con
+  trazabilidad de qué componente los produjo.
+- **Logs de NiFi** (opcional, vía Universal Forwarder): app, bootstrap,
+  usuario y accesos HTTP, buscables sin entrar por terminal a cada host.
+- **Métricas de flujo** (opcional): throughput y detalle por componente.
+- **Visibilidad de cluster**: rol y heap de cada nodo, sin entrar a cada
+  uno por separado.
+
+Los datos llegan de dos formas posibles: Splunk consultando la API de
+NiFi (**pull**, la recomendada), o NiFi enviando directo al HEC de Splunk
+(**push**, para cuando Splunk no puede alcanzar a NiFi). Ver
+[Compatibilidad y estrategia de recolección](compatibility.es.md) para
+elegir cuál te corresponde.
 
 Se distribuye como dos apps:
 

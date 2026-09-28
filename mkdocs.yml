@@ -20,10 +20,11 @@ nav:
   - Overview: overview.md
   - Compatibility and collection strategy: compatibility.md
   - Install NIFI Monitoring: installation.md
-  - NIFI Configuration:
-      - Choose a strategy: configuration.md
-      - "Push strategy: Direct Sending": configuration-push.md
-      - "Pull strategy: Splunk Data Input NiFi": configuration-pull.md
+  - Configure Nifi Monitoring 1.2:
+      - "Push Strategy": configuration-push.md
+      - "Pull Strategy": configuration-pull.md
+  - Configure Nifi Monitoring 2.0:
+      - "Pull strategy": config-nifi-monitoring-2-0.md
   - Data Reference: references.md
   - Upgrading to 2.0.0: upgrading.md
   - Contribute: contributing.md
@@ -77,6 +78,7 @@ markdown_extensions:
   - admonition
   - codehilite:
       guess_lang: false
+  - pymdownx.superfences
   - toc:
       permalink: true
       
@@ -92,11 +94,12 @@ plugins:
           Introduction: Introducción
           Overview: Vista General
           Compatibility and collection strategy: Compatibilidad y estrategia de recolección
+          Configure Nifi Monitoring 2.0: Configurar Nifi Monitoring 2.0
+          "Pull strategy": Estrategia pull
           Install NIFI Monitoring: Instalar NIFI Monitoring
-          NIFI Configuration: Configuración de NIFI
-          Choose a strategy: Elegir una estrategia
-          "Push strategy: Direct Sending": "Estrategia push: Envío Directo"
-          "Pull strategy: Splunk Data Input NiFi": "Estrategia pull: Splunk Data Input NiFi"
+          Configure Nifi Monitoring 1.2: Configurar Nifi Monitoring 1.2
+          "Push Strategy": "Estrategia Push"
+          "Pull Strategy": "Estrategia Pull"
           Data Reference: Referencia de Datos
           Upgrading to 2.0.0: Actualizar a 2.0.0
           Contribute: Contribuya

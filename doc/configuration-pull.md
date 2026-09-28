@@ -103,6 +103,41 @@ Collapsed by default:
   `/opt/splunk/etc/apps/nifi_TA_monitoring/local/nifi-ca.pem`. Empty uses
   the system trust store.
 
+### Getting a certificate for the CA bundle
+
+Skip this if NiFi's certificate is already signed by a CA the operating
+system trusts -- leave *CA bundle path* empty and go to
+[Advanced](#8-advanced).
+
+Otherwise, export the certificate NiFi presents and hand it to Splunk as
+its own CA, which is what a private CA setup looks like in practice:
+
+1. Get the certificate from NiFi itself, from any machine that can reach
+    it (replace `<nifi-host>` and `<port>` with the values from step 1):
+
+    ```
+    openssl s_client -connect <nifi-host>:<port> -servername <nifi-host> \
+      </dev/null 2>/dev/null | openssl x509 > nifi-ca.pem
+    ```
+
+2. Copy it onto the Splunk server, into the TA's `local` directory, owned
+    by the user Splunk runs as (commonly `splunk`):
+
+    ```
+    sudo install -o splunk -g splunk -m 0644 nifi-ca.pem \
+      /opt/splunk/etc/apps/nifi_TA_monitoring/local/nifi-ca.pem
+    ```
+
+    `install` creates any missing directory with the right owner in one
+    step. Creating that directory yourself first -- a plain `mkdir`, or
+    anything run as `root` -- leaves it owned by `root`, and Splunk, which
+    runs as its own user, then cannot write anything else into it either,
+    including this input's own credentials: saving the input fails with
+    `Data could not be written ... passwords.conf: Permission denied`.
+
+3. Set **CA bundle path** to that same path,
+    `/opt/splunk/etc/apps/nifi_TA_monitoring/local/nifi-ca.pem`.
+
 ## 8. Advanced
 
 Collapsed by default:
@@ -115,7 +150,7 @@ Collapsed by default:
   the NiFi instance name above. **On a cluster, set this to the cluster,
   not a node** — the add-on names the node in a separate field. This is
   also the value that must match a row in the
-  [instance lookup](configuration.md#instance-lookup).
+  [instance lookup](installation.md#instance-lookup).
 
 Besides these eight groups, **Configuration > Logging** (outside the
 input) sets how much the add-on writes to `splunkd.log` — `INFO` by
@@ -172,14 +207,5 @@ After completing the form, click **Next** and the input is created.
 
 Repeat this once for every NiFi instance you want to monitor.
 
-!!! note "The screenshot below is from before 2.0.0"
-    It shows the three separate inputs the add-on used to require —
-    endpoints, processor status history and process-group status history —
-    instead of the single grouped input described above. Recapturing it is
-    pending; what to expect today is one row per NiFi instance under
-    **Data Inputs > NiFi**, not three.
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_4.png)
-
 Once an input is running, also configure the
-[Instance Lookup](configuration.md#instance-lookup).
+[Instance Lookup](installation.md#instance-lookup).

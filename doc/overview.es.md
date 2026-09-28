@@ -70,7 +70,7 @@ NiFi, por instancia a lo largo del tiempo.
 
 ### NiFi Instances
 
-Abre el [Lookup de Instancias](configuration.es.md#lookup-de-instancias):
+Abre el [Lookup de Instancias](installation.es.md#lookup-de-instancias):
 toda instancia o cluster monitoreado necesita una fila aquí antes de que
 sus datos aparezcan en los paneles de arriba.
 

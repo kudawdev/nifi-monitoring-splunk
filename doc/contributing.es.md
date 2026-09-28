@@ -30,7 +30,7 @@ terminar. `--keep` lo deja corriendo para poder mirar alrededor, y `--bare`
 levanta las máquinas sin instalar nada, que es la forma de ejercitar la
 instalación en sí.
 
-Un pull request no necesita la matriz completa. Corré las pruebas unitarias
+Un pull request no necesita la matriz completa. Corre las pruebas unitarias
 más el escenario más cercano a lo que cambiaste — `./run.sh --list` dice qué
 cubre cada uno. CI corre cuatro escenarios en un pull request y los diez en un
 release.
