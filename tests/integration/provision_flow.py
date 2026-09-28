@@ -57,10 +57,22 @@ class _CallFailed(Exception):
 #: window, which is why the retry lives here rather than around one of them.
 #: Measured messages: HTTP 500 replicating the import to the other node, and
 #: HTTP 409 "Cluster is unable to service request to change flow: Node
-#: nifi:8080 is currently connecting".
-CLUSTER_SETTLING = "currently connecting"
+#: nifi:8080 is currently connecting". On a loaded machine a node also drops
+#: out and rejoins after the cluster first reports every node CONNECTED, and
+#: the 409 then reads differently: "Cannot replicate request to Node
+#: nifi-node2:8080 because the node is not connected", and "Node
+#: nifi-node2:8080 is unable to fulfill this request due to: Unexpected
+#: Response Code 500". Both measured on 2026-09-28, each failing cluster-hec
+#: before a single assertion ran.
+CLUSTER_SETTLING = ("currently connecting", "node is not connected",
+                    "is unable to fulfill this request")
 RETRIES = 12
 RETRY_WAIT = 10
+
+
+def settling(error):
+    """A 409 that means a node is joining, not that the request is wrong."""
+    return any(message in str(error) for message in CLUSTER_SETTLING)
 
 
 def call(path, body=None, method="GET", raw=None, content_type="application/json",
@@ -78,7 +90,7 @@ def call(path, body=None, method="GET", raw=None, content_type="application/json
         except _CallFailed as error:
             last = error
             transient = error.status >= 500 or (
-                error.status == 409 and CLUSTER_SETTLING in str(error))
+                error.status == 409 and settling(error))
             if not transient:
                 if raise_for_status:
                     raise SystemExit(str(error))
@@ -178,7 +190,7 @@ def upload_flow(root, path):
         except _CallFailed as error:
             last = error
             transient = error.status >= 500 or (
-                error.status == 409 and CLUSTER_SETTLING in str(error))
+                error.status == 409 and settling(error))
             if not transient:
                 raise SystemExit(str(error))
             landed = imported_groups(root)
@@ -237,7 +249,7 @@ def set_parameters(context_id, values):
         failure = _set_parameters_once(context_id, values)
         if failure is None:
             return
-        if CLUSTER_SETTLING not in failure:
+        if not settling(failure):
             raise SystemExit("parameter update failed: %s" % failure)
         print("    attempt %d: cluster still settling, retrying parameters" % attempt)
         time.sleep(RETRY_WAIT)
