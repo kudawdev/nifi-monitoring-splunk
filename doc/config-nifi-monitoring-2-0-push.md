@@ -10,6 +10,40 @@ Requires both apps already installed (see
 parses the events this flow sends, even though you configure no input
 inside it for this strategy.
 
+## Architecture
+
+```mermaid
+%%{init: {"flowchart": {"curve": "step"}} }%%
+flowchart LR
+    subgraph nifi_host["NiFi host (customer's)"]
+        flow[["NiFi flow ×N<br/>NiFiMonitoring process group"]]:::propio
+    end
+
+    subgraph splunk["Splunk"]
+        hec["HTTP Event Collector"]:::propio
+        idx[("index nifi")]:::dato
+        lookup[("Instance Lookup<br/>KV store")]:::dato
+        dm["Datamodel NIFI"]:::propio
+        dash["Nifi Monitoring<br/>dashboards"]:::propio
+    end
+
+    nifi_host ~~~ splunk
+
+    flow -->|"POST events · HEC HTTP 8088 / HTTPS"| hec
+    hec -->|"writes events"| idx
+    idx --> dm
+    dash -->|"query"| dm
+    dash -->|"query"| lookup
+
+    classDef propio fill:#FFFFFF,stroke:#1A1A1A,color:#1A1A1A
+    classDef externo fill:#E0E0E0,stroke:#808080,color:#1A1A1A,stroke-dasharray:3
+    classDef dato fill:#F5F5F5,stroke:#1A1A1A,color:#1A1A1A
+```
+
+Solid line = data path · grey with dashed border = external component (the
+customer's) · light grey = storage. Unlike pull, nothing on Splunk's side
+initiates a connection to NiFi — the flow pushes.
+
 ## 1. Configure the HTTP Event Collector (HEC) in Splunk
 
 An HTTP Event Collector (HEC) receives events from NiFi over HTTP or HTTPS.

@@ -18,12 +18,12 @@ before you start.
 %%{init: {"flowchart": {"curve": "step"}} }%%
 flowchart LR
     subgraph nifi_host["NiFi host (customer's)"]
-        nifi[["NiFi<br/>REST API · instance or cluster"]]:::externo
+        nifi[["NiFi ×N<br/>REST API · instance or cluster"]]:::externo
         uf["Universal Forwarder<br/>(optional)"]:::propio
     end
 
     subgraph splunk["Splunk"]
-        ta["Nifi Monitoring TA<br/>modular input"]:::propio
+        ta["Nifi Monitoring TA"]:::propio
         idx[("index nifi")]:::dato
         lookup[("Instance Lookup<br/>KV store")]:::dato
         dm["Datamodel NIFI"]:::propio
@@ -32,7 +32,7 @@ flowchart LR
 
     nifi_host ~~~ splunk
 
-    ta -->|"periodic GET · HTTP 8080 / HTTPS 8443"| nifi
+    ta -->|"periodic GET, one input per instance · HTTP 8080 / HTTPS 8443"| nifi
     ta -->|"writes events"| idx
     uf -.->|"NiFi logs (optional) · S2S TCP 9997"| splunk
     idx --> dm

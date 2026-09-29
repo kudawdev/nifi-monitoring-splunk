@@ -19,12 +19,12 @@ antes de empezar.
 %%{init: {"flowchart": {"curve": "step"}} }%%
 flowchart LR
     subgraph nifi_host["Host de NiFi (del cliente)"]
-        nifi[["NiFi<br/>API REST · instancia o cluster"]]:::externo
+        nifi[["NiFi ×N<br/>API REST · instancia o cluster"]]:::externo
         uf["Universal Forwarder<br/>(opcional)"]:::propio
     end
 
     subgraph splunk["Splunk"]
-        ta["Nifi Monitoring TA<br/>input modular"]:::propio
+        ta["Nifi Monitoring TA"]:::propio
         idx[("index nifi")]:::dato
         lookup[("Instance Lookup<br/>KV store")]:::dato
         dm["Datamodel NIFI"]:::propio
@@ -33,7 +33,7 @@ flowchart LR
 
     nifi_host ~~~ splunk
 
-    ta -->|"GET periódico · HTTP 8080 / HTTPS 8443"| nifi
+    ta -->|"GET periódico, un input por instancia · HTTP 8080 / HTTPS 8443"| nifi
     ta -->|"escribe eventos"| idx
     uf -.->|"logs de NiFi (opcional) · S2S TCP 9997"| splunk
     idx --> dm
