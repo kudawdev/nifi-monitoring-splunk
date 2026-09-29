@@ -3,6 +3,14 @@
 La 2.0.0 agrega soporte de NiFi 2.x. Es un release mayor y cambia defaults de
 los que depende una instalación existente. Lee esto antes de actualizar.
 
+La pantalla de configuración del TA también se reconstruyó desde cero: 1.x
+tenía un formulario único escrito a mano, 2.0.0 lo genera UCC con tabs
+agrupadas (Endpoints, TLS, Advanced). La página **Inputs** en **Apps > NiFi
+TA Monitoring** no se parece en nada a la que conocías -- ver
+[Estrategia pull](config-nifi-monitoring-2-0.es.md#1-crear-el-input-de-la-ta)
+para ver cómo es ahora. Los inputs existentes siguen funcionando tal cual;
+el formulario nuevo solo aparece cuando abres uno.
+
 ## Cambios que rompen
 
 ### La app busca en un índice, no en todos
@@ -40,7 +48,8 @@ va a dejar de conectar.** El error dice qué hacer; tienes dos opciones:
 Se consultaba en cada ciclo y ningún dashboard, objeto del datamodel ni
 búsqueda guardada lo leía nunca. Si construiste algo sobre ese sourcetype,
 deja de recibir eventos nuevos; los datos ya indexados no se ven afectados.
-El input avisa una vez si encuentra el ajuste viejo en `inputs.conf`.
+Si `inputs.conf` todavía tiene el ajuste viejo, el input avisa en cada poll --
+bórralo para silenciar el log.
 
 ### La aceleración del datamodel viene apagada -- cómo activarla
 
