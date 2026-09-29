@@ -80,6 +80,21 @@ An input carried over from 1.x keeps working with the password 1.x stored,
 and logs a warning saying so. Open it on the **Inputs** page, type the
 password and save it: from then on it has its own.
 
+### 1.x leaves files behind that 2.0.0 does not use
+
+Installing 2.0.0 over an existing 1.x add-on only overwrites the files the
+new package ships -- it does not delete ones the old package shipped that
+2.0.0 no longer needs. Two are worth removing by hand from
+`nifi_TA_monitoring/bin/`:
+
+- `.env` -- the NiFi API token 1.x cached here, close to plaintext. 2.0.0
+  caches the same kind of token in `storage/passwords` instead and never
+  reads this file.
+- `dotenv/` -- the library 1.x used to read that file.
+
+Neither breaks anything left in place, but they are a stale credential and
+dead code sitting on disk for no reason.
+
 ### The flow definition is split by NiFi version
 
 `flow_definition/` now holds `nifi-1.x/` and `nifi-2.x/`. If you use the
@@ -102,6 +117,8 @@ The XML template moved to `nifi-1.x/`. NiFi 2.x removed template support.
 7. Only if you use the push strategy: re-import the flow for your NiFi
    version and move the settings into the parameter context (2.x) or
    variables (1.x).
+8. (Optional) Delete `bin/.env` and `bin/dotenv/` under `nifi_TA_monitoring`
+   once the upgrade is working -- 2.0.0 does not use either.
 
 ## New in this release
 

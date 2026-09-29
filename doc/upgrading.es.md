@@ -81,6 +81,20 @@ Un input que viene de 1.x sigue funcionando con la contraseña que guardó
 1.x, y deja un aviso en el log que lo dice. Ábrelo en la página **Inputs**,
 escribe la contraseña y guárdalo: desde ahí tiene la suya.
 
+### 1.x deja archivos que 2.0.0 no usa
+
+Instalar 2.0.0 sobre un add-on 1.x solo sobrescribe los archivos que trae el
+paquete nuevo -- no borra los que traía el viejo y que 2.0.0 ya no necesita.
+Vale la pena borrar dos a mano de `nifi_TA_monitoring/bin/`:
+
+- `.env` -- el token de la API de NiFi que 1.x cacheaba ahí, casi en texto
+  plano. 2.0.0 cachea ese mismo tipo de token en `storage/passwords` y nunca
+  vuelve a leer este archivo.
+- `dotenv/` -- la librería que 1.x usaba para leerlo.
+
+Ninguno de los dos rompe nada si se dejan, pero son una credencial vieja y
+código muerto ocupando espacio sin ningún motivo.
+
 ### El flow definition se divide por versión de NiFi
 
 `flow_definition/` ahora tiene `nifi-1.x/` y `nifi-2.x/`. Si usas la
@@ -104,6 +118,8 @@ templates.
    guárdalo.
 7. Solo si usas la estrategia push: reimporta el flow de tu versión de NiFi
    y pasa los ajustes al parameter context (2.x) o a las variables (1.x).
+8. (Opcional) Borra `bin/.env` y `bin/dotenv/` dentro de `nifi_TA_monitoring`
+   una vez que la actualización funcione -- 2.0.0 no usa ninguno de los dos.
 
 ## Novedades de este release
 
