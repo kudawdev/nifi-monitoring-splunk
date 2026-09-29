@@ -1,14 +1,5 @@
 # Estrategia push: Envío Directo (2.0)
 
-!!! warning "Borrador, todavía no validado en vivo"
-    A diferencia de [Estrategia pull](config-nifi-monitoring-2-0.md), nadie
-    corrió esto de punta a punta contra un NiFi 2.x + Splunk real todavía.
-    Está armado con las partes del walkthrough de push pre-2.0.0 que son
-    independientes de la versión (configurar el HEC, iniciar el flow), más
-    lo que se sabe que NiFi 2.x requiere en vez del Variable Registry
-    (parameter context). Tratá cada paso acá como no verificado hasta que
-    alguien lo corra y lo confirme.
-
 Un flow que corre dentro de NiFi llama a la propia API de NiFi y envía el
 resultado directo al HTTP Event Collector (HEC) de Splunk — del lado de
 Splunk no hay que alcanzar a NiFi para nada. ¿No estás seguro de que esta
@@ -131,27 +122,31 @@ componentes de otra instalación.
 Con el parameter context ya cargado, crea los siguientes componentes
 desde el menú > **Controller Settings**.
 
-!!! warning "Capturas pendientes"
-    La [página push de 1.2](configuration-push.es.md#4-configura-los-componentes-de-nifi)
-    tiene capturas para este paso, pero NiFi 2.x rehizo su interfaz, así
-    que no coinciden con lo que vas a ver acá. Los componentes y sus
-    ajustes deberían ser los mismos — mismo controller service, mismas
-    tres reporting tasks — pero falta confirmarlo contra un NiFi 2.x real.
+![image](/nifi-monitoring-splunk/assets/images/nifi/nifi_settings_2x.png)
 
-En la pestaña **Reporting Task Controller Services**, agrega el
-controller service **JsonRecordSetWriter** — parsea la salida de las
-reporting tasks para indexarla en Splunk. Habilítalo.
+En la pestaña **Management Controller Services**, agrega el controller
+service **JsonRecordSetWriter** — parsea la salida de las reporting
+tasks para indexarla en Splunk. Queda **Disabled** — habilítalo:
 
-En la pestaña **Reporting Task** de la misma ventana, agrega y configura
-estas tres:
+![image](/nifi-monitoring-splunk/assets/images/nifi/json_record_set_writer_added_2x.png)
+
+En la pestaña **Reporting Tasks** de la misma ventana:
+
+![image](/nifi-monitoring-splunk/assets/images/nifi/reporting_tasks_empty_2x.png)
+
+Agrega y configura estas tres:
 
 - **MonitorDiskUsage**: reporta cuando un filesystem supera el umbral de
   uso que definas.
+
+    * Threshold: ej. `80%`
+    * Directory Location: el filesystem a monitorear, ej. `/`
+    * Directory Display Name: una etiqueta para identificarlo, ej. `NifiFileSystem`
+
 - **SiteToSiteBulletinReportingTask**: envía cada bulletin en el momento
   en que ocurre.
 
-    * Destination URL: `http://${hostname(true)}:8080/nifi` — mismo host
-      y puerto que `nifi_api_url` de arriba, solo que sin `/nifi-api`
+    * Destination URL: `http://${hostname(true)}:8080/nifi`
     * Input Port Name: `bulletin_report`
     * Instance URL: igual que Destination URL
     * Transport Protocol: `HTTP`
@@ -159,8 +154,7 @@ estas tres:
 
 - **SiteToSiteMetricsReportingTask**: envía métricas de flow y de JVM.
 
-    * Destination URL: `http://${hostname(true)}:8080/nifi` — mismo host
-      y puerto que `nifi_api_url` de arriba, solo que sin `/nifi-api`
+    * Destination URL: `http://${hostname(true)}:8080/nifi`
     * Input Port Name: `reporting_task`
     * Instance URL: igual que Destination URL
     * Transport Protocol: `HTTP`
@@ -178,11 +172,16 @@ estas tres:
     NiFi y no ven un controller service que esté dentro de un process
     group.
 
-Inicia cada reporting task.
+Inicia cada reporting task:
+
+![image](/nifi-monitoring-splunk/assets/images/nifi/reporting_tasks_running_2x.png)
 
 ## 5. Inicia el flow
 
-Haz clic derecho sobre el grupo de procesos y selecciona **Start**.
+Haz clic derecho sobre el grupo de procesos y selecciona **Start**. Todos
+los componentes de adentro quedan corriendo, sin ninguno inválido:
+
+![image](/nifi-monitoring-splunk/assets/images/nifi/process_group_running_2x.png)
 
 Los datos ya fluyen hacia Splunk. Para que aparezcan en los paneles de la
 app, configura también el [Lookup de Instancias](instance-lookup.es.md).

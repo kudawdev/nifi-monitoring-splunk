@@ -12,6 +12,41 @@ before you start.
 **Requirement**: all four apps installed — see
 [Install NIFI Monitoring](installation.md).
 
+## Architecture
+
+```mermaid
+%%{init: {"flowchart": {"curve": "step"}} }%%
+flowchart LR
+    subgraph nifi_host["NiFi host (customer's)"]
+        nifi[["NiFi<br/>REST API · instance or cluster"]]:::externo
+        uf["Universal Forwarder<br/>(optional)"]:::propio
+    end
+
+    subgraph splunk["Splunk"]
+        ta["Nifi Monitoring TA<br/>modular input"]:::propio
+        idx[("index nifi")]:::dato
+        lookup[("Instance Lookup<br/>KV store")]:::dato
+        dm["Datamodel NIFI"]:::propio
+        dash["Nifi Monitoring<br/>dashboards"]:::propio
+    end
+
+    nifi_host ~~~ splunk
+
+    ta -->|"periodic GET · HTTP 8080 / HTTPS 8443"| nifi
+    ta -->|"writes events"| idx
+    uf -.->|"NiFi logs (optional) · S2S TCP 9997"| splunk
+    idx --> dm
+    dash -->|"query"| dm
+    dash -->|"query"| lookup
+
+    classDef propio fill:#FFFFFF,stroke:#1A1A1A,color:#1A1A1A
+    classDef externo fill:#E0E0E0,stroke:#808080,color:#1A1A1A,stroke-dasharray:3
+    classDef dato fill:#F5F5F5,stroke:#1A1A1A,color:#1A1A1A
+```
+
+Solid line = data path · dashed line = optional/asynchronous · grey with dashed
+border = external component (the customer's) · light grey = storage.
+
 ## 1. Create the TA input
 
 Go to **Apps > NiFi TA Monitoring > Inputs**.

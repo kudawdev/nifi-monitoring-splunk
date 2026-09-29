@@ -1,13 +1,5 @@
 # Push strategy: Direct Sending (2.0)
 
-!!! warning "Draft, not yet validated live"
-    Unlike [Pull strategy](config-nifi-monitoring-2-0.md), nobody has run
-    this end to end against a real NiFi 2.x + Splunk instance yet. It's
-    built from the parts of the pre-2.0.0 push walkthrough that are
-    version-independent (HEC setup, starting the flow), plus what NiFi 2.x
-    is known to require instead of Variable Registry (parameter context).
-    Treat every step here as unverified until someone runs it and confirms.
-
 A flow running inside NiFi calls NiFi's own API and sends the result
 straight to Splunk's HTTP Event Collector (HEC) — nothing on Splunk's
 side has to reach NiFi. Not sure this is the strategy you need? See
@@ -126,27 +118,32 @@ starting one pointed at another installation's component ids.
 With the parameter context in place, create the following components
 from the menu > **Controller Settings**.
 
-!!! warning "Screenshots pending"
-    The [1.2 push page](configuration-push.md#4-configure-the-nifi-components)
-    has screenshots for this step, but NiFi 2.x rebuilt its UI, so they
-    don't match what you'll see here. The components and their settings
-    should be the same — same controller service, same three reporting
-    tasks — but this needs confirming against a real NiFi 2.x instance.
+![image](/nifi-monitoring-splunk/assets/images/nifi/nifi_settings_2x.png)
 
-In the **Reporting Task Controller Services** tab, add the
+In the **Management Controller Services** tab, add the
 **JsonRecordSetWriter** controller service — it parses the reporting
-tasks' output for indexing in Splunk. Enable it.
+tasks' output for indexing in Splunk. It comes in **Disabled** — enable
+it:
 
-In the **Reporting Task** tab of the same window, add and configure
-these three:
+![image](/nifi-monitoring-splunk/assets/images/nifi/json_record_set_writer_added_2x.png)
+
+In the **Reporting Tasks** tab of the same window:
+
+![image](/nifi-monitoring-splunk/assets/images/nifi/reporting_tasks_empty_2x.png)
+
+Add and configure these three:
 
 - **MonitorDiskUsage**: reports when a filesystem crosses the usage
   threshold you set.
+
+    * Threshold: e.g. `80%`
+    * Directory Location: the filesystem to watch, e.g. `/`
+    * Directory Display Name: a label for it, e.g. `NifiFileSystem`
+
 - **SiteToSiteBulletinReportingTask**: sends every bulletin as it
   happens.
 
-    * Destination URL: `http://${hostname(true)}:8080/nifi` — same host
-      and port as `nifi_api_url` above, just without `/nifi-api`
+    * Destination URL: `http://${hostname(true)}:8080/nifi`
     * Input Port Name: `bulletin_report`
     * Instance URL: same as Destination URL
     * Transport Protocol: `HTTP`
@@ -154,8 +151,7 @@ these three:
 
 - **SiteToSiteMetricsReportingTask**: sends flow and JVM metrics.
 
-    * Destination URL: `http://${hostname(true)}:8080/nifi` — same host
-      and port as `nifi_api_url` above, just without `/nifi-api`
+    * Destination URL: `http://${hostname(true)}:8080/nifi`
     * Input Port Name: `reporting_task`
     * Instance URL: same as Destination URL
     * Transport Protocol: `HTTP`
@@ -172,11 +168,16 @@ these three:
     *Configure* dialog: reporting tasks are NiFi-wide components and
     cannot see a controller service scoped to a process group.
 
-Start each reporting task.
+Start each reporting task:
+
+![image](/nifi-monitoring-splunk/assets/images/nifi/reporting_tasks_running_2x.png)
 
 ## 5. Start the flow
 
-Right-click the process group and select **Start**.
+Right-click the process group and select **Start**. Every component
+inside comes up running, with no invalid ones left:
+
+![image](/nifi-monitoring-splunk/assets/images/nifi/process_group_running_2x.png)
 
 Data now flows to Splunk. For it to appear in the app's panels, also
 configure the [Instance Lookup](instance-lookup.md).

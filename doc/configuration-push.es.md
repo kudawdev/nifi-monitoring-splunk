@@ -123,13 +123,16 @@ Configura cada una:
 - **MonitorDiskUsage**: reporta cuando un filesystem supera el umbral de
   uso que definas.
 
+    * Threshold: ej. `80%`
+    * Directory Location: el filesystem a monitorear, ej. `/`
+    * Directory Display Name: una etiqueta para identificarlo, ej. `NifiFileSystem`
+
 ![image](/nifi-monitoring-splunk/assets/images/nifi/monitor_disk_usage.png)
 
 - **SiteToSiteBulletinReportingTask**: envía cada bulletin en el momento
   en que ocurre.
 
-    * Destination URL: `http://${hostname(true)}:8080/nifi` — mismo host
-      y puerto que `nifi_api_url` de arriba, solo que sin `/nifi-api`
+    * Destination URL: `http://${hostname(true)}:8080/nifi`
     * Input Port Name: `bulletin_report`
     * Instance URL: igual que Destination URL
     * Transport Protocol: `HTTP`
@@ -139,8 +142,7 @@ Configura cada una:
 
 - **SiteToSiteMetricsReportingTask**: envía métricas de flow y de JVM.
 
-    * Destination URL: `http://${hostname(true)}:8080/nifi` — mismo host
-      y puerto que `nifi_api_url` de arriba, solo que sin `/nifi-api`
+    * Destination URL: `http://${hostname(true)}:8080/nifi`
     * Input Port Name: `reporting_task`
     * Instance URL: igual que Destination URL
     * Transport Protocol: `HTTP`
