@@ -51,6 +51,12 @@ deja de recibir eventos nuevos; los datos ya indexados no se ven afectados.
 Si `inputs.conf` todavía tiene el ajuste viejo, el input avisa en cada poll --
 bórralo para silenciar el log.
 
+El formulario nuevo no tiene campo para esto, y guardar un input desde ahí no
+borra los campos viejos que el formulario no conoce -- volver a guardar la
+contraseña ([más abajo](#las-contrasenas-se-guardan-por-input)) no limpia
+este. Borra la línea `endpoint_site_to_site` a mano de cada stanza
+`[nifi://...]` en `local/inputs.conf`, dentro de `nifi_TA_monitoring`.
+
 ### La aceleración del datamodel viene apagada -- cómo activarla
 
 Splunkbase no acepta una app que distribuya un datamodel acelerado, así que
@@ -106,20 +112,61 @@ templates.
 
 ## Qué hacer, en orden
 
-1. Anota en qué índice están tus datos de NiFi, desde **Internal Monitoring**
-   en la versión actual, o con
-   `| tstats count where index=* sourcetype=nifi:* by index`.
-2. Actualiza las dos apps. Tienen que quedar en la misma versión.
-3. Si tu índice no es `nifi`, sobrescribe `index_nifi` como se indica arriba.
-4. Revisa cada input de NiFi: si apunta a un NiFi con HTTPS, configura el CA
-   bundle o desactiva la verificación.
-5. Saca `endpoint_site_to_site` de tus inputs si está.
-6. Abre cada input que use usuario y contraseña, escribe la contraseña y
-   guárdalo.
-7. Solo si usas la estrategia push: reimporta el flow de tu versión de NiFi
-   y pasa los ajustes al parameter context (2.x) o a las variables (1.x).
-8. (Opcional) Borra `bin/.env` y `bin/dotenv/` dentro de `nifi_TA_monitoring`
-   una vez que la actualización funcione -- 2.0.0 no usa ninguno de los dos.
+1. **Averigua dónde están tus datos, en la versión actual.** Ve a
+   **NiFi Monitoring > Configuration > Internal Monitoring**, o corre:
+
+   ```
+   | tstats count where index=* sourcetype=nifi:* by index
+   ```
+
+   Anota el índice. Lo necesitas en el paso 3.
+
+2. **Instala los dos paquetes como actualización, primero la TA.** Para cada
+   app -- **Nifi Monitoring TA**, después **Nifi Monitoring** -- ve a
+   **Apps > Manage Apps > Install app from file**, elige el `.tar.gz` nuevo,
+   y marca **Upgrade app. Checking this will overwrite the existing version
+   of this app.** Las dos tienen que quedar en el mismo número de versión.
+   Después reinicia Splunk (**Settings > Server controls > Restart
+   Splunk**): las dos apps agregan o cambian endpoints REST (`restmap.conf`,
+   `web.conf`), que solo toman efecto después de reiniciar.
+
+3. **Si el índice del paso 1 no es `nifi`, sobrescribe el macro.** Edita
+   `local/macros.conf` dentro de `nifi_monitoring` (o usa
+   **Settings > Advanced search > Search macros**):
+
+   ```
+   [index_nifi]
+   definition = index=tu_indice
+   ```
+
+4. **Arregla el TLS en cada input que apunte a un NiFi con HTTPS.** Ve a
+   **Apps > NiFi TA Monitoring > Inputs**, abre el input, expande **TLS**, y
+   apunta **CA bundle path** a un bundle que valide el certificado de NiFi, o
+   destilda **Verify the TLS certificate**. Guarda.
+
+5. **Borra `endpoint_site_to_site` de `local/inputs.conf`.** El formulario no
+   tiene campo para esto y guardar un input no lo borra (ver
+   [arriba](#nifiapisite_to_site-deja-de-recolectarse)) -- abre
+   `nifi_TA_monitoring/local/inputs.conf` en el filesystem del search head y
+   quita la línea de cada stanza `[nifi://...]` a mano.
+
+6. **Vuelve a guardar la contraseña en cada input que autentica.** Ábrelo,
+   sobrescribe el campo de contraseña -- se muestra como una máscara,
+   escribir encima es lo que realmente la mueve -- y guarda. Revisa
+   **Settings > Server settings > Logging**, o `index=_internal
+   nifi_TA_monitoring "1.x add-on"`, para ver qué inputs todavía dicen
+   `Input <name> is using the credential the 1.x add-on stored...`: esos son
+   los que faltan.
+
+7. **Solo si usas la estrategia push.** Reimporta
+   [`flow_definition/nifi-2.x/NiFiMonitoring.json`](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/flow_definition/nifi-2.x/NiFiMonitoring.json)
+   (o `nifi-1.x/` si este NiFi se queda en 1.x) como un process group nuevo,
+   y pasa lo que el flow viejo guardaba en variables al Parameter Context
+   nuevo. Ver [Estrategia push](config-nifi-monitoring-2-0-push.es.md).
+
+8. **(Opcional) Limpia.** Una vez que todos los inputs de arriba estén
+   corriendo, borra `nifi_TA_monitoring/bin/.env` y
+   `nifi_TA_monitoring/bin/dotenv/` -- 2.0.0 no usa ninguno de los dos.
 
 ## Novedades de este release
 
