@@ -18,9 +18,15 @@ docs_dir: doc
 nav:
   - Introduction: index.md
   - Overview: overview.md
-  - Compatibility and collection paths: compatibility.md
-  - Install and configure NIFI Monitoring on Splunk: installation.md
-  - NIFI Configuration: configuration.md
+  - Compatibility and collection strategy: compatibility.md
+  - Install NIFI Monitoring: installation.md
+  - Configure Nifi Monitoring 1.2:
+      - "Push strategy": configuration-push.md
+      - "Pull strategy": configuration-pull.md
+  - Configure Nifi Monitoring 2.0:
+      - "Pull strategy": config-nifi-monitoring-2-0.md
+      - "Push strategy": config-nifi-monitoring-2-0-push.md
+  - Instance Lookup: instance-lookup.md
   - Data Reference: references.md
   - Upgrading to 2.0.0: upgrading.md
   - Contribute: contributing.md
@@ -66,6 +72,8 @@ extra:
 
 extra_javascript:
 - assets/js/theme.js
+- assets/js/mermaid.min.js
+- assets/js/mermaid-init.js
 extra_css:
 - assets/css/theme.css
 
@@ -74,6 +82,11 @@ markdown_extensions:
   - admonition
   - codehilite:
       guess_lang: false
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_div_format
   - toc:
       permalink: true
       
@@ -88,9 +101,13 @@ plugins:
         es:
           Introduction: Introducción
           Overview: Vista General
-          Compatibility and collection paths: Compatibilidad y métodos de recolección
-          Install and configure NIFI Monitoring on Splunk: Instalación y configuración de NIFI Monitoring en Splunk
-          NIFI Configuration: Configuración de NIFI
+          Compatibility and collection strategy: Compatibilidad y estrategia de recolección
+          Configure Nifi Monitoring 2.0: Configurar Nifi Monitoring 2.0
+          "Pull strategy": Estrategia pull
+          "Push strategy": Estrategia push
+          Install NIFI Monitoring: Instalar NIFI Monitoring
+          Instance Lookup: Lookup de Instancias
+          Configure Nifi Monitoring 1.2: Configurar Nifi Monitoring 1.2
           Data Reference: Referencia de Datos
           Upgrading to 2.0.0: Actualizar a 2.0.0
-          Contribute: Contribuya
+          Contribute: Contribuir

@@ -1,29 +1,29 @@
 # Overview
 
-The application consists of the following navigation tree:
+Inside Splunk, the app's own menu is:
 
-- App Nifi Monitoring
-    - Home
-    - Nifi Monitor Overview
-    - Nifi Instance Panels
-        - Flow's & Metrics Monitoring Panel
-        - Bulletin Monitoring Panel
-        - Logs Monitoring Panel
-    - Configuration
-        - Lookups
-        - NiFi Instances
-    - Alerts
-    - Search
+- Home
+- Nifi Monitor Overview
+- Nifi Instance Panels
+    - Flow's & Metrics Monitoring Panel
+    - Bulletin Monitoring Panel
+    - Logs Monitoring Panel
+    - Status History
+- Configuration
+    - NiFi Instances
+    - Internal Monitoring
+- Alerts
+- Search
 
 ## Home
 
-The main page of NIFI Monitoring App where you can see a small diagram that shows the type of information obtained from the NIFI servers to be analyzed by Splunk
+A diagram of where the app's data comes from.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_home.png)
 
-## NIFI Monitor Overview
+## Nifi Monitor Overview
 
-In the overview panel can see a summary of the different monitored NIFI servers, very similar to the top bar that we find in the initial application. The indicators are the following:
+A summary across every monitored NiFi instance:
 
 - Server status by node
 - Repository status by node
@@ -33,30 +33,49 @@ In the overview panel can see a summary of the different monitored NIFI servers,
 
 ## Nifi Instance Panels
 
-In the next group of panels we will obtain details of different data sources, but analyzing the nodes individually.
+Per-node detail.
 
 ### Flow's & Metrics Monitoring Panel
 
-The following panel shows details of the node's operation, analyzing different performance metrics, as well as availability of use of some of the node's resources.
+Node performance and resource usage over time, with scale selectors for
+different data volumes and per-node JVM metrics.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/monitoring_panel.png)
-
-To make the data visualization more user-friendly, the panels have a series of scale selectors understanding the volume variability that a server can handle.
-
 ![image](/nifi-monitoring-splunk/assets/images/splunk/behaviour_overtime_1.png)
-
-Additionally, information on the operational JVM is available in each node, and in this way have a complete view of the operation of the platform.
-
 ![image](/nifi-monitoring-splunk/assets/images/splunk/behaviour_overtime_2.png)
 
 ### Bulletin Monitoring Panel
 
-In the next panel, we can mainly observe the behavior of the errors of the bulletin system in NiFi, since it is very important in the event of an error to be able to carry out the correct traceability, in order to correct the situation as soon as possible.
+Bulletin errors raised by NiFi components, for traceability when something
+breaks.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/bulletin_panel.png)
 
 ### Logs Monitoring Panel
 
-In the next panel, we can mainly observe the behavior of the errors of the bulletin system in nifi, since it is very important in the event of an error to be able to carry out the correct traceability, in order to correct the situation as soon as possible.
+NiFi's application, bootstrap, user and request logs from every configured
+instance, searchable without opening a terminal on each host.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/logs_panel.png)
+
+### Status History
+
+Status history of the processors and process groups configured under
+[Status history](configuration-pull.md#4-status-history) — throughput, queued
+flow files and NiFi's other Status History counters, per instance over
+time.
+
+## Configuration
+
+### NiFi Instances
+
+Opens the [Instance Lookup](instance-lookup.md): every
+monitored instance or cluster needs a row here before its data shows in
+the panels above.
+
+### Internal Monitoring
+
+Labeled **Nifi TA Monitoring**. Reports on the add-on, not NiFi: event
+counts per sourcetype and index — check here first when a panel is empty,
+or when [upgrading](upgrading.md) requires changing `index_nifi` — plus,
+on a cluster, member roles and per-node heap.

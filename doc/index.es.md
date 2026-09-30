@@ -1,21 +1,42 @@
 # Introducción
 
-Nifi Monitoring es una solución que propone resolver una gran dificultad encontrada durante el desarrollo de Proyectos NIFI y que corresponde al complejo proceso de monitorizar el funcionamiento de diferentes instancias NIFI simultáneamente.
+**Nifi Monitoring** centraliza en Splunk la visibilidad operativa de tus
+instancias de Apache NiFi — una sola, varias independientes, o en
+cluster. En un solo lugar tienes:
 
-Esta aplicación resuelve este problema centralizando toda la información relativa al funcionamiento de los diferentes componentes para diversas instancias y cuenta con un conjunto de paneles que permiten visualizar de forma clara y rápida el funcionamiento de estas instancias.
+- **Estado del flujo**: procesadores corriendo, detenidos o inválidos, y
+  datos en cola.
+- **Diagnóstico del sistema**: heap, threads y uso de disco por
+  repositorio, por nodo.
+- **Bulletins**: los errores y advertencias que genera NiFi, con
+  trazabilidad de qué componente los produjo.
+- **Logs de NiFi** (opcional, vía Universal Forwarder): app, bootstrap,
+  usuario y accesos HTTP, buscables sin entrar por terminal a cada host.
+- **Métricas de flujo** (opcional): throughput y detalle por componente.
+- **Visibilidad de cluster**: rol y heap de cada nodo, sin entrar a cada
+  uno por separado.
 
-![image1](/nifi-monitoring-splunk/assets/images/splunk/nifi_home.png)
+Los datos llegan de dos formas posibles: Splunk consultando la API de
+NiFi (**pull**, la recomendada), o NiFi enviando directo al HEC de Splunk
+(**push**, para cuando Splunk no puede alcanzar a NiFi). Ver
+[Compatibilidad y estrategia de recolección](compatibility.es.md) para
+elegir cuál te corresponde.
 
-Este producto
+Se distribuye como dos apps:
 
-Soporta múltiples instancias NIFI ya sea Standalone o Cluster Nodes.  
-Obtiene los datos desde logs, reports y nifi-api
+- **Nifi Monitoring** — los dashboards (esta guía).
+- **Nifi Monitoring TA** — el add-on que trae los datos de NiFi a Splunk.
 
-Esta aplicación requiere la implementación de las siguientes dependencias:
+![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_home.png)
+
+## Dependencias
 
 - [Lookup File Editor](https://splunkbase.splunk.com/app/1724/)
 - [Status Indicator – Custom Visualization](https://splunkbase.splunk.com/app/3119/)
 
-Su funcionamiento es completamente gratuito y puedes contribuir a través del [repositorio de Github](https://github.com/kudawdev/nifi-monitoring-splunk)
+Siguiente: [Compatibilidad y estrategia de recolección](compatibility.es.md)
+— la primera decisión antes de instalar nada.
 
-Escríbanos a splunk.app@kudaw.com para una evaluación o a través de nuestro sitio [kudaw.com](https://www.kudaw.com/)
+## Soporte
+
+Gratuito y de código abierto — [contribuye o reporta issues en GitHub](https://github.com/kudawdev/nifi-monitoring-splunk), o escribe a splunk.app@kudaw.com para una evaluación.

@@ -1,6 +1,9 @@
-# Contribuya
+# Contribuir
 
-Gracias por su interés en nuestro contenido, si quiere contribuir en el desarrollo de este proyecto la mejor manera de hacerlo es enviando una solicitud Pull Request bien estructurada y completa, con pruebas y documentación. Intente ser focalizado, hacer más de una cosa en una sola solicitud hará que sea más dificil de procesar.
+Si quieres contribuir al desarrollo de este proyecto, la mejor forma es
+enviar un pull request bien estructurado y completo, con pruebas y
+documentación. Sé focalizado: meter más de una cosa en la misma solicitud la
+hace más difícil de revisar.
 
 ## Cómo correr las pruebas
 
@@ -30,7 +33,7 @@ terminar. `--keep` lo deja corriendo para poder mirar alrededor, y `--bare`
 levanta las máquinas sin instalar nada, que es la forma de ejercitar la
 instalación en sí.
 
-Un pull request no necesita la matriz completa. Corré las pruebas unitarias
+Un pull request no necesita la matriz completa. Corre las pruebas unitarias
 más el escenario más cercano a lo que cambiaste — `./run.sh --list` dice qué
 cubre cada uno. CI corre cuatro escenarios en un pull request y los diez en un
 release.
@@ -45,4 +48,5 @@ cambio en una corresponde también en la otra.
 
 ## Issues
 
-Si encontró un error o tiene una solicitud de función puede registrar un issue. Siempre recomendamos revisar los problemas creados, porque puede ser que ya haya sido reportado.
+Si encontraste un error o tienes un pedido de función, abre un issue.
+Revisa primero los que ya existen -- puede que ya esté reportado.

@@ -1,30 +1,31 @@
-# Instalación de NIFI Monitoring APP
+# Instalar NIFI Monitoring
 
-Es esta sección se detallarán los pasos necesarios requeridos para instalar la aplicación NIFI Monitoring en Splunk
+Ambas apps son obligatorias: **Nifi Monitoring TA** parsea e indexa los
+datos de NiFi; **Nifi Monitoring** (los dashboards) depende de ella, sin
+importar la
+[estrategia de recolección](compatibility.es.md#elegir-una-estrategia-de-recoleccion)
+que uses. Se necesitan cuatro apps en total, todas desde el administrador
+de aplicaciones de Splunk (**Apps > Manage Apps > Install app from file**):
 
-## Instalación de NIFI Monitoring APP
-
-NIFI Monitoring está diseñado para ser instalado en ambientes de tipo Standalone o Cluster.
-
-Esta aplicación requiere la implementación de las siguientes dependencias:
-
-- [Lookup File Editor](https://splunkbase.splunk.com/app/1724/)
-- [Status Indicator – Custom Visualization](https://splunkbase.splunk.com/app/3119/)
-
-La aplicación contiene todas las características visuales que permiten el monitoreo de las instancias de NIFI configuradas.
-
-Para instalar debe contar con el archivo NIFI_Monitoring_<version\>.tar.gz e instale desde el administrador de aplicaciones de Splunk.
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/upload_app.png)
-
-## Instalación de NIFI Monitoring TA
-
-El Technology Addon (TA) de NIFI Monitoring contiene todas las características no visuales que permiten la indexación de las distintas fuentes de datos recibidas desde el o los servidores NIFI.
-
-Para instalar debe contar con el archivo NIFI_TA_Monitoring_<version\>.tar.gz e instale desde el administrador de aplicaciones de Splunk.
+1. **Nifi Monitoring TA** — parsea e indexa los datos de NiFi. Instálala
+   primero: los dashboards no tienen nada que leer sin ella.
+   `nifi_TA_monitoring-<versión>.tar.gz`, desde
+   [Splunkbase](https://splunkbase.splunk.com/app/6124) o un
+   [release de GitHub](https://github.com/kudawdev/nifi-monitoring-splunk/releases).
+2. **Nifi Monitoring** — los dashboards, vistas y lookups.
+   `nifi_monitoring-<versión>.tar.gz`, desde
+   [Splunkbase](https://splunkbase.splunk.com/app/6125) o la misma página
+   de releases.
+3. **[Lookup File Editor](https://splunkbase.splunk.com/app/1724/)** —
+   necesaria para la pantalla de Instance Lookup.
+4. **[Status Indicator - Custom Visualization](https://splunkbase.splunk.com/app/3119/)** —
+   necesaria para los paneles de estado de los dashboards.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/upload_app.png)
 
-Luego de la instalación se dispondrá de todos los objetos que permiten la indexación de datos.
+Después de instalar la TA, sus objetos de parseo e indexado quedan
+disponibles:
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/ta_objects.png)
+
+Siguiente: [Lookup de Instancias](instance-lookup.es.md).
