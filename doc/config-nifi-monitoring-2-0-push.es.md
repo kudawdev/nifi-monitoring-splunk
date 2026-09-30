@@ -92,7 +92,7 @@ varios procesadores quedan inválidos o fallan en silencio una vez
 iniciado.
 
 Arrastra una caja de *process group* al lienzo. En el diálogo **Create
-Process Group**, ponele un nombre y hace clic en el ícono chico junto a
+Process Group**, asígnale un nombre y haz clic en el ícono chico junto a
 *Name* para subir el archivo del flow:
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/create_process_group_2x.png)
@@ -119,9 +119,9 @@ Contiene:
 ## 3. Configura los ajustes del flow
 
 Al importar el flow de 2.x se crea un parameter context llamado **NiFi
-Monitoring** y queda asignado al grupo de procesos. Ábrelo con clic
-derecho sobre el grupo > *Parameters*, o desde el menú superior derecho >
-*Parameter Contexts*, y configura:
+Monitoring** y queda asignado al process group. Ábrelo con clic
+derecho sobre el process group > *Parameters*, o desde el menú superior
+derecho > *Parameter Contexts*, y configura:
 
 | Parámetro | Qué es |
 |---|---|
@@ -212,7 +212,7 @@ Inicia cada reporting task:
 
 ## 5. Inicia el flow
 
-Haz clic derecho sobre el grupo de procesos y selecciona **Start**. Todos
+Haz clic derecho sobre el process group y selecciona **Start**. Todos
 los componentes de adentro quedan corriendo, sin ninguno inválido:
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/process_group_running_2x.png)

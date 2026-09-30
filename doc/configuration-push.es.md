@@ -168,7 +168,7 @@ Inicia cada reporting task: haz clic en **►** en cada una.
 
 ## 5. Inicia el flow
 
-Haz clic derecho sobre el grupo de procesos y selecciona **Start**.
+Haz clic derecho sobre el process group y selecciona **Start**.
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/enable_sending_1.png)
 

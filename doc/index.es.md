@@ -2,7 +2,7 @@
 
 **Nifi Monitoring** centraliza en Splunk la visibilidad operativa de tus
 instancias de Apache NiFi — una sola, varias independientes, o en
-cluster. En un solo lugar tenés:
+cluster. En un solo lugar tienes:
 
 - **Estado del flujo**: procesadores corriendo, detenidos o inválidos, y
   datos en cola.
