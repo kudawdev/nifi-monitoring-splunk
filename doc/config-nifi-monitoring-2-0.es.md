@@ -107,10 +107,13 @@ Repite para cada instancia de NiFi que quieras monitorear.
 Igual para cualquier versión — ver
 [Lookup de Instancias](instance-lookup.es.md).
 
-Después, ve a **Nifi Monitor Overview**, en la app **Nifi Monitoring**, y
-comprueba que la configuración quedó bien:
+Después abre la app **Nifi Monitoring**, que entra en el **Overview**, y
+comprueba que la configuración quedó bien: cada instancia tiene una fila
+con su versión de NiFi y un último dato de hace segundos o un minuto, no
+*No data*. Si alguna queda vacía, **Configuration > Collection Health**
+dice qué fuente falta.
 
-![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_overview_check.png)
+![image](/nifi-monitoring-splunk/assets/images/splunk/view_overview.png)
 
 ## 3. (Opcional) Recolectar los archivos de log de NiFi
 

@@ -27,7 +27,7 @@ Se distribuye como dos apps:
 - **Nifi Monitoring** — los dashboards (esta guía).
 - **Nifi Monitoring TA** — el add-on que trae los datos de NiFi a Splunk.
 
-![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_home.png)
+![image](/nifi-monitoring-splunk/assets/images/splunk/view_overview.png)
 
 ## Dependencias
 

@@ -20,7 +20,7 @@ datamodel acceleration scan every event index on the instance. It now points
 at `index=nifi`, and the app ships that index.
 
 **If your NiFi data is somewhere else, every dashboard will be empty.** Do
-not guess where: open **Internal Monitoring**, which reports how many events
+not guess where: open **Configuration > Collection Health**, which reports how many events
 the macro can see and which indexes actually hold NiFi data. Then override
 the macro in `local/macros.conf`:
 

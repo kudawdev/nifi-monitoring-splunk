@@ -6,9 +6,8 @@ datos.
 
 Requiere [NIFI Monitoring instalado](installation.es.md).
 
-Abre la app **Nifi Monitoring** (no la TA):
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_monitoring_home.png)
+Abre la app **Nifi Monitoring** (no la TA). Abre en el Overview, que
+queda vacío hasta que este inventario tiene una fila por instancia.
 
 En la barra lateral izquierda, ve a **Configuration > NiFi Instances**.
 Esto abre el editor de lookups sobre el lookup `instance`:
@@ -49,7 +48,9 @@ recibe `repo_threshold` 92 y deja de aparecer degradado, mientras el resto
 conserva el valor por defecto. Los valores por defecto son macros; ver
 [Umbrales](references.es.md#umbrales).
 
-![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_overview_lookup.png)
+El [Overview](overview.es.md#overview) lista entonces cada fila — una
+instancia que todavía no envió nada aparece como *No data* en lugar de
+faltar.
 
 Siguiente: elige tu versión y estrategia de recolección en la barra
 lateral, bajo **Configurar Nifi Monitoring 1.2** o

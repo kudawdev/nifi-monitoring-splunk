@@ -20,7 +20,7 @@ aceleración del datamodel escanearan todos los índices de eventos de la
 instancia. Ahora apunta a `index=nifi`, y la app trae ese índice.
 
 **Si tus datos de NiFi están en otro lado, todos los dashboards van a quedar
-vacíos.** No adivines dónde: abre **Internal Monitoring**, que informa
+vacíos.** No adivines dónde: abre **Configuration > Collection Health**, que informa
 cuántos eventos ve el macro y en qué índices hay datos de NiFi realmente.
 Después sobrescribe el macro en `local/macros.conf`:
 

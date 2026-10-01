@@ -5,9 +5,8 @@ without it, no dashboard panel shows data.
 
 Requires [NIFI Monitoring installed](installation.md).
 
-Open the **Nifi Monitoring** app (not the TA):
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_monitoring_home.png)
+Open the **Nifi Monitoring** app (not the TA). It opens on the Overview,
+which stays empty until this inventory has a row per instance.
 
 In the left sidebar, go to **Configuration > NiFi Instances**. This opens
 the lookup editor on the `instance` lookup:
@@ -47,7 +46,8 @@ A NiFi whose content repository sits at 85% by design, for example, gets
 the default. The defaults themselves are macros; see
 [Thresholds](references.md#thresholds).
 
-![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_overview_lookup.png)
+The [Overview](overview.md#overview) then lists every row — an instance
+that has not sent anything yet shows as *No data* rather than missing.
 
 Next: pick your version and collection strategy in the sidebar, under
 **Configure Nifi Monitoring 1.2** or **Configure Nifi Monitoring 2.0**.
