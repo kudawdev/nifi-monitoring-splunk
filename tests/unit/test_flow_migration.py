@@ -342,3 +342,41 @@ class InstanceHostTest(unittest.TestCase):
         self.assertEqual(template.count("<value>${instance_name}</value>"), 4)
         self.assertIn("<key>instance_name</key>", template)
         self.assertIn("host=${splunk_host:replaceEmpty(${hostname(true)})", template)
+
+
+class FlowApiUrlTest(unittest.TestCase):
+    """Every call the push flow makes to NiFi's API goes through nifi_api_url.
+
+    The two status-history InvokeHTTPs used to build their URL as
+    http://${hostname(true)}:8080/nifi-api/..., ignoring the parameter the
+    rest of the flow uses: wrong for any NiFi not answering plain HTTP on
+    8080 under its hostname, and refused by NiFi 2.x's Host check. Nobody saw
+    it because processors_list and process_groups_list shipped empty, so the
+    branch never ran -- until the harness filled them in.
+    """
+
+    FLOWS = [os.path.join(REPO, "flow_definition", line, "NiFiMonitoring.json")
+             for line in ("nifi-1.x", "nifi-2.x")]
+
+    def urls(self, path):
+        with open(path) as handle:
+            flow = json.load(handle)["flowContents"]
+        found = []
+
+        def walk(group):
+            for processor in group.get("processors", []):
+                for key, value in processor.get("properties", {}).items():
+                    if key in ("Remote URL", "HTTP URL", "URL") and value:
+                        found.append((processor["name"], value))
+            for child in group.get("processGroups", []):
+                walk(child)
+        walk(flow)
+        return found
+
+    def test_api_calls_use_the_nifi_api_url_parameter(self):
+        for path in self.FLOWS:
+            for name, url in self.urls(path):
+                if "collector" in url:
+                    continue   # the HEC, not NiFi
+                with self.subTest(flow=os.path.basename(os.path.dirname(path)), processor=name):
+                    self.assertRegex(url, r"^[#$]\{nifi_api_url\}/", url)

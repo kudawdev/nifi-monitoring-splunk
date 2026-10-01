@@ -1619,7 +1619,7 @@
             </entry>
             <entry>
                 <key>Remote URL</key>
-                <value>http://${hostname(true)}:8080/nifi-api/flow/processors/${pid}/status/history</value>
+                <value>${nifi_api_url}/flow/processors/${pid}/status/history</value>
             </entry>
             <entry>
                 <key>disable-http2</key>
@@ -2413,7 +2413,7 @@
             </entry>
             <entry>
                 <key>Remote URL</key>
-                <value>http://${hostname(true)}:8080/nifi-api/flow/process-groups/${pid}/status/history</value>
+                <value>${nifi_api_url}/flow/process-groups/${pid}/status/history</value>
             </entry>
             <entry>
                 <key>disable-http2</key>
