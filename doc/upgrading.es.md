@@ -110,6 +110,40 @@ estrategia push, importa el que corresponde a tu NiFi. Ver
 El template XML se movió a `nifi-1.x/`. NiFi 2.x eliminó el soporte de
 templates.
 
+### Se reconstruyeron los dashboards
+
+Las vistas ahora son Dashboard Studio, y varias cambiaron de nombre o se
+unieron. Los marcadores a los nombres viejos dejan de funcionar:
+
+| 1.x | 2.0.0 |
+|---|---|
+| `home`, `nifi_overview` | `nifi_overview` (la página de inicio) |
+| `nifi_instances_detail` | `nifi_instance` |
+| `nifi_status_history` | `nifi_components` |
+| `nifi_bulletin` | `nifi_bulletins` |
+| `nifi_internal_monitoring` | `nifi_collection_health` y `nifi_cluster` |
+
+*Status Indicator - Custom Visualization* ya no se usa; desinstálala si nada
+más la necesita.
+
+Las búsquedas propias que leen el datamodel `NIFI` pueden necesitar un
+cambio: `Reporting_Bulletin` y `Reporting_Task` ahora son hijos de
+`Bulletins` y `Throughput`, y los datasets `Status_History` pasaron a ser
+`Component_Status`. Un hijo no es una raíz, así que
+`| tstats ... from datamodel=NIFI.Reporting_Bulletin` ahora falla con *Invalid
+or unaccelerable root object*. Consulta el padre, y nombra el hijo si
+necesitas solo ese camino:
+
+```
+| tstats count from datamodel=NIFI.Bulletins where nodename=Bulletins.Reporting_Bulletin
+```
+
+Ver la [Referencia de Datos](references.es.md#datamodel).
+
+La TA escribe el historial de estado como `nifi:api:processors_status` y
+`nifi:api:process_groups_status`, un evento por snapshot. Las búsquedas
+sobre `nifi:api:*_history` siguen funcionando solo para el camino push.
+
 ## Qué hacer, en orden
 
 1. **Averigua dónde están tus datos, en la versión actual.** Ve a
@@ -182,3 +216,13 @@ templates.
 - **`nifi:log:request`**, el log de acceso HTTP de NiFi.
 - Un **panel de inventario** con la versión de NiFi y de Java de cada
   instancia, y con qué estrategia llegaron sus datos.
+- **Ocho alertas**, deshabilitadas al instalar: instancia sin datos,
+  repositorio llenándose, heap alto sostenido, pico de boletines ERROR,
+  backpressure, nodo de cluster desconectado, fallo de sincronización de un
+  flujo versionado y errores HTTP de la TA. Leen los mismos macros
+  `nifi_threshold_*` que los paneles.
+- **Una sola definición de salud** por instancia (`nifi_health`), que conoce
+  el intervalo de polling de cada input: una instancia consultada cada cinco
+  minutos ya no aparece caída.
+- **Vista Components**: qué procesador, grupo o conexión es el cuello de
+  botella, con la predicción de backpressure que calcula NiFi.

@@ -16,9 +16,9 @@ Four apps are needed in total, all from the Splunk application manager
    [Splunkbase](https://splunkbase.splunk.com/app/6125) or the same
    GitHub releases page.
 3. **[Lookup File Editor](https://splunkbase.splunk.com/app/1724/)** —
-   required by the Instance Lookup screen.
-4. **[Status Indicator - Custom Visualization](https://splunkbase.splunk.com/app/3119/)** —
-   required by the status panels on the dashboards.
+   required by the Instance Lookup screen. Since 2.0.0 the dashboards are
+   Dashboard Studio and need no other visualization app; *Status Indicator*
+   can be removed if nothing else uses it.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/upload_app.png)
 

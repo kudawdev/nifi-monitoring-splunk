@@ -9,14 +9,13 @@ This applications solves this problem centralizing all the information regarding
 
 ## Requirements
 
-- Splunk Enterprise or Splunk Cloud 9.0 – 10.x
+- Splunk Enterprise or Splunk Cloud 9.4 – 10.x
 - Apache NiFi 1.16 – 1.28.1 or 2.0 – 2.11
 - NIFI TA Monitoring
 
-And the following complements:
+And the following complement, for editing the instance inventory:
 
 - [Lookup File Editor](https://splunkbase.splunk.com/app/1724/)
-- [Status Indicator - Custom Visualization](https://splunkbase.splunk.com/app/3119/)
 
 The exact versions covered by CI are in
 [Compatibility](https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/).

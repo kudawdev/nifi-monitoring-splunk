@@ -109,6 +109,40 @@ push strategy, import the one matching your NiFi. See
 
 The XML template moved to `nifi-1.x/`. NiFi 2.x removed template support.
 
+### The dashboards were rebuilt
+
+The views are Dashboard Studio now, and several were renamed or merged.
+Bookmarks to the old names stop working:
+
+| 1.x | 2.0.0 |
+|---|---|
+| `home`, `nifi_overview` | `nifi_overview` (the landing page) |
+| `nifi_instances_detail` | `nifi_instance` |
+| `nifi_status_history` | `nifi_components` |
+| `nifi_bulletin` | `nifi_bulletins` |
+| `nifi_internal_monitoring` | `nifi_collection_health` and `nifi_cluster` |
+
+*Status Indicator - Custom Visualization* is no longer used; remove it if
+nothing else needs it.
+
+Searches of your own that read the `NIFI` datamodel may need a change:
+`Reporting_Bulletin` and `Reporting_Task` are now children of `Bulletins`
+and `Throughput`, and the `Status_History` datasets became
+`Component_Status`. A child is not a root, so
+`| tstats ... from datamodel=NIFI.Reporting_Bulletin` now fails with *Invalid
+or unaccelerable root object*. Query the parent, and name the child if you
+need only that path:
+
+```
+| tstats count from datamodel=NIFI.Bulletins where nodename=Bulletins.Reporting_Bulletin
+```
+
+See the [Data Reference](references.md#datamodel).
+
+The TA writes the status history as `nifi:api:processors_status` and
+`nifi:api:process_groups_status`, one event per snapshot. Searches on
+`nifi:api:*_history` keep working for the push path only.
+
 ## What to do, in order
 
 1. **Find out where your data lives, on the current version.** Go to
@@ -179,3 +213,12 @@ The XML template moved to `nifi-1.x/`. NiFi 2.x removed template support.
 - **`nifi:log:request`**, NiFi's HTTP access log.
 - An **inventory panel** showing each instance's NiFi version, Java version
   and which collection strategy its data arrived by.
+- **Eight alerts**, shipped disabled: instance without data, repository
+  filling up, sustained high heap, ERROR bulletin spike, backpressure,
+  cluster node disconnected, versioned flow sync failure and TA HTTP errors.
+  They read the same `nifi_threshold_*` macros as the panels.
+- **One definition of health** per instance (`nifi_health`), which knows
+  each input's polling interval: an instance polled every five minutes is
+  no longer reported down.
+- **Components view**: which processor, group or connection is the
+  bottleneck, with NiFi's own backpressure prediction.

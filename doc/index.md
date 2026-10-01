@@ -31,8 +31,7 @@ It ships as two apps:
 
 ## Dependencies
 
-- [Lookup File Editor](https://splunkbase.splunk.com/app/1724/)
-- [Status Indicator - Custom Visualization](https://splunkbase.splunk.com/app/3119/)
+- [Lookup File Editor](https://splunkbase.splunk.com/app/1724/), to edit the instance inventory.
 
 Next: [Compatibility and collection strategy](compatibility.md) —
 the first decision to make before installing anything.

@@ -151,7 +151,7 @@ Configura cada una:
     * Instance URL: igual que Destination URL
     * Transport Protocol: `HTTP`
     * Record Writer: `JsonRecordSetWriter`
-    * Output Format: `Record Formats`
+    * Output Format: `Record Format`
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/metrics_reporting_task.png)
 

@@ -14,9 +14,10 @@ arriba.
 | | Soportado | Probado en CI |
 |---|---|---|
 | Apache NiFi | 1.16 – 1.28.1, 2.0 – 2.11 | 1.23.2, 1.28.1, 2.0.0, 2.11.0 |
-| Splunk Enterprise / Cloud | 9.0 – 10.x | 9.4, 10.4 |
+| Splunk Enterprise / Cloud | 9.4 – 10.x | 9.4, 10.4 |
 
 - **NiFi 1.x llegó a su fin de vida el 2024-12-08** (último release: 1.28.1). Sigue funcionando con estas apps, pero las correcciones de seguridad nuevas del proyecto NiFi se publican, de aquí en adelante, únicamente para la línea 2.x.
+- **La versión mínima de Splunk es 9.4.** Los dashboards son Dashboard Studio y usan funciones —sparklines en tablas, un input que elige su primer resultado, un clic que fija un token— verificadas en 9.4 y 10.4 y en nada anterior.
 - **La versión mínima soportada es NiFi 1.16**, porque el endpoint `/flow/metrics/json` no existe en versiones anteriores. Las instancias 1.x más antiguas siguen funcionando, solo que sin ese endpoint de métricas de flujo; esa combinación no está cubierta por el CI.
 
 ## Topología: instancia única, múltiples instancias o cluster
@@ -34,8 +35,8 @@ también los datos por nodo — no hay nada que habilitar.
 
 Los eventos conservan el valor de `host` que configuraste (el nombre del
 cluster) y agregan un campo `node` que identifica a qué miembro del
-cluster corresponde cada evento. En el dashboard **Nifi TA Monitoring**,
-la fila Cluster desglosa esto por miembro, rol y heap por nodo — la vista
+cluster corresponde cada evento. La vista **Cluster** desglosa esto por
+miembro, rol y heap por nodo — la vista
 agregada por sí sola ocultaría cuál nodo se está quedando sin recursos.
 
 Dos cosas existen solo en un cluster:

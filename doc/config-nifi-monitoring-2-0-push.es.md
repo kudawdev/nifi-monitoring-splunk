@@ -197,7 +197,7 @@ Agrega y configura estas tres:
     * Instance URL: igual que Destination URL
     * Transport Protocol: `HTTP`
     * Record Writer: `JsonRecordSetWriter`
-    * Output Format: `Record Formats`
+    * Output Format: `Record Format`
 
 !!! note "Si tu NiFi es HTTPS"
     Que `nifi_api_url` sea `https://` hace que las URL de arriba también

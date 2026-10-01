@@ -31,8 +31,7 @@ Se distribuye como dos apps:
 
 ## Dependencias
 
-- [Lookup File Editor](https://splunkbase.splunk.com/app/1724/)
-- [Status Indicator – Custom Visualization](https://splunkbase.splunk.com/app/3119/)
+- [Lookup File Editor](https://splunkbase.splunk.com/app/1724/), para editar el inventario de instancias.
 
 Siguiente: [Compatibilidad y estrategia de recolección](compatibility.es.md)
 — la primera decisión antes de instalar nada.

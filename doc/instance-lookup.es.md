@@ -32,7 +32,22 @@ index=* sourcetype=nifi* | dedup host | table host
     2. Estrategia pull: los data inputs configurados deben estar habilitados.
 
 Agrega una fila por host, con el cluster al que pertenece. Una vez que
-cada host tiene su fila, el panel Overview lo toma:
+cada host tiene su fila, el panel Overview lo toma.
+
+Las demás columnas son umbrales opcionales solo para esa instancia — déjalas
+vacías para usar el valor por defecto de la app:
+
+| Columna | Por defecto | Significado |
+|---|---|---|
+| `heap_threshold`, `heap_threshold_critical` | 85, 95 | % del heap máximo para degradada, crítica |
+| `repo_threshold`, `repo_threshold_critical` | 80, 90 | % del volumen de un repositorio para degradada, crítica |
+| `backpressure_threshold` | 80 | % del límite de una conexión |
+| `bulletin_threshold` | 5 | Boletines ERROR en 15 minutos que disparan la alerta de boletines |
+
+Un NiFi cuyo repositorio de contenido está al 85 % por diseño, por ejemplo,
+recibe `repo_threshold` 92 y deja de aparecer degradado, mientras el resto
+conserva el valor por defecto. Los valores por defecto son macros; ver
+[Umbrales](references.es.md#umbrales).
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_overview_lookup.png)
 

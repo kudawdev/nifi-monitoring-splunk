@@ -1,0 +1,1322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%232a78d6%22/%3E%3C/svg%3E">
+<title>NiFi Monitoring Mockups</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f2f2ef;
+  --surface: #fcfcfb;
+  --surface-2: #f4f4f1;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11,11,11,0.10);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+  --good-ink: #006300; --warning-ink: #8a5a00; --critical-ink: #a32424;
+  --stale: #898781;
+  --info: #9a9890;
+  --note-bg: #fff6d6; --note-ink: #5c4400; --note-border: #f0d77a;
+  --src-bg: #e8f0fb; --src-ink: #1c4f8f;
+  --bar: #1c1d21; --bar-ink: #e6e6e6; --appnav: #2b2d33;
+  --accent: #2a78d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --good-ink: #0ca30c; --warning-ink: #fab219; --critical-ink: #e66767;
+    --info: #6f6e68;
+    --note-bg: #2e2810; --note-ink: #f0d77a; --note-border: #5c4c12;
+    --src-bg: #14263f; --src-ink: #9ec5f4;
+    --bar: #000000; --appnav: #17181b; --accent: #3987e5;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --surface-2: #232321;
+  --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --good-ink: #0ca30c; --warning-ink: #fab219; --critical-ink: #e66767;
+  --info: #6f6e68;
+  --note-bg: #2e2810; --note-ink: #f0d77a; --note-border: #5c4c12;
+  --src-bg: #14263f; --src-ink: #9ec5f4;
+  --bar: #000000; --appnav: #17181b; --accent: #3987e5;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page); color: var(--ink);
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  overflow-x: hidden;
+}
+a { color: var(--accent); text-decoration: none; }
+button { font: inherit; }
+
+/* ---------- review banner ---------- */
+.review {
+  display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center;
+  padding: 8px 16px; background: var(--note-bg); color: var(--note-ink);
+  border-bottom: 1px solid var(--note-border); font-size: 13px;
+}
+.review strong { font-weight: 600; }
+.review .spacer { flex: 1; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+.toggle input { accent-color: var(--accent); }
+.theme-btn {
+  border: 1px solid var(--note-border); background: transparent; color: inherit;
+  border-radius: 6px; padding: 2px 10px; cursor: pointer;
+}
+
+/* ---------- splunk chrome ---------- */
+.splunkbar {
+  display: flex; align-items: center; gap: 16px; height: 40px; padding: 0 16px;
+  background: var(--bar); color: var(--bar-ink); font-size: 13px;
+}
+.splunkbar .logo { font-weight: 700; letter-spacing: .02em; }
+.splunkbar .logo b { color: #65a637; }
+.splunkbar .apps { color: #a9a9a9; }
+.splunkbar .spacer { flex: 1; }
+.splunkbar .user { color: #a9a9a9; }
+@media (max-width: 640px) { .splunkbar .user, .splunkbar .apps { display: none; } }
+.appnav {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 2px; padding: 0 12px; background: var(--appnav);
+  overflow-x: auto; scrollbar-width: none;
+}
+.appnav::-webkit-scrollbar { display: none; }
+.appnav .appname { color: #fff; font-weight: 600; padding: 0 12px 0 4px; white-space: nowrap; }
+.appnav a {
+  color: #c9c9c9; padding: 10px 12px; white-space: nowrap; border-bottom: 3px solid transparent;
+  font-size: 13px;
+}
+.appnav a:hover { color: #fff; }
+.appnav a.active { color: #fff; border-bottom-color: #65a637; }
+
+/* ---------- dashboard canvas ---------- */
+main { max-width: 1440px; margin: 0 auto; padding: 16px; }
+.view { display: block; scroll-margin-top: 56px; }
+.view + .view { margin-top: 36px; padding-top: 24px; border-top: 3px solid var(--axis); }
+.view-tag {
+  display: inline-flex; gap: 8px; align-items: center; margin-bottom: 6px;
+  font-size: 12px; color: var(--ink-2); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 12px; padding: 2px 10px;
+}
+.view-tag b { color: var(--ink); }
+.dash-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; margin-bottom: 12px; }
+.dash-head h1 { font-size: 20px; font-weight: 600; margin: 0; }
+.dash-head p { margin: 2px 0 0; color: var(--ink-2); font-size: 13px; }
+.inputs { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 16px; }
+.input {
+  display: flex; flex-direction: column; gap: 3px; min-width: 150px;
+}
+.input label { font-size: 12px; color: var(--ink-2); }
+.input .control {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--surface); color: var(--ink); font-size: 13px;
+}
+.input .control::after { content: "▾"; color: var(--muted); font-size: 11px; }
+.input .control.text::after { content: ""; }
+
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(12, minmax(0, 1fr)); margin-bottom: 12px; }
+.c2 { grid-column: span 2; } .c3 { grid-column: span 3; } .c4 { grid-column: span 4; }
+.c5 { grid-column: span 5; } .c6 { grid-column: span 6; } .c7 { grid-column: span 7; }
+.c8 { grid-column: span 8; } .c12 { grid-column: span 12; }
+@media (max-width: 1100px) {
+  .c2 { grid-column: span 4; } .c3 { grid-column: span 6; } .c4, .c5, .c7, .c8 { grid-column: span 12; }
+  .c6 { grid-column: span 12; }
+}
+@media (max-width: 640px) {
+  .c2, .c3 { grid-column: span 6; }
+}
+.section-title {
+  font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--ink-2); margin: 20px 0 8px;
+}
+
+.panel {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+  padding: 12px 14px; min-width: 0; position: relative;
+}
+.panel h3 { margin: 0 0 2px; font-size: 14px; font-weight: 600; }
+.panel .desc { margin: 0 0 8px; font-size: 12px; color: var(--ink-2); }
+.meta { display: none; margin-top: 8px; gap: 6px; flex-direction: column; }
+body.show-meta .meta { display: flex; }
+.src, .note {
+  font-size: 12px; border-radius: 4px; padding: 4px 8px; line-height: 1.35;
+}
+.src { overflow-wrap: anywhere; background: var(--src-bg); color: var(--src-ink); font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; }
+.note { background: var(--note-bg); color: var(--note-ink); border: 1px solid var(--note-border); font-family: system-ui, sans-serif; }
+.note::before { content: "Nota: "; font-weight: 600; }
+
+/* ---------- KPI tiles ---------- */
+.kpi .label { font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
+.kpi .value { font-size: 30px; font-weight: 600; line-height: 1.1; }
+.kpi .value small { font-size: 16px; font-weight: 500; color: var(--ink-2); }
+.kpi .sub { font-size: 12px; color: var(--ink-2); margin-top: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.kpi .spark { margin-top: 6px; display: block; width: 100%; height: 28px; }
+.kpi.status-critical { box-shadow: inset 4px 0 0 var(--critical); }
+.kpi.status-warning { box-shadow: inset 4px 0 0 var(--warning); }
+.kpi.status-good { box-shadow: inset 4px 0 0 var(--good); }
+.kpi.status-stale { box-shadow: inset 4px 0 0 var(--stale); }
+
+/* ---------- status badges ---------- */
+.st { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.st i { font-style: normal; display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; font-size: 10px; color: #fff; }
+.st.ok { color: var(--good-ink); } .st.ok i { background: var(--good); }
+.st.degraded { color: var(--warning-ink); } .st.degraded i { background: var(--warning); color: #3b2a00; border-radius: 3px; }
+.st.critical { color: var(--critical-ink); } .st.critical i { background: var(--critical); }
+.st.stale { color: var(--ink-2); } .st.stale i { background: transparent; border: 2px solid var(--stale); color: var(--stale); }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 10px; background: var(--surface-2); font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+
+/* ---------- tables ---------- */
+.tablewrap { overflow-x: auto; margin: 0 -2px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left; font-weight: 600; font-size: 12px; color: var(--ink-2);
+  padding: 6px 8px; border-bottom: 1px solid var(--axis); white-space: nowrap;
+}
+td { padding: 7px 8px; border-bottom: 1px solid var(--grid); vertical-align: middle; white-space: nowrap; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.wrap { white-space: normal; min-width: 260px; }
+td .reason { display: block; font-size: 11.5px; color: var(--ink-2); font-weight: 400; margin-top: 1px; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td { background: var(--surface-2); }
+tr.selected td { background: var(--src-bg); }
+.mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+.meter { display: inline-flex; align-items: center; gap: 6px; min-width: 104px; }
+.meter .track { display: block; flex: 1; height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; min-width: 48px; }
+.meter .fill { display: block; height: 100%; border-radius: 3px; background: var(--s1); }
+.meter .fill.warn { background: var(--warning); }
+.meter .fill.crit { background: var(--critical); }
+.meter .v { font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
+.meter .flag { font-size: 11px; }
+.comp { display: inline-flex; gap: 10px; font-variant-numeric: tabular-nums; }
+.comp span { display: inline-flex; gap: 3px; align-items: center; }
+.comp .bad { color: var(--critical-ink); font-weight: 600; }
+.lvl { font-weight: 600; font-size: 12px; }
+.lvl.ERROR { color: var(--critical-ink); } .lvl.WARNING, .lvl.WARN { color: var(--warning-ink); } .lvl.INFO { color: var(--ink-2); }
+
+/* ---------- charts ---------- */
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: 12px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 3px; border-radius: 2px; display: inline-block; }
+.legend i.sq { height: 10px; width: 10px; border-radius: 2px; }
+.legend i.dash { background: repeating-linear-gradient(90deg, var(--ink-2) 0 4px, transparent 4px 7px) !important; height: 2px; }
+.tip {
+  position: absolute; pointer-events: none; z-index: 5; min-width: 140px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18); padding: 8px 10px; font-size: 12px; display: none;
+}
+.tip .t { color: var(--ink-2); margin-bottom: 4px; }
+.tip .r { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+.tip .r b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.tip .r i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.tip .r span { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+
+.empty {
+  display: grid; place-items: center; text-align: center; gap: 6px; min-height: 180px;
+  border: 1px dashed var(--axis); border-radius: 6px; padding: 16px; color: var(--ink-2);
+}
+.empty b { color: var(--ink); }
+.empty code { background: var(--surface-2); padding: 1px 6px; border-radius: 3px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; font-size: 12px; }
+.seg button { border: 0; background: var(--surface); color: var(--ink-2); padding: 3px 10px; cursor: pointer; }
+.seg button.on { background: var(--src-bg); color: var(--src-ink); font-weight: 600; }
+.panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.inst-head { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; }
+.inst-head .big { font-size: 18px; font-weight: 600; }
+.inst-head .kv { font-size: 12.5px; color: var(--ink-2); }
+.inst-head .kv b { color: var(--ink); font-weight: 600; }
+.events { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+.events div { padding: 6px 0; border-bottom: 1px solid var(--grid); white-space: pre-wrap; word-break: break-word; }
+.events .ts { color: var(--muted); }
+.matrix td.cell { text-align: center; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+.dot.ok { background: var(--good); } .dot.warn { background: var(--warning); border-radius: 2px; }
+.dot.crit { background: var(--critical); } .dot.off { border: 2px solid var(--stale); width: 10px; height: 10px; }
+.dot.na { background: transparent; border: 1px dashed var(--axis); }
+.footer { text-align: center; color: var(--muted); font-size: 12px; margin: 24px 0 8px; }
+.footer b { color: var(--ink-2); }
+</style>
+</head>
+<body class="show-meta">
+
+<div class="review">
+  <span><strong>Mockup — rediseño de dashboards 2.0.0.</strong> Datos ficticios. Plan: <code>docs/plans/2026-10-01-rediseno-dashboards.md</code></span>
+  <span class="spacer"></span>
+  <label class="toggle"><input type="checkbox" id="metaToggle" checked> Mostrar fuentes y notas</label>
+  <button class="theme-btn" id="themeBtn" type="button">Tema: sistema</button>
+</div>
+
+<div class="splunkbar">
+  <span class="logo">splunk<b>&gt;</b>enterprise</span>
+  <span class="apps">Apps ▾</span>
+  <span class="spacer"></span>
+  <span class="user">Administrator ▾ · Messages ▾ · Settings ▾ · Activity ▾ · Help ▾</span>
+</div>
+<nav class="appnav" id="appnav">
+  <span class="appname">NiFi Monitoring</span>
+  <a href="#view-overview" data-view="overview">Overview</a>
+  <a href="#view-instance" data-view="instance">Instance</a>
+  <a href="#view-components" data-view="components">Components</a>
+  <a href="#view-bulletins" data-view="bulletins">Bulletins</a>
+  <a href="#view-logs" data-view="logs">Logs</a>
+  <a href="#view-cluster" data-view="cluster">Cluster</a>
+  <a href="#view-alerts" data-view="alerts">Alerts</a>
+  <a href="#view-collection" data-view="collection">Configuration ▾ Collection Health</a>
+</nav>
+
+<main>
+
+<!-- ======================= OVERVIEW ======================= -->
+<section class="view" id="view-overview">
+  <div class="dash-head">
+    <div><h1>Overview</h1><p>Is the fleet healthy right now?</p></div>
+  </div>
+  <div class="inputs">
+    <div class="input"><label>Time range</label><div class="control">Last 4 hours</div></div>
+    <div class="input"><label>Cluster</label><div class="control">All</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="panel kpi c2 status-critical" data-src="`nifi_health` sobre las instancias del lookup instance" data-note="Reemplaza al Up/Down de 5 min (D-Q): mira el intervalo de cada instancia.">
+      <div class="label">Healthy instances</div>
+      <div class="value">2 <small>/ 6</small></div>
+      <div class="sub"><span class="st critical"><i>✕</i>1</span><span class="st degraded"><i>!</i>2</span><span class="st stale"><i>○</i>1</span></div>
+    </div>
+    <div class="panel kpi c2 status-critical" data-src="| tstats count from datamodel=NIFI.Bulletins where Bulletins.bulletinLevel=ERROR" data-note="Lee el dataset padre: cuenta bulletins de pull y de push (D-C).">
+      <div class="label">ERROR bulletins · 15 min</div>
+      <div class="value">9</div>
+      <div class="sub">7 on <a href="#view-instance">nifi-prod-02</a></div>
+      <svg class="spark" data-spark="bulletinsSpark" data-color="--critical"></svg>
+    </div>
+    <div class="panel kpi c2 status-critical" data-src="NIFI.System_Diagnostics · usedHeapBytes / maxHeapBytes" data-note="Crítico ≥ 95 %, degradado ≥ `nifi_threshold_heap` (85). Por instancia si el KV trae heap_threshold.">
+      <div class="label">Worst heap</div>
+      <div class="value">93<small>%</small></div>
+      <div class="sub"><a href="#view-instance">nifi-prod-02</a> · threshold 85%</div>
+      <svg class="spark" data-spark="heapSpark" data-color="--s1"></svg>
+    </div>
+    <div class="panel kpi c2 status-warning" data-src="NIFI.System_Diagnostics · contentRepositoryStorageUsage{} por identifier" data-note="Máximo sobre todos los repositorios, no el latest() de un multivalor (D-R).">
+      <div class="label">Worst repository</div>
+      <div class="value">87<small>%</small></div>
+      <div class="sub">nifi-prod-03 · content <span class="mono">default</span></div>
+      <svg class="spark" data-spark="repoSpark" data-color="--s1"></svg>
+    </div>
+    <div class="panel kpi c2" data-src="NIFI.Flow_Status · flowFilesQueued, bytesQueued (latest por host, suma)">
+      <div class="label">FlowFiles queued</div>
+      <div class="value">48.2K</div>
+      <div class="sub">3.1 GB across 5 instances</div>
+      <svg class="spark" data-spark="queueSpark" data-color="--s1"></svg>
+    </div>
+    <div class="panel kpi c2 status-warning" data-src="NIFI.Flow_Status · invalidCount">
+      <div class="label">Invalid components</div>
+      <div class="value">2</div>
+      <div class="sub">nifi-etl-01</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel c12" data-src="nifi_health + Flow_Status + System_Diagnostics + Bulletins + Version_Info, append/stats por host (sin join)" data-note="Encabezados legibles (D-F) y color derivado del valor, nunca de la fila (D-G). Ordenada por severidad. Clic en una fila → Instance con form.host y el rango de tiempo.">
+      <div class="panel-head"><div><h3>Instances</h3><p class="desc">Sorted by severity. Components: ▶ running · ■ stopped · ⚠ invalid · ⏻ disabled. Click a row to open the instance.</p></div></div>
+      <div class="tablewrap"><table id="tblInstances"></table></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel c6" data-src="| tstats count from datamodel=NIFI.Bulletins by _time Bulletins.bulletinLevel span=10m">
+      <h3>Bulletins by level</h3><p class="desc">All instances · 10-minute buckets</p>
+      <div class="chart" data-chart="ovBulletins"></div>
+    </div>
+    <div class="panel c6" data-src="NIFI.Flow_Status · flowFilesQueued por host" data-note="Top 4 instancias por cola; el resto se pliega en «Other» para no pasar de 4 colores.">
+      <h3>FlowFiles queued by instance</h3><p class="desc">Top 4 by current queue</p>
+      <div class="chart" data-chart="ovQueue"></div>
+    </div>
+  </div>
+  <div class="footer">Developed by <b>Kudaw</b></div>
+</section>
+
+<!-- ======================= INSTANCE ======================= -->
+<section class="view" id="view-instance">
+  <div class="dash-head">
+    <div><h1>Instance</h1><p>What is happening on this instance?</p></div>
+  </div>
+  <div class="inputs">
+    <div class="input"><label>Instance</label><div class="control">nifi-prod-02</div></div>
+    <div class="input"><label>Time range</label><div class="control">Last 4 hours</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="panel c12" data-src="nifi_health · Version_Info · System_Diagnostics (uptime)" data-note="Abre con la primera instancia del inventario, nunca en «waiting for input» (D-J).">
+      <div class="inst-head">
+        <span class="big">nifi-prod-02</span>
+        <span class="st critical"><i>✕</i>Critical <span class="reason" style="display:inline;margin-left:4px">· heap 93% ≥ 85% for 25 min</span></span>
+        <span class="kv">Cluster <b>prod</b></span>
+        <span class="kv">NiFi <b>2.11.0</b></span>
+        <span class="kv">Java <b>21.0.12</b></span>
+        <span class="kv">Uptime <b>12d 4h</b></span>
+        <span class="kv">Last data <b>18 s ago</b> · interval 60 s</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Now</div>
+  <div class="grid">
+    <div class="panel kpi c2" data-src="NIFI.Flow_Status · activeThreadCount (latest)">
+      <div class="label">Active threads</div><div class="value">18</div>
+      <svg class="spark" data-spark="threadsSpark" data-color="--s1"></svg>
+    </div>
+    <div class="panel kpi c2" data-src="NIFI.Flow_Status · flowFilesQueued, bytesQueued">
+      <div class="label">Queued</div><div class="value">21.6K</div>
+      <div class="sub">1.9 GB</div>
+      <svg class="spark" data-spark="queueSpark2" data-color="--s1"></svg>
+    </div>
+    <div class="panel kpi c3 status-warning" data-src="NIFI.Flow_Status · running/stopped/invalid/disabledCount" data-note="Un solo tile reemplaza los cuatro Status Indicator (dependencia app 3119 eliminada). El color depende del valor: inválidos > 0 marca advertencia.">
+      <div class="label">Components</div>
+      <div class="value" style="font-size:22px;padding-top:4px">
+        <span class="comp"><span>▶ 138</span><span>■ 4</span><span class="bad">⚠ 1</span><span>⏻ 5</span></span>
+      </div>
+      <div class="sub">running · stopped · invalid · disabled</div>
+    </div>
+    <div class="panel kpi c3" data-src="NIFI.Flow_Status · upToDate/locallyModified/stale/syncFailureCount">
+      <div class="label">Versioned process groups</div>
+      <div class="value" style="font-size:22px;padding-top:4px"><span class="comp"><span>6 up to date</span><span>1 modified</span></span></div>
+      <div class="sub">0 stale · <span class="st ok"><i>✓</i>0 sync failures</span></div>
+    </div>
+    <div class="panel kpi c2 status-critical" data-src="NIFI.Bulletins · bulletinLevel=ERROR · 15 min" data-note="Drilldown a Bulletins con host y nivel ya filtrados (corrige D-L, que apuntaba a una vista inexistente).">
+      <div class="label">ERROR bulletins · 15 min</div><div class="value">7</div>
+      <div class="sub"><a href="#view-bulletins">Open in Bulletins →</a></div>
+    </div>
+  </div>
+
+  <div class="section-title">JVM and system</div>
+  <div class="grid">
+    <div class="panel c6" data-src="NIFI.System_Diagnostics · usedHeapBytes / maxHeapBytes ×100" data-note="Con pull ya hay datos (D-B). Una sola medida por gráfico y la línea de umbral sale del mismo macro que la alerta.">
+      <h3>Heap used</h3><p class="desc">% of max heap · threshold 85%</p>
+      <div class="chart" data-chart="instHeap"></div>
+    </div>
+    <div class="panel c6" data-src="NIFI.System_Diagnostics · totalThreads, daemonThreads">
+      <h3>JVM threads</h3><p class="desc">Total and daemon</p>
+      <div class="chart" data-chart="instThreads"></div>
+    </div>
+    <div class="panel c6" data-src="NIFI.System_Diagnostics · processorLoadAverage, availableProcessors">
+      <h3>Load average</h3><p class="desc">1-minute load · reference line at 8 available cores</p>
+      <div class="chart" data-chart="instLoad"></div>
+    </div>
+    <div class="panel c6" data-src="NIFI.System_Diagnostics · garbageCollection{} · delta de collectionMillis por colector" data-note="Se grafica el delta por intervalo, no el acumulado, para que un pico de GC se vea como pico.">
+      <h3>GC time per collector</h3><p class="desc">Milliseconds spent per 5 minutes</p>
+      <div class="chart" data-chart="instGc"></div>
+    </div>
+  </div>
+
+  <div class="section-title">Storage</div>
+  <div class="grid">
+    <div class="panel c5" data-src="NIFI.System_Diagnostics · *RepositoryStorageUsage{} con mvzip por identifier" data-note="Un repositorio por fila, con su identifier (D-R). Esta instancia tiene dos content repositories.">
+      <h3>Repositories</h3><p class="desc">Latest value per repository</p>
+      <div class="tablewrap"><table id="tblRepos"></table></div>
+    </div>
+    <div class="panel c7" data-src="NIFI.System_Diagnostics · usedSpaceBytes / totalSpaceBytes por repositorio" data-note="Reemplaza los tres gráficos de doble eje (GB libres + %) por una sola medida.">
+      <h3>Repository usage</h3><p class="desc">% used · threshold 80%</p>
+      <div class="chart" data-chart="instRepo"></div>
+    </div>
+  </div>
+
+  <div class="section-title">Throughput</div>
+  <div class="grid">
+    <div class="panel c12" data-src="NIFI.Throughput (padre) → Reporting_Task (push) | Flow_Metrics_Root (pull) · bytes_in, bytes_out, flowfiles_in, flowfiles_out" data-note="Campos normalizados en props.conf del TA, así el panel no sabe por qué vía llegó el dato. Usa el selector para ver el estado vacío cuando la fuente está apagada.">
+      <div class="panel-head">
+        <div><h3>Data in and out</h3><p class="desc">Per 5 minutes, root process group</p></div>
+        <div class="seg" id="tpSeg"><button type="button" class="on" data-v="data">With data</button><button type="button" data-v="empty">Source disabled</button></div>
+      </div>
+      <div id="tpData" class="grid" style="margin:0">
+        <div class="c6"><div class="chart" data-chart="instBytes"></div></div>
+        <div class="c6"><div class="chart" data-chart="instFlowfiles"></div></div>
+      </div>
+      <div id="tpEmpty" class="empty" style="display:none">
+        <div><b>No throughput data for nifi-prod-02</b></div>
+        <div>On the pull path this panel needs flow metrics.<br>Enable <code>endpoint_flow_metrics</code> on this instance's input in <a href="#view-collection">Nifi Monitoring TA › Inputs</a>.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Recent bulletins</div>
+  <div class="grid">
+    <div class="panel c12" data-src="NIFI.Bulletins · últimos 10 de la instancia">
+      <div class="tablewrap"><table id="tblInstBulletins"></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= COMPONENTS ======================= -->
+<section class="view" id="view-components">
+  <div class="dash-head">
+    <div><h1>Components</h1><p>Which processor, group or connection is the bottleneck?</p></div>
+  </div>
+  <div class="inputs">
+    <div class="input"><label>Instance</label><div class="control">nifi-prod-02</div></div>
+    <div class="input"><label>Component type</label><div class="control">Processors</div></div>
+    <div class="input"><label>Metric</label><div class="control">Task time</div></div>
+    <div class="input"><label>Time range</label><div class="control">Last 4 hours</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="panel kpi c4 status-warning" data-src="NIFI.Flow_Metrics · nifi_percent_used_count / _bytes ≥ `nifi_threshold_backpressure`">
+      <div class="label">Connections over backpressure threshold</div><div class="value">3</div>
+      <div class="sub">threshold 80% of object or size limit</div>
+    </div>
+    <div class="panel kpi c4 status-critical" data-src="NIFI.Flow_Metrics · nifi_time_to_count_backpressure_prediction < 1h" data-note="La predicción de backpressure la calcula NiFi y hoy se recolecta sin que ningún panel la muestre (D-D).">
+      <div class="label">Reaching backpressure within 1 h</div><div class="value">1</div>
+      <div class="sub">ConvertRecord → PutDatabaseRecord · ~22 min</div>
+    </div>
+    <div class="panel kpi c4" data-src="NIFI.Component_Status · dc(component_id)" data-note="Solo los componentes cuyos ids están en el input del TA. El texto lo dice para que nadie busque uno que no se configuró.">
+      <div class="label">Components with history</div><div class="value">24</div>
+      <div class="sub">the ids configured on the TA input</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel c6" data-src="NIFI.Component_Status (eventos planos por snapshot, R-3) · sum(taskMillis) by component" data-note="Sin spath ni mvexpand: el TA ya emite un evento por snapshot. El selector de métrica sale del lookup nifi_status_metrics.csv. Clic en una fila → serie abajo.">
+      <h3>Top 10 processors by task time</h3><p class="desc">Sum over the selected range · click a row</p>
+      <div class="tablewrap"><table id="tblTop"></table></div>
+    </div>
+    <div class="panel c6" data-src="NIFI.Flow_Metrics · component_type=Connection · nifi_percent_used_*, nifi_time_to_*_backpressure_prediction">
+      <h3>Busiest connections</h3><p class="desc">Latest · % of the backpressure limit · ETA = predicted time to backpressure</p>
+      <div class="tablewrap"><table id="tblConn"></table></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel c12" data-src="NIFI.Component_Status where component_id=$selected$ · taskMillis por snapshot">
+      <h3 id="compSeriesTitle">PutDatabaseRecord — task time</h3><p class="desc">Milliseconds per 1-minute snapshot</p>
+      <div class="chart" data-chart="compSeries"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= BULLETINS ======================= -->
+<section class="view" id="view-bulletins">
+  <div class="dash-head"><div><h1>Bulletins</h1><p>What errors is NiFi reporting?</p></div></div>
+  <div class="inputs">
+    <div class="input"><label>Time range</label><div class="control">Last 24 hours</div></div>
+    <div class="input"><label>Cluster</label><div class="control">All</div></div>
+    <div class="input"><label>Instance</label><div class="control">All</div></div>
+    <div class="input"><label>Level</label><div class="control">ERROR, WARNING</div></div>
+    <div class="input"><label>Category</label><div class="control">All</div></div>
+    <div class="input"><label>Source</label><div class="control">All</div></div>
+  </div>
+  <div class="grid">
+    <div class="panel kpi c3" data-src="NIFI.Bulletins (Bulletin_Board + Reporting_Bulletin)" data-note="Todos los paneles de esta vista leen el padre: funcionan con pull, con push o con ambos (D-C).">
+      <div class="label">Bulletins</div><div class="value">214</div>
+    </div>
+    <div class="panel kpi c3 status-critical" data-src="NIFI.Bulletins · bulletinLevel=ERROR"><div class="label">ERROR</div><div class="value">38</div></div>
+    <div class="panel kpi c3 status-warning" data-src="NIFI.Bulletins · bulletinLevel=WARNING"><div class="label">WARNING</div><div class="value">151</div></div>
+    <div class="panel kpi c3" data-src="NIFI.Bulletins · dc(bulletinSourceId)"><div class="label">Components affected</div><div class="value">11</div></div>
+  </div>
+  <div class="grid">
+    <div class="panel c8" data-src="| tstats count from datamodel=NIFI.Bulletins by _time Bulletins.bulletinLevel span=1h">
+      <h3>Bulletins over time</h3><p class="desc">Hourly, by level</p>
+      <div class="chart" data-chart="bulOverTime"></div>
+    </div>
+    <div class="panel c4" data-src="NIFI.Bulletins · count by bulletinSourceName, bulletinLevel">
+      <h3>Components with most bulletins</h3><p class="desc">Top 6</p>
+      <div class="tablewrap"><table id="tblBulTop"></table></div>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="panel c12" data-src="`index_nifi` sourcetype IN (nifi:api:bulletin_board, nifi:reporting:bulletin) · mensaje completo" data-note="El mensaje se muestra completo (envuelto). El grupo solo lo trae la Reporting Task; con pull se muestra el id.">
+      <h3>Bulletin details</h3>
+      <div class="tablewrap"><table id="tblBulDetail"></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= LOGS ======================= -->
+<section class="view" id="view-logs">
+  <div class="dash-head"><div><h1>Logs</h1><p>Application log, deprecations and API requests</p></div></div>
+  <div class="inputs">
+    <div class="input"><label>Time range</label><div class="control">Last 60 minutes</div></div>
+    <div class="input"><label>Instance</label><div class="control">All</div></div>
+    <div class="input"><label>Severity</label><div class="control">ERROR, WARN</div></div>
+    <div class="input" style="min-width:240px"><label>Search</label><div class="control text">PutDatabaseRecord</div></div>
+  </div>
+
+  <div class="section-title">Application</div>
+  <div class="grid">
+    <div class="panel c5" data-src="| tstats count from datamodel=NIFI.Logs by _time Logs.level" data-note="El texto libre ya no filtra el tstats (D-O): el gráfico cuenta por nivel con los filtros estructurados y el visor aplica la búsqueda libre.">
+      <h3>Events by level</h3><p class="desc">5-minute buckets</p>
+      <div class="chart" data-chart="logLevels"></div>
+    </div>
+    <div class="panel c7" data-src="`index_nifi` sourcetype=nifi:log:app $level$ $search$ (búsqueda cruda)">
+      <h3>Events</h3><p class="desc">Matching “PutDatabaseRecord” · newest first</p>
+      <div class="events" id="logEvents"></div>
+    </div>
+  </div>
+
+  <div class="section-title">Deprecations</div>
+  <div class="grid">
+    <div class="panel c12" data-src="`index_nifi` sourcetype=nifi:log:deprecation · stats count, latest(_time) by class, component, host" data-note="Es lo que hay que resolver antes de migrar a NiFi 2.x (D-E), y en 2.x lo que desaparece en la próxima versión. Requiere el monitor de nifi-deprecation.log habilitado.">
+      <h3>Deprecated usage to resolve before NiFi 2.x</h3><p class="desc">From nifi-deprecation.log · last 7 days</p>
+      <div class="tablewrap"><table id="tblDeprec"></table></div>
+    </div>
+  </div>
+
+  <div class="section-title">API requests</div>
+  <div class="grid">
+    <div class="panel c6" data-src="| tstats count from datamodel=NIFI.Request_Log by _time Request_Log.status span=5m · clase 2xx/4xx/5xx">
+      <h3>Requests by status class</h3><p class="desc">5-minute buckets</p>
+      <div class="chart" data-chart="reqClass"></div>
+    </div>
+    <div class="panel c6" data-src="NIFI.Request_Log · status>=400 · count by user, uri_path">
+      <h3>Top failing requests</h3><p class="desc">4xx and 5xx</p>
+      <div class="tablewrap"><table id="tblReq"></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= CLUSTER ======================= -->
+<section class="view" id="view-cluster">
+  <div class="dash-head"><div><h1>Cluster</h1><p>Is the cluster whole?</p></div></div>
+  <div class="inputs">
+    <div class="input"><label>Cluster</label><div class="control">prod</div></div>
+    <div class="input"><label>Time range</label><div class="control">Last 4 hours</div></div>
+  </div>
+  <div class="grid">
+    <div class="panel kpi c4 status-good" data-src="NIFI.Cluster_Nodes · clusterConnectedNodeCount / clusterNodeCount" data-note="Sale de «Internal Monitoring», donde estaba escondida. En una instancia standalone la vista lo dice en lugar de quedar vacía.">
+      <div class="label">Connected nodes</div><div class="value">3 <small>/ 3</small></div>
+      <div class="sub"><span class="st ok"><i>✓</i>All connected</span></div>
+    </div>
+    <div class="panel kpi c4" data-src="NIFI.Cluster_Nodes · roles"><div class="label">Primary node</div><div class="value" style="font-size:22px">nifi-prod-01</div><div class="sub">since 3d 6h</div></div>
+    <div class="panel kpi c4" data-src="NIFI.Cluster_Nodes · roles"><div class="label">Cluster coordinator</div><div class="value" style="font-size:22px">nifi-prod-03</div><div class="sub">since 12d 4h</div></div>
+  </div>
+  <div class="grid">
+    <div class="panel c12" data-src="NIFI.Cluster_Nodes + NIFI.Node_Diagnostics · latest por nodo">
+      <h3>Nodes</h3>
+      <div class="tablewrap"><table id="tblNodes"></table></div>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="panel c6" data-src="NIFI.Node_Diagnostics · heap % por nodo" data-note="El agregado esconde al nodo que se queda sin heap: por eso se grafica por nodo.">
+      <h3>Heap used by node</h3><p class="desc">% of max heap · threshold 85%</p>
+      <div class="chart" data-chart="clHeap"></div>
+    </div>
+    <div class="panel c6" data-src="NIFI.Cluster_Nodes · flowFilesQueued por nodo">
+      <h3>FlowFiles queued by node</h3><p class="desc">Latest per 5 minutes</p>
+      <div class="chart" data-chart="clQueue"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= ALERTS ======================= -->
+<section class="view" id="view-alerts">
+  <div class="dash-head"><div><h1>Alerts</h1><p>What this app can alert on, and what fired</p></div></div>
+  <div class="grid">
+    <div class="panel kpi c4" data-src="| rest /servicesNS/-/nifi_monitoring/saved/searches · is_scheduled, disabled" data-note="Se distribuyen deshabilitadas (AppInspect). La vista muestra cuáles encendió el operador.">
+      <div class="label">Alerts enabled</div><div class="value">5 <small>/ 8</small></div>
+    </div>
+    <div class="panel kpi c4 status-critical" data-src="index=_audit action=alert_fired ss_app=nifi_monitoring · 24 h"><div class="label">Fired · 24 h</div><div class="value">6</div></div>
+    <div class="panel kpi c4"><div class="label">Manage</div><div class="value" style="font-size:16px;padding-top:8px"><a href="#view-alerts">Open Splunk alerts ›</a></div><div class="sub">enable, change recipients, throttle</div></div>
+  </div>
+  <div class="grid">
+    <div class="panel c12" data-src="savedsearches.conf de la app · condición y umbral desde los macros" data-note="Las alertas usan los mismos macros (`nifi_health`, `nifi_threshold_*`) que los paneles: una alerta y un panel nunca discrepan.">
+      <h3>Alerts shipped with the app</h3>
+      <div class="tablewrap"><table id="tblAlerts"></table></div>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="panel c12" data-src="index=_audit action=alert_fired ss_app=nifi_monitoring">
+      <h3>Fired in the last 24 hours</h3>
+      <div class="tablewrap"><table id="tblFired"></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= COLLECTION HEALTH ======================= -->
+<section class="view" id="view-collection">
+  <div class="dash-head"><div><h1>Collection Health</h1><p>Is data collection working?</p></div></div>
+  <div class="inputs">
+    <div class="input"><label>Time range</label><div class="control">Last 24 hours</div></div>
+  </div>
+  <div class="grid">
+    <div class="panel kpi c4 status-good" data-src="| tstats count where `index_nifi` sourcetype=nifi:*" data-note="Reemplaza «Nifi TA Monitoring». Sin refresh de la página entera (D-P).">
+      <div class="label">Events the app can see</div><div class="value">1.92M</div><div class="sub">through the <span class="mono">index_nifi</span> macro · 11 sourcetypes</div>
+    </div>
+    <div class="panel kpi c4 status-stale" data-src="nifi_health · stale/no_data">
+      <div class="label">Instances behind</div><div class="value">1</div><div class="sub">nifi-edge-01 · no data for 2h 14m</div>
+    </div>
+    <div class="panel kpi c4 status-warning" data-src="index=_internal source=*nifi_TA_monitoring* status_code>=400">
+      <div class="label">TA HTTP errors · 24 h</div><div class="value">41</div><div class="sub">all 401 on nifi-edge-01</div>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="panel c12" data-src="| tstats latest(_time) where `index_nifi` sourcetype=nifi:* by host, sourcetype · comparado con el intervalo del input" data-note="Celda = último dato de ese sourcetype en esa instancia. Gris punteado = el endpoint está apagado en el input, que no es un error.">
+      <h3>Last data per instance and source</h3>
+      <p class="desc"><span class="dot ok"></span> on time &nbsp; <span class="dot warn"></span> late (&gt; 3 intervals) &nbsp; <span class="dot crit"></span> missing &nbsp; <span class="dot na"></span> not enabled</p>
+      <div class="tablewrap"><table id="tblMatrix" class="matrix"></table></div>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="panel c7" data-src="index=_internal nifi_TA_monitoring status_code · por código" data-note="Hoy solo cuenta 404 como error (D-P). Cada código tiene su serie porque cada uno tiene otra causa: 401 credenciales, 403 permisos, 404 id mal configurado, 5xx NiFi.">
+      <h3>TA HTTP errors by status code</h3><p class="desc">Per hour</p>
+      <div class="chart" data-chart="taErrors"></div>
+    </div>
+    <div class="panel c5" data-src="| tstats count where index=* sourcetype=nifi:* by index" data-note="El único lugar donde index=* está justificado; un test lo hace cumplir.">
+      <h3>Where NiFi data is</h3><p class="desc">Point <span class="mono">index_nifi</span> at the index listed here</p>
+      <div class="tablewrap"><table id="tblIdx"></table></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="tip" id="tip"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------------- helpers ---------------- */
+  var NS = "http://www.w3.org/2000/svg";
+  function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+  function seed(s) { return function () { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
+  function walk(n, start, drift, noise, rnd, min, max) {
+    var out = [], v = start;
+    for (var i = 0; i < n; i++) {
+      v += drift + (rnd() - 0.5) * noise;
+      if (min !== undefined) v = Math.max(min, v);
+      if (max !== undefined) v = Math.min(max, v);
+      out.push(v);
+    }
+    return out;
+  }
+  function el(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function fmt(v, unit) {
+    if (unit === "%") return v.toFixed(0) + "%";
+    if (unit === "ms") return Math.round(v).toLocaleString("en-US") + " ms";
+    if (unit === "MB") return v >= 1024 ? (v / 1024).toFixed(1) + " GB" : v.toFixed(0) + " MB";
+    if (unit === "k") return v >= 1000 ? +(v / 1000).toFixed(1) + "K" : Math.round(v).toString();
+    if (unit === "x") return v.toFixed(2);
+    return Math.round(v).toLocaleString("en-US");
+  }
+  function timesFrom(startH, n, stepMin) {
+    var t = [];
+    for (var i = 0; i < n; i++) {
+      var m = startH * 60 + i * stepMin, h = Math.floor(m / 60) % 24, mm = m % 60;
+      t.push((h < 10 ? "0" : "") + h + ":" + (mm < 10 ? "0" : "") + mm);
+    }
+    return t;
+  }
+  function niceStep(v) {
+    var p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+  }
+  // a clean axis: 4-5 ticks on round steps
+  function axis(max) {
+    if (max <= 0) max = 1;
+    var step = niceStep(max / 4), n = Math.ceil(max / step - 1e-9);
+    return { max: step * n, n: n };
+  }
+  var tip = document.getElementById("tip");
+  function showTip(chartEl, x, y, title, rows) {
+    var html = '<div class="t">' + title + "</div>";
+    rows.forEach(function (r) {
+      html += '<div class="r"><span><i style="background:' + r.c + '"></i>' + r.n + "</span><b>" + r.v + "</b></div>";
+    });
+    tip.innerHTML = html;
+    tip.style.display = "block";
+    var rect = chartEl.getBoundingClientRect();
+    var tx = rect.left + window.scrollX + x + 14, ty = rect.top + window.scrollY + y - 10;
+    var w = tip.offsetWidth;
+    if (tx + w > window.scrollX + document.documentElement.clientWidth - 8) tx = rect.left + window.scrollX + x - w - 14;
+    tip.style.left = tx + "px";
+    tip.style.top = ty + "px";
+  }
+  function hideTip() { tip.style.display = "none"; }
+
+  /* ---------------- data ---------------- */
+  var R = seed(42);
+  var T48 = timesFrom(8, 48, 5);      // last 4h, 5-min
+  var T24 = timesFrom(13, 24, 60);    // last 24h, hourly
+  var T12 = timesFrom(11, 12, 5);     // last 60 min, 5-min
+  var T25 = timesFrom(8, 25, 10);     // last 4h, 10-min
+
+  var heapProd02 = walk(48, 64, 0.62, 3, R, 40, 95);
+  heapProd02 = heapProd02.map(function (v, i) { return i > 42 ? 91 + R() * 3 : v; });
+
+  var D = {
+    bulletinsSpark: walk(24, 2, 0.25, 2, R, 0),
+    heapSpark: heapProd02.slice(-24),
+    repoSpark: walk(24, 82, 0.2, 0.6, R, 0, 100),
+    queueSpark: walk(24, 40, 0.35, 3, R, 0),
+    threadsSpark: walk(24, 15, 0.1, 3, R, 0),
+    queueSpark2: walk(24, 14, 0.3, 2, R, 0)
+  };
+
+  var instances = [
+    { host: "nifi-prod-02", cluster: "prod", ver: "2.11.0", health: "critical", reason: "Heap 93% ≥ 85% for 25 min", last: "18 s ago", run: 138, stop: 4, inv: 1, dis: 5, q: "21.6K", heap: 93, repo: 74, repoName: "content", bul: 7 },
+    { host: "nifi-prod-03", cluster: "prod", ver: "2.11.0", health: "degraded", reason: "Content repository 87% ≥ 80%", last: "31 s ago", run: 141, stop: 2, inv: 0, dis: 5, q: "9.8K", heap: 58, repo: 87, repoName: "content", bul: 1 },
+    { host: "nifi-etl-01", cluster: "—", ver: "1.28.1", health: "degraded", reason: "2 invalid components", last: "44 s ago", run: 57, stop: 6, inv: 2, dis: 0, q: "11.2K", heap: 66, repo: 52, repoName: "flowfile", bul: 1 },
+    { host: "nifi-edge-01", cluster: "—", ver: "1.23.2", health: "stale", reason: "No data for 2h 14m (interval 60 s)", last: "2h 14m ago", run: null, stop: null, inv: null, dis: null, q: "—", heap: null, repo: null, repoName: "", bul: null },
+    { host: "nifi-prod-01", cluster: "prod", ver: "2.11.0", health: "ok", reason: "", last: "12 s ago", run: 142, stop: 2, inv: 0, dis: 5, q: "5.1K", heap: 61, repo: 71, repoName: "content", bul: 0 },
+    { host: "nifi-dev-01", cluster: "—", ver: "2.11.0", health: "ok", reason: "", last: "27 s ago", run: 22, stop: 9, inv: 0, dis: 3, q: "0.5K", heap: 34, repo: 18, repoName: "provenance", bul: 0 }
+  ];
+  instances.forEach(function (it) { it.qs = walk(24, 10 + R() * 20, it.health === "critical" ? 0.6 : 0, 3, R, 0); });
+
+  var HEALTH = {
+    ok: '<span class="st ok"><i>✓</i>Healthy</span>',
+    degraded: '<span class="st degraded"><i>!</i>Degraded</span>',
+    critical: '<span class="st critical"><i>✕</i>Critical</span>',
+    stale: '<span class="st stale"><i>○</i>No data</span>'
+  };
+
+  /* ---------------- sparklines ---------------- */
+  function spark(svg, data, colorVar) {
+    svg.innerHTML = "";
+    var w = svg.clientWidth || 120, h = svg.clientHeight || 28;
+    svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+    var mx = Math.max.apply(null, data), mn = Math.min.apply(null, data), span = (mx - mn) || 1;
+    var pts = data.map(function (v, i) { return [i / (data.length - 1) * (w - 4) + 2, h - 3 - (v - mn) / span * (h - 6)]; });
+    var d = pts.map(function (p, i) { return (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1); }).join("");
+    el("path", { d: d, fill: "none", stroke: css(colorVar), "stroke-width": 1.5, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+    var last = pts[pts.length - 1];
+    el("circle", { cx: last[0], cy: last[1], r: 2.5, fill: css(colorVar) }, svg);
+  }
+  function sparkSvg(data, colorVar, w, h) {
+    var s = document.createElementNS(NS, "svg");
+    s.setAttribute("width", w); s.setAttribute("height", h);
+    s.style.width = w + "px"; s.style.height = h + "px"; s.style.verticalAlign = "middle";
+    setTimeout(function () { spark(s, data, colorVar); }, 0);
+    return s;
+  }
+
+  /* ---------------- line chart ---------------- */
+  function lineChart(host, cfg) {
+    host.innerHTML = "";
+    var W = host.clientWidth || 600, H = cfg.height || 210;
+    var longest = 0;
+    if (cfg.endLabels) cfg.series.forEach(function (s) {
+      longest = Math.max(longest, (s.n + " " + fmt(s.data[s.data.length - 1], cfg.unit)).length);
+    });
+    var m = { t: 10, r: cfg.endLabels ? longest * 6.6 + 18 : 14, b: 26, l: 46 };
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, height: H, role: "img", "aria-label": cfg.aria || "" }, host);
+    var iw = W - m.l - m.r, ih = H - m.t - m.b;
+    var all = [];
+    cfg.series.forEach(function (s) { all = all.concat(s.data); });
+    var ax = cfg.ymax ? { max: cfg.ymax, n: 4 } : axis(Math.max.apply(null, all.concat(cfg.threshold ? [cfg.threshold.v] : [])) * 1.05);
+    var ymax = ax.max;
+    var n = cfg.x.length;
+    function X(i) { return m.l + i / (n - 1) * iw; }
+    function Y(v) { return m.t + ih - v / ymax * ih; }
+    var ticks = ax.n;
+    for (var k = 0; k <= ticks; k++) {
+      var v = ymax / ticks * k, y = Y(v);
+      el("line", { x1: m.l, x2: m.l + iw, y1: y, y2: y, stroke: k === 0 ? css("--axis") : css("--grid"), "stroke-width": 1 }, svg);
+      var tl = el("text", { x: m.l - 6, y: y + 4, "text-anchor": "end", "font-size": 11, fill: css("--muted"), style: "font-variant-numeric:tabular-nums" }, svg);
+      tl.textContent = fmt(v, cfg.unit);
+    }
+    var every = Math.ceil(n / 6);
+    for (var i = 0; i < n; i += every) {
+      var tx = el("text", { x: X(i), y: H - 8, "text-anchor": "middle", "font-size": 11, fill: css("--muted") }, svg);
+      tx.textContent = cfg.x[i];
+    }
+    if (cfg.threshold) {
+      var ty = Y(cfg.threshold.v);
+      el("line", { x1: m.l, x2: m.l + iw, y1: ty, y2: ty, stroke: css("--ink-2"), "stroke-width": 1.5, "stroke-dasharray": "5 4" }, svg);
+      var tt = el("text", { x: m.l + 6, y: ty - 5, "text-anchor": "start", "font-size": 11, fill: css("--ink-2") }, svg);
+      tt.textContent = cfg.threshold.label;
+    }
+    cfg.series.forEach(function (s) {
+      var d = s.data.map(function (v, i) { return (i ? "L" : "M") + X(i).toFixed(1) + "," + Y(v).toFixed(1); }).join("");
+      if (cfg.area && cfg.series.length === 1) {
+        var a = el("path", { d: d + "L" + X(n - 1) + "," + Y(0) + "L" + X(0) + "," + Y(0) + "Z", fill: css(s.c), opacity: 0.12 }, svg);
+      }
+      el("path", { d: d, fill: "none", stroke: css(s.c), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+    });
+    if (cfg.endLabels) {
+      var placed = [];
+      cfg.series.map(function (s) { return { s: s, y: Y(s.data[n - 1]) }; })
+        .sort(function (a, b) { return a.y - b.y; })
+        .forEach(function (o) {
+          var y = o.y;
+          placed.forEach(function (p) { if (Math.abs(p - y) < 13) y = p + 13; });
+          placed.push(y);
+          el("circle", { cx: X(n - 1), cy: o.y, r: 3, fill: css(o.s.c) }, svg);
+          var t = el("text", { x: X(n - 1) + 8, y: y + 4, "font-size": 11.5, fill: css("--ink-2") }, svg);
+          t.textContent = o.s.n + " " + fmt(o.s.data[n - 1], cfg.unit);
+        });
+    }
+    // hover layer
+    var cross = el("line", { y1: m.t, y2: m.t + ih, stroke: css("--axis"), "stroke-width": 1, visibility: "hidden" }, svg);
+    var dots = cfg.series.map(function (s) { return el("circle", { r: 4, fill: css(s.c), stroke: css("--surface"), "stroke-width": 2, visibility: "hidden" }, svg); });
+    var hit = el("rect", { x: m.l, y: m.t, width: iw, height: ih, fill: "transparent" }, svg);
+    hit.addEventListener("mousemove", function (ev) {
+      var r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * (W / r.width);
+      var i = Math.max(0, Math.min(n - 1, Math.round((px - m.l) / iw * (n - 1))));
+      cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); cross.setAttribute("visibility", "visible");
+      cfg.series.forEach(function (s, k) { dots[k].setAttribute("cx", X(i)); dots[k].setAttribute("cy", Y(s.data[i])); dots[k].setAttribute("visibility", "visible"); });
+      showTip(host, X(i) * (r.width / W), (ev.clientY - r.top), cfg.x[i], cfg.series.map(function (s) { return { n: s.n, c: css(s.c), v: fmt(s.data[i], cfg.unit) }; }));
+    });
+    hit.addEventListener("mouseleave", function () { cross.setAttribute("visibility", "hidden"); dots.forEach(function (d) { d.setAttribute("visibility", "hidden"); }); hideTip(); });
+    legend(host, cfg.series, cfg.threshold, false);
+  }
+
+  /* ---------------- stacked column chart ---------------- */
+  function barChart(host, cfg) {
+    host.innerHTML = "";
+    var W = host.clientWidth || 600, H = cfg.height || 210;
+    var m = { t: 10, r: 10, b: 26, l: 40 };
+    var svg = el("svg", { viewBox: "0 0 " + W + " " + H, height: H, role: "img", "aria-label": cfg.aria || "" }, host);
+    var iw = W - m.l - m.r, ih = H - m.t - m.b, n = cfg.x.length;
+    var totals = cfg.x.map(function (_, i) { return cfg.series.reduce(function (a, s) { return a + s.data[i]; }, 0); });
+    var ax = axis(Math.max.apply(null, totals) * 1.05), ymax = ax.max;
+    function Y(v) { return m.t + ih - v / ymax * ih; }
+    for (var k = 0; k <= ax.n; k++) {
+      var v = ymax / ax.n * k, y = Y(v);
+      el("line", { x1: m.l, x2: m.l + iw, y1: y, y2: y, stroke: k === 0 ? css("--axis") : css("--grid") }, svg);
+      var tl = el("text", { x: m.l - 6, y: y + 4, "text-anchor": "end", "font-size": 11, fill: css("--muted"), style: "font-variant-numeric:tabular-nums" }, svg);
+      tl.textContent = fmt(v);
+    }
+    var slot = iw / n, bw = Math.max(3, Math.min(22, slot - 4));
+    var every = Math.ceil(n / 6);
+    for (var i = 0; i < n; i++) {
+      var x = m.l + i * slot + (slot - bw) / 2, base = 0;
+      cfg.series.forEach(function (s, si) {
+        var v = s.data[i];
+        if (v <= 0) return;
+        var y0 = Y(base), y1 = Y(base + v), hgt = Math.max(0, y0 - y1 - (base > 0 ? 2 : 0));
+        var isTop = cfg.series.slice(si + 1).every(function (t) { return t.data[i] <= 0; });
+        var rx = isTop ? Math.min(3, bw / 2) : 0;
+        if (isTop && hgt > rx) {
+          var p = "M" + x + "," + (y0 - (base > 0 ? 2 : 0)) + "V" + (y1 + rx) + "Q" + x + "," + y1 + " " + (x + rx) + "," + y1 + "H" + (x + bw - rx) + "Q" + (x + bw) + "," + y1 + " " + (x + bw) + "," + (y1 + rx) + "V" + (y0 - (base > 0 ? 2 : 0)) + "Z";
+          el("path", { d: p, fill: css(s.c) }, svg);
+        } else {
+          el("rect", { x: x, y: y1, width: bw, height: hgt, fill: css(s.c) }, svg);
+        }
+        base += v;
+      });
+      if (i % every === 0) {
+        var tx = el("text", { x: x + bw / 2, y: H - 8, "text-anchor": "middle", "font-size": 11, fill: css("--muted") }, svg);
+        tx.textContent = cfg.x[i];
+      }
+      (function (i, x) {
+        var hit = el("rect", { x: m.l + i * slot, y: m.t, width: slot, height: ih, fill: "transparent" }, svg);
+        hit.addEventListener("mousemove", function (ev) {
+          var r = svg.getBoundingClientRect();
+          showTip(host, (x + bw / 2) * (r.width / W), ev.clientY - r.top, cfg.x[i],
+            cfg.series.map(function (s) { return { n: s.n, c: css(s.c), v: fmt(s.data[i]) }; }).reverse()
+              .concat([{ n: "Total", c: "transparent", v: fmt(totals[i]) }]));
+        });
+        hit.addEventListener("mouseleave", hideTip);
+      })(i, x);
+    }
+    legend(host, cfg.series, null, true);
+  }
+
+  function legend(host, series, threshold, square) {
+    var lg = document.createElement("div");
+    lg.className = "legend";
+    series.forEach(function (s) {
+      var sp = document.createElement("span");
+      sp.innerHTML = '<i class="' + (square ? "sq" : "") + '" style="background:' + css(s.c) + '"></i>' + s.n;
+      lg.appendChild(sp);
+    });
+    if (threshold) {
+      var t = document.createElement("span");
+      t.innerHTML = '<i class="dash"></i>' + threshold.label;
+      lg.appendChild(t);
+    }
+    host.appendChild(lg);
+  }
+
+  /* ---------------- chart configs ---------------- */
+  var R2 = seed(7);
+  function counts(n, base, spikeAt, spike, rnd) {
+    return Array.from({ length: n }, function (_, i) {
+      var v = Math.max(0, Math.round(base + (rnd() - 0.5) * base * 1.2));
+      if (spikeAt && spikeAt.indexOf(i) >= 0) v += spike;
+      return v;
+    });
+  }
+  var compSeriesByName = {};
+  var CH = {
+    ovBulletins: function () {
+      return { type: "bar", x: T25, aria: "Bulletins by level", series: [
+        { n: "ERROR", c: "--critical", data: counts(25, 1, [20, 21, 22, 23, 24], 3, R2) },
+        { n: "WARNING", c: "--warning", data: counts(25, 5, [12], 9, R2) },
+        { n: "INFO", c: "--info", data: counts(25, 3, null, 0, R2) }
+      ] };
+    },
+    ovQueue: function () {
+      return { type: "line", x: T48, unit: "k", endLabels: true, aria: "FlowFiles queued by instance", series: [
+        { n: "prod-02", c: "--s1", data: walk(48, 6000, 330, 900, R2, 0) },
+        { n: "etl-01", c: "--s2", data: walk(48, 10500, 15, 900, R2, 0) },
+        { n: "prod-03", c: "--s3", data: walk(48, 9000, 15, 800, R2, 0) },
+        { n: "Other", c: "--s4", data: walk(48, 5200, 5, 600, R2, 0) }
+      ] };
+    },
+    instHeap: function () {
+      return { type: "line", x: T48, unit: "%", ymax: 100, area: true, threshold: { v: 85, label: "Threshold 85%" }, aria: "Heap used", series: [{ n: "Heap used", c: "--s1", data: heapProd02 }] };
+    },
+    instThreads: function () {
+      return { type: "line", x: T48, endLabels: true, aria: "JVM threads", series: [
+        { n: "Total", c: "--s1", data: walk(48, 96, 0.1, 5, R2, 60) },
+        { n: "Daemon", c: "--s2", data: walk(48, 51, 0, 3, R2, 30) }
+      ] };
+    },
+    instLoad: function () {
+      return { type: "line", x: T48, unit: "x", ymax: 10, area: true, threshold: { v: 8, label: "8 cores" }, aria: "Load average", series: [{ n: "Load average", c: "--s1", data: walk(48, 4.2, 0.05, 0.9, R2, 0.5, 9.6) }] };
+    },
+    instGc: function () {
+      return { type: "line", x: T48, unit: "ms", endLabels: true, aria: "GC time per collector", series: [
+        { n: "G1 Young", c: "--s1", data: walk(48, 420, 8, 160, R2, 50) },
+        { n: "G1 Concurrent", c: "--s2", data: walk(48, 90, 2, 40, R2, 0) },
+        { n: "G1 Old", c: "--s3", data: Array.from({ length: 48 }, function (_, i) { return i === 44 ? 1850 : i === 46 ? 1200 : 0; }) }
+      ] };
+    },
+    instRepo: function () {
+      return { type: "line", x: T48, unit: "%", ymax: 100, endLabels: true, threshold: { v: 80, label: "Threshold 80%" }, aria: "Repository usage", series: [
+        { n: "content default", c: "--s1", data: walk(48, 69, 0.11, 0.6, R2, 0, 100) },
+        { n: "content cont-2", c: "--s2", data: walk(48, 41, 0.05, 0.6, R2, 0, 100) },
+        { n: "flowfile", c: "--s3", data: walk(48, 22, 0, 0.4, R2, 0, 100) },
+        { n: "provenance", c: "--s4", data: walk(48, 55, 0.02, 0.5, R2, 0, 100) }
+      ] };
+    },
+    instBytes: function () {
+      return { type: "line", x: T48, unit: "MB", endLabels: true, aria: "Bytes in and out", series: [
+        { n: "In", c: "--s1", data: walk(48, 820, 2, 140, R2, 100) },
+        { n: "Out", c: "--s2", data: walk(48, 780, -4, 140, R2, 100) }
+      ] };
+    },
+    instFlowfiles: function () {
+      return { type: "line", x: T48, unit: "k", endLabels: true, aria: "FlowFiles in and out", series: [
+        { n: "In", c: "--s1", data: walk(48, 4200, 5, 500, R2, 0) },
+        { n: "Out", c: "--s2", data: walk(48, 4100, -14, 500, R2, 0) }
+      ] };
+    },
+    compSeries: function () {
+      var name = currentComp;
+      if (!compSeriesByName[name]) compSeriesByName[name] = walk(48, 2600 + R2() * 2000, 35, 500, seed(name.length * 97), 200);
+      return { type: "line", x: T48, unit: "ms", area: true, aria: name + " task time", series: [{ n: name, c: "--s1", data: compSeriesByName[name] }] };
+    },
+    bulOverTime: function () {
+      return { type: "bar", x: T24, aria: "Bulletins over time", series: [
+        { n: "ERROR", c: "--critical", data: counts(24, 1, [19, 20, 21, 22, 23], 4, R2) },
+        { n: "WARNING", c: "--warning", data: counts(24, 6, [9, 10], 8, R2) },
+        { n: "INFO", c: "--info", data: counts(24, 1, null, 0, R2) }
+      ] };
+    },
+    logLevels: function () {
+      return { type: "bar", x: T12, aria: "Log events by level", series: [
+        { n: "ERROR", c: "--critical", data: counts(12, 2, [9, 10, 11], 6, R2) },
+        { n: "WARN", c: "--warning", data: counts(12, 9, null, 0, R2) }
+      ] };
+    },
+    reqClass: function () {
+      return { type: "bar", x: T12, aria: "Requests by status class", series: [
+        { n: "2xx", c: "--s1", data: counts(12, 180, null, 0, R2) },
+        { n: "4xx", c: "--warning", data: counts(12, 12, [6], 30, R2) },
+        { n: "5xx", c: "--critical", data: counts(12, 1, [7], 6, R2) }
+      ] };
+    },
+    clHeap: function () {
+      return { type: "line", x: T48, unit: "%", ymax: 100, endLabels: true, threshold: { v: 85, label: "Threshold 85%" }, aria: "Heap by node", series: [
+        { n: "prod-01", c: "--s1", data: walk(48, 58, 0.06, 3, R2, 30, 95) },
+        { n: "prod-02", c: "--s2", data: heapProd02 },
+        { n: "prod-03", c: "--s3", data: walk(48, 55, 0.04, 3, R2, 30, 95) }
+      ] };
+    },
+    clQueue: function () {
+      return { type: "line", x: T48, unit: "k", endLabels: true, aria: "Queued by node", series: [
+        { n: "prod-01", c: "--s1", data: walk(48, 5000, 2, 600, R2, 0) },
+        { n: "prod-02", c: "--s2", data: walk(48, 6000, 330, 900, R2, 0) },
+        { n: "prod-03", c: "--s3", data: walk(48, 9000, 15, 800, R2, 0) }
+      ] };
+    },
+    taErrors: function () {
+      return { type: "bar", x: T24, aria: "TA HTTP errors by status code", series: [
+        { n: "401", c: "--s1", data: Array.from({ length: 24 }, function (_, i) { return i >= 21 ? 13 + (i % 2) : 0; }) },
+        { n: "403", c: "--s2", data: Array(24).fill(0) },
+        { n: "404", c: "--s3", data: Array.from({ length: 24 }, function (_, i) { return i === 5 ? 2 : 0; }) },
+        { n: "5xx", c: "--s4", data: Array.from({ length: 24 }, function (_, i) { return i === 11 ? 1 : 0; }) }
+      ] };
+    }
+  };
+  var chartCache = {};
+  function renderChart(host) {
+    var key = host.getAttribute("data-chart");
+    if (!chartCache[key] || key === "compSeries") chartCache[key] = CH[key]();
+    var cfg = chartCache[key];
+    if (cfg.type === "bar") barChart(host, cfg); else lineChart(host, cfg);
+  }
+
+  /* ---------------- tables ---------------- */
+  function meter(v, warn, crit) {
+    if (v === null || v === undefined) return '<span style="color:var(--muted)">—</span>';
+    var cls = v >= crit ? "crit" : v >= warn ? "warn" : "";
+    var flag = v >= crit ? '<span class="st critical flag"><i>✕</i></span>' : v >= warn ? '<span class="st degraded flag"><i>!</i></span>' : "";
+    return '<span class="meter"><span class="track"><span class="fill ' + cls + '" style="width:' + v + '%"></span></span><span class="v">' + v + '%</span>' + flag + "</span>";
+  }
+  function fillTable(id, head, rows, opts) {
+    var t = document.getElementById(id);
+    if (!t) return;
+    var h = "<thead><tr>" + head.map(function (c) {
+      return "<th" + (c.num ? ' class="num"' : "") + ">" + c.t + "</th>";
+    }).join("") + "</tr></thead><tbody>";
+    rows.forEach(function (r, ri) {
+      h += "<tr" + (opts && opts.click ? ' class="clickable" data-i="' + ri + '"' : "") + ">";
+      r.forEach(function (c, ci) {
+        h += "<td" + (head[ci].num ? ' class="num"' : head[ci].wrap ? ' class="wrap"' : "") + ">" + (c === null ? "" : c) + "</td>";
+      });
+      h += "</tr>";
+    });
+    t.innerHTML = h + "</tbody>";
+  }
+
+  function buildTables() {
+    fillTable("tblInstances",
+      [{ t: "Health" }, { t: "Instance" }, { t: "Cluster" }, { t: "NiFi" }, { t: "Last data" }, { t: "Components ▶ ■ ⚠ ⏻" }, { t: "Queue · 2h" }, { t: "Queued", num: true }, { t: "Heap" }, { t: "Worst repository" }, { t: "ERROR · 15m", num: true }],
+      instances.map(function (it) {
+        return [
+          HEALTH[it.health] + (it.reason ? '<span class="reason">' + it.reason + "</span>" : ""),
+          '<a href="#view-instance">' + it.host + "</a>", it.cluster, it.ver, it.last,
+          it.run === null ? '<span style="color:var(--muted)">—</span>' :
+            '<span class="comp"><span>▶ ' + it.run + '</span><span>■ ' + it.stop + '</span><span class="' + (it.inv ? "bad" : "") + '">⚠ ' + it.inv + '</span><span>⏻ ' + it.dis + "</span></span>",
+          it.health === "stale" ? "" : "<span data-sp='" + JSON.stringify(it.qs.map(function (v) { return Math.round(v); })) + "'></span>",
+          it.q, meter(it.heap, 85, 95),
+          it.repo === null ? '<span style="color:var(--muted)">—</span>' : meter(it.repo, 80, 90) + ' <span class="chip">' + it.repoName + "</span>",
+          it.bul === null ? "—" : it.bul ? '<span class="lvl ERROR">' + it.bul + "</span>" : "0"
+        ];
+      }), { click: true });
+
+    fillTable("tblRepos",
+      [{ t: "Repository" }, { t: "Identifier" }, { t: "Used", num: true }, { t: "Total", num: true }, { t: "Usage" }],
+      [["Content", '<span class="mono">default</span>', "702 GB", "1,000 GB", meter(74, 80, 90)],
+       ["Content", '<span class="mono">cont-2</span>', "430 GB", "1,000 GB", meter(43, 80, 90)],
+       ["FlowFile", '<span class="mono">default</span>', "22 GB", "100 GB", meter(22, 80, 90)],
+       ["Provenance", '<span class="mono">default</span>', "281 GB", "500 GB", meter(56, 80, 90)]]);
+
+    fillTable("tblInstBulletins",
+      [{ t: "Time" }, { t: "Level" }, { t: "Component" }, { t: "Message", wrap: true }],
+      [["11:58:41", '<span class="lvl ERROR">ERROR</span>', "PutDatabaseRecord", "Failed to put Records to database: Connection is not available, request timed out after 30000ms."],
+       ["11:57:12", '<span class="lvl ERROR">ERROR</span>', "PutDatabaseRecord", "Failed to put Records to database: Connection is not available, request timed out after 30000ms."],
+       ["11:52:03", '<span class="lvl WARNING">WARNING</span>', "ConvertRecord", "Unable to write record: field 'amount' is not a valid decimal (value '12,40'); routing to failure."],
+       ["11:49:30", '<span class="lvl ERROR">ERROR</span>', "InvokeHTTP (billing-api)", "Routing to Retry due to exception: java.net.SocketTimeoutException: timeout"],
+       ["11:41:55", '<span class="lvl WARNING">WARNING</span>', "ControllerService DBCPConnectionPool", "Pool exhausted: 20 of 20 connections in use."]]);
+
+    var top = [
+      ["PutDatabaseRecord", "orders / persist", 58.4], ["ConvertRecord", "orders / transform", 31.2],
+      ["InvokeHTTP (billing-api)", "billing / enrich", 22.9], ["MergeContent", "archive / batch", 14.7],
+      ["QueryRecord", "orders / route", 9.8], ["PutS3Object", "archive / store", 8.1],
+      ["UpdateRecord", "billing / enrich", 6.6], ["ConsumeKafkaRecord", "orders / ingest", 5.2],
+      ["ValidateRecord", "orders / transform", 3.9], ["LogAttribute", "debug", 0.6]];
+    fillTable("tblTop",
+      [{ t: "#", num: true }, { t: "Processor" }, { t: "Process group" }, { t: "Task time", num: true }, { t: "Trend" }],
+      top.map(function (r, i) {
+        var w = Math.round(r[2] / top[0][2] * 100);
+        return [i + 1, r[0], '<span style="color:var(--ink-2)">' + r[1] + "</span>",
+          '<span class="meter" style="min-width:150px"><span class="track"><span class="fill" style="width:' + w + '%"></span></span><span class="v">' + r[2].toFixed(1) + " min</span></span>",
+          "<span data-sp='" + JSON.stringify(walk(16, 10 + i, i < 2 ? 0.5 : 0, 3, seed(i + 3), 0).map(Math.round)) + "'></span>"];
+      }), { click: true });
+    var tTop = document.getElementById("tblTop");
+    tTop.querySelector("tbody tr").classList.add("selected");
+    tTop.addEventListener("click", function (ev) {
+      var tr = ev.target.closest("tr.clickable");
+      if (!tr) return;
+      tTop.querySelectorAll("tr").forEach(function (r) { r.classList.remove("selected"); });
+      tr.classList.add("selected");
+      currentComp = top[+tr.getAttribute("data-i")][0];
+      document.getElementById("compSeriesTitle").textContent = currentComp + " — task time";
+      renderChart(document.querySelector('[data-chart="compSeries"]'));
+    });
+
+    fillTable("tblConn",
+      [{ t: "Connection" }, { t: "Objects" }, { t: "Size" }, { t: "ETA", num: true }],
+      [["ConvertRecord → PutDatabaseRecord", meter(91, 80, 90), meter(64, 80, 90), '<span class="lvl ERROR">~22 min</span>'],
+       ["InvokeHTTP → UpdateRecord", meter(84, 80, 90), meter(30, 80, 90), "~3 h"],
+       ["ConsumeKafkaRecord → ValidateRecord", meter(81, 80, 90), meter(77, 80, 90), "~5 h"],
+       ["MergeContent → PutS3Object", meter(46, 80, 90), meter(58, 80, 90), "—"],
+       ["QueryRecord → MergeContent", meter(12, 80, 90), meter(9, 80, 90), "—"]]);
+
+    fillTable("tblBulTop",
+      [{ t: "Component" }, { t: "ERROR", num: true }, { t: "WARNING", num: true }],
+      [["PutDatabaseRecord", '<span class="lvl ERROR">21</span>', "4"], ["InvokeHTTP (billing-api)", '<span class="lvl ERROR">9</span>', "37"],
+       ["ConvertRecord", "3", "58"], ["DBCPConnectionPool", "2", "19"], ["ConsumeKafkaRecord", "2", "11"], ["PutS3Object", "1", "8"]]);
+
+    fillTable("tblBulDetail",
+      [{ t: "Time" }, { t: "Level" }, { t: "Instance" }, { t: "Category" }, { t: "Component" }, { t: "Group" }, { t: "Message", wrap: true }],
+      [["11:58:41", '<span class="lvl ERROR">ERROR</span>', "nifi-prod-02", "Log Message", "PutDatabaseRecord", "orders / persist", "Failed to put Records to database: Connection is not available, request timed out after 30000ms."],
+       ["11:52:03", '<span class="lvl WARNING">WARNING</span>', "nifi-prod-02", "Log Message", "ConvertRecord", "orders / transform", "Unable to write record: field 'amount' is not a valid decimal (value '12,40'); routing to failure."],
+       ["11:49:30", '<span class="lvl ERROR">ERROR</span>', "nifi-prod-02", "Log Message", "InvokeHTTP (billing-api)", '<span class="mono">4f1c…e09a</span>', "Routing to Retry due to exception: java.net.SocketTimeoutException: timeout"],
+       ["11:36:18", '<span class="lvl WARNING">WARNING</span>', "nifi-prod-03", "Log Message", "ConsumeKafkaRecord", "orders / ingest", "Was interrupted while trying to communicate with Kafka; will yield."],
+       ["10:12:44", '<span class="lvl ERROR">ERROR</span>', "nifi-etl-01", "Validation", "PutSFTP", '<span class="mono">a2d0…71bb</span>', "'Hostname' is invalid because Hostname is required."]]);
+
+    document.getElementById("logEvents").innerHTML = [
+      ["11:58:41,203", "ERROR [Timer-Driven Process Thread-7] o.a.n.p.standard.PutDatabaseRecord PutDatabaseRecord[id=8c1e…] Failed to put Records to database\njava.sql.SQLTransientConnectionException: HikariPool-1 - Connection is not available, request timed out after 30000ms.\n\tat com.zaxxer.hikari.pool.HikariPool.createTimeoutException(HikariPool.java:696)"],
+      ["11:57:12,877", "ERROR [Timer-Driven Process Thread-3] o.a.n.p.standard.PutDatabaseRecord PutDatabaseRecord[id=8c1e…] Failed to put Records to database"],
+      ["11:55:02,114", "WARN [Timer-Driven Process Thread-1] o.a.n.p.standard.PutDatabaseRecord PutDatabaseRecord[id=8c1e…] Penalizing FlowFile for 30 sec: retry"],
+      ["11:49:31,560", "WARN [Timer-Driven Process Thread-9] o.a.n.c.s.StandardProcessScheduler Yielding PutDatabaseRecord[id=8c1e…] for 1 sec due to backpressure"]
+    ].map(function (e) { return '<div><span class="ts">' + e[0] + "</span> " + e[1].replace(/</g, "&lt;") + "</div>"; }).join("");
+
+    fillTable("tblDeprec",
+      [{ t: "Instance" }, { t: "Deprecated" }, { t: "Used by" }, { t: "Occurrences", num: true }, { t: "Last seen" }, { t: "Replace with", wrap: true }],
+      [["nifi-etl-01", '<span class="mono">GetHTTP</span>', "3 processors in “legacy-import”", "1,284", "11:58", "InvokeHTTP"],
+       ["nifi-etl-01", '<span class="mono">Variable Registry</span>', "6 variables in root group", "312", "11:40", "Parameter Contexts"],
+       ["nifi-etl-01", '<span class="mono">JoltTransformJSON</span> (nifi-standard-nar)', "2 processors", "88", "09:12", "JoltTransformJSON from nifi-jolt-nar"],
+       ["nifi-edge-01", '<span class="mono">ListenHTTP</span> “Max Data to Receive per Second”', "1 processor", "17", "09:05", "Remove the property; rate limit upstream"]]);
+
+    fillTable("tblReq",
+      [{ t: "User" }, { t: "URI" }, { t: "Status" }, { t: "Count", num: true }],
+      [["svc-splunk", '<span class="mono">/nifi-api/flow/process-groups/…/status/history</span>', "404", "30"],
+       ["anonymous", '<span class="mono">/nifi-api/access/token</span>', "401", "14"],
+       ["jdoe", '<span class="mono">/nifi-api/processors/…/run-status</span>', "409", "6"],
+       ["svc-ci", '<span class="mono">/nifi-api/flow/registries</span>', "500", "6"]]);
+
+    fillTable("tblNodes",
+      [{ t: "Node" }, { t: "Status" }, { t: "Roles" }, { t: "Last heartbeat" }, { t: "Active threads", num: true }, { t: "Queued", num: true }, { t: "Heap" }],
+      [["nifi-prod-01:8443", '<span class="st ok"><i>✓</i>Connected</span>', "Primary", "4 s ago", "11", "5.1K", meter(61, 85, 95)],
+       ["nifi-prod-02:8443", '<span class="st ok"><i>✓</i>Connected</span>', "—", "3 s ago", "18", "21.6K", meter(93, 85, 95)],
+       ["nifi-prod-03:8443", '<span class="st ok"><i>✓</i>Connected</span>', "Coordinator", "5 s ago", "9", "9.8K", meter(58, 85, 95)]]);
+
+    fillTable("tblAlerts",
+      [{ t: "Alert" }, { t: "State" }, { t: "Condition", wrap: true }, { t: "Schedule" }, { t: "Last fired" }],
+      [["NiFi - Instance without data", '<span class="st ok"><i>✓</i>Enabled</span>', "<span class='mono'>nifi_health</span> is stale or no_data", "every 5 min", "10:44 · nifi-edge-01"],
+       ["NiFi - Repository filling up", '<span class="st ok"><i>✓</i>Enabled</span>', "Any repository ≥ <span class='mono'>nifi_threshold_repo</span> (80%)", "every 15 min", "11:30 · nifi-prod-03"],
+       ["NiFi - Sustained high heap", '<span class="st ok"><i>✓</i>Enabled</span>', "Heap ≥ <span class='mono'>nifi_threshold_heap</span> (85%) in 3 consecutive samples", "every 5 min", "11:35 · nifi-prod-02"],
+       ["NiFi - ERROR bulletin spike", '<span class="st ok"><i>✓</i>Enabled</span>', "ERROR bulletins in 15 min > 5", "every 5 min", "11:55 · nifi-prod-02"],
+       ["NiFi - Backpressure", '<span class="st ok"><i>✓</i>Enabled</span>', "Connection ≥ <span class='mono'>nifi_threshold_backpressure</span> or predicted within 1 h · needs flow metrics", "every 5 min", "11:50 · nifi-prod-02"],
+       ["NiFi - Cluster node disconnected", '<span class="st stale"><i>○</i>Disabled</span>', "Any node status other than CONNECTED", "every 5 min", "—"],
+       ["NiFi - Versioned flow sync failure", '<span class="st stale"><i>○</i>Disabled</span>', "syncFailureCount &gt; 0", "every 15 min", "—"],
+       ["NiFi - TA HTTP errors", '<span class="st stale"><i>○</i>Disabled</span>', "401, 403 or 5xx from the modular input in 15 min", "every 15 min", "—"]]);
+
+    fillTable("tblFired",
+      [{ t: "Time" }, { t: "Alert" }, { t: "Instance" }, { t: "Detail", wrap: true }],
+      [["11:55", "NiFi - ERROR bulletin spike", "nifi-prod-02", "7 ERROR bulletins in 15 min (PutDatabaseRecord)"],
+       ["11:50", "NiFi - Backpressure", "nifi-prod-02", "ConvertRecord → PutDatabaseRecord at 91% of object limit"],
+       ["11:35", "NiFi - Sustained high heap", "nifi-prod-02", "Heap 91–93% over 3 samples"],
+       ["11:30", "NiFi - Repository filling up", "nifi-prod-03", "content · default at 87%"],
+       ["10:44", "NiFi - Instance without data", "nifi-edge-01", "No data for 3 intervals (60 s)"],
+       ["06:02", "NiFi - Repository filling up", "nifi-prod-03", "content · default at 81%"]]);
+
+    var st = ["flow_status", "system_diagnostics", "bulletin_board", "flow_metrics", "processors_status", "cluster_nodes", "log:app", "log:deprecation"];
+    var M = {
+      "nifi-prod-01": ["ok", "ok", "ok", "ok", "ok", "ok", "ok", "na"],
+      "nifi-prod-02": ["ok", "ok", "ok", "ok", "ok", "ok", "ok", "na"],
+      "nifi-prod-03": ["ok", "ok", "ok", "warn", "ok", "ok", "ok", "na"],
+      "nifi-etl-01": ["ok", "ok", "ok", "na", "na", "na", "ok", "ok"],
+      "nifi-dev-01": ["ok", "ok", "ok", "na", "na", "na", "na", "na"],
+      "nifi-edge-01": ["crit", "crit", "crit", "na", "na", "na", "ok", "ok"]
+    };
+    var label = { ok: "on time", warn: "late", crit: "missing", na: "not enabled" };
+    fillTable("tblMatrix",
+      [{ t: "Instance" }].concat(st.map(function (s) { return { t: '<span class="mono">' + s + "</span>" }; })),
+      Object.keys(M).map(function (h) {
+        return [h].concat(M[h].map(function (v) { return '<span class="dot ' + v + '" title="' + label[v] + '" aria-label="' + label[v] + '"></span>'; }));
+      }));
+    document.querySelectorAll("#tblMatrix td").forEach(function (td, i) { if (td.cellIndex > 0) td.classList.add("cell"); });
+
+    fillTable("tblIdx",
+      [{ t: "Index" }, { t: "Events", num: true }, { t: "Sourcetypes" }],
+      [['<span class="mono">nifi</span>', "1,920,114", "11"], ['<span class="mono">main</span>', "2,301", '<span class="mono">nifi:log:app</span> — a monitor without index'] ]);
+
+    document.querySelectorAll("[data-sp]").forEach(function (s) {
+      s.appendChild(sparkSvg(JSON.parse(s.getAttribute("data-sp")), "--s1", 72, 22));
+    });
+  }
+  var currentComp = "PutDatabaseRecord";
+
+  /* ---------------- meta (sources + notes) ---------------- */
+  function buildMeta() {
+    document.querySelectorAll(".panel[data-src], .panel[data-note]").forEach(function (p) {
+      var box = document.createElement("div");
+      box.className = "meta";
+      if (p.getAttribute("data-src")) { var s = document.createElement("div"); s.className = "src"; s.textContent = p.getAttribute("data-src"); box.appendChild(s); }
+      if (p.getAttribute("data-note")) { var n = document.createElement("div"); n.className = "note"; n.textContent = p.getAttribute("data-note"); box.appendChild(n); }
+      p.appendChild(box);
+    });
+  }
+
+  /* ---------------- views ---------------- */
+  // Every view is on the page, stacked; the nav jumps to each one.
+  var VIEWS = [["overview", "nifi_overview"], ["instance", "nifi_instance"], ["components", "nifi_components"],
+    ["bulletins", "nifi_bulletins"], ["logs", "nifi_logs"], ["cluster", "nifi_cluster"],
+    ["alerts", "nifi_alerts"], ["collection", "nifi_collection_health"]];
+  VIEWS.forEach(function (v, i) {
+    var sec = document.getElementById("view-" + v[0]);
+    var tag = document.createElement("div");
+    tag.className = "view-tag";
+    tag.innerHTML = "Vista " + (i + 1) + " de " + VIEWS.length + " · <b>" + v[1] + "</b>";
+    sec.insertBefore(tag, sec.firstChild);
+  });
+  function renderVisible() {
+    document.querySelectorAll("[data-chart]").forEach(function (h) { if (h.offsetParent !== null) renderChart(h); });
+    document.querySelectorAll("svg[data-spark]").forEach(function (s) { spark(s, D[s.getAttribute("data-spark")], s.getAttribute("data-color")); });
+  }
+  function markActive() {
+    var current = VIEWS[0][0];
+    VIEWS.forEach(function (v) {
+      if (document.getElementById("view-" + v[0]).getBoundingClientRect().top <= 80) current = v[0];
+    });
+    document.querySelectorAll(".appnav a").forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-view") === current); });
+  }
+  window.addEventListener("scroll", function () { hideTip(); markActive(); }, { passive: true });
+  document.addEventListener("click", function (ev) {
+    var tr = ev.target.closest("#tblInstances tr.clickable");
+    if (tr) location.hash = "view-instance";
+  });
+
+  document.getElementById("tpSeg").addEventListener("click", function (ev) {
+    var b = ev.target.closest("button");
+    if (!b) return;
+    this.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
+    var empty = b.getAttribute("data-v") === "empty";
+    document.getElementById("tpData").style.display = empty ? "none" : "";
+    document.getElementById("tpEmpty").style.display = empty ? "" : "none";
+    if (!empty) renderVisible();
+  });
+
+  document.getElementById("metaToggle").addEventListener("change", function () {
+    document.body.classList.toggle("show-meta", this.checked);
+    renderVisible();
+  });
+
+  var themes = ["system", "light", "dark"], ti = 0;
+  try { var saved = localStorage.getItem("nifi-mock-theme"); if (saved) ti = Math.max(0, themes.indexOf(saved)); } catch (e) {}
+  function applyTheme() {
+    var t = themes[ti];
+    if (t === "system") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", t);
+    document.getElementById("themeBtn").textContent = "Tema: " + ({ system: "sistema", light: "claro", dark: "oscuro" })[t];
+    try { localStorage.setItem("nifi-mock-theme", t); } catch (e) {}
+    document.querySelectorAll("[data-sp]").forEach(function (s) { var svg = s.querySelector("svg"); if (svg) spark(svg, JSON.parse(s.getAttribute("data-sp")), "--s1"); });
+    renderVisible();
+  }
+  document.getElementById("themeBtn").addEventListener("click", function () { ti = (ti + 1) % themes.length; applyTheme(); });
+  if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+
+  var rt;
+  window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(renderVisible, 150); });
+
+  buildMeta();
+  buildTables();
+  applyTheme();
+  markActive();
+})();
+</script>
+</body>
+</html>

@@ -12,9 +12,10 @@ The collection strategy is independent of the NiFi version: decide it using the 
 | | Supported | Tested in CI |
 |---|---|---|
 | Apache NiFi | 1.16 – 1.28.1, 2.0 – 2.11 | 1.23.2, 1.28.1, 2.0.0, 2.11.0 |
-| Splunk Enterprise / Cloud | 9.0 – 10.x | 9.4, 10.4 |
+| Splunk Enterprise / Cloud | 9.4 – 10.x | 9.4, 10.4 |
 
 - **NiFi 1.x reached end of life on 2024-12-08** (last release: 1.28.1). It still works with these apps, but new NiFi security fixes are published, from here on, only for the 2.x line.
+- **The minimum supported Splunk is 9.4.** The dashboards are Dashboard Studio and use features — sparklines in tables, an input that picks its first result, a click that sets a token — verified on 9.4 and 10.4 and not on anything older.
 - **The minimum supported version is NiFi 1.16**, because the `/flow/metrics/json` endpoint does not exist before it. Older 1.x instances still work, just without that flow-metrics endpoint; that combination is not covered by CI.
 
 ## Topology: standalone, multiple instances, or cluster
@@ -27,7 +28,7 @@ The collection strategy is independent of the NiFi version: decide it using the 
 
 A cluster counts as **one instance** to this app, not several: point the input at any node, and NiFi answers cluster-wide on its behalf. The add-on detects the cluster on its own and collects per-node data too — there is nothing to enable.
 
-Events keep the `host` value you configured (the cluster's name) and add a `node` field naming the cluster member each event describes. On the **Nifi TA Monitoring** dashboard, the Cluster row breaks this down by member, role and per-node heap — the aggregate view alone would hide which node is actually running out of resources.
+Events keep the `host` value you configured (the cluster's name) and add a `node` field naming the cluster member each event describes. The **Cluster** view breaks this down by member, role and per-node heap — the aggregate view alone would hide which node is actually running out of resources.
 
 Two things exist only on a cluster:
 

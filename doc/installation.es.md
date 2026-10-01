@@ -17,9 +17,9 @@ de aplicaciones de Splunk (**Apps > Manage Apps > Install app from file**):
    [Splunkbase](https://splunkbase.splunk.com/app/6125) o la misma página
    de releases.
 3. **[Lookup File Editor](https://splunkbase.splunk.com/app/1724/)** —
-   necesaria para la pantalla de Instance Lookup.
-4. **[Status Indicator - Custom Visualization](https://splunkbase.splunk.com/app/3119/)** —
-   necesaria para los paneles de estado de los dashboards.
+   necesaria para la pantalla de Instance Lookup. Desde 2.0.0 los dashboards
+   son Dashboard Studio y no necesitan otra app de visualización; *Status
+   Indicator* se puede desinstalar si nada más la usa.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/upload_app.png)
 

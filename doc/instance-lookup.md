@@ -30,7 +30,22 @@ index=* sourcetype=nifi* | dedup host | table host
     2. Pull strategy: the configured data inputs must be enabled.
 
 Add one row per host, with the cluster it belongs to. Once every host has
-a row, the Overview panel picks it up:
+a row, the Overview panel picks it up.
+
+The other columns are optional thresholds for that instance alone — leave
+them empty to use the app-wide default:
+
+| Column | Default | Meaning |
+|---|---|---|
+| `heap_threshold`, `heap_threshold_critical` | 85, 95 | % of max heap for degraded, critical |
+| `repo_threshold`, `repo_threshold_critical` | 80, 90 | % of a repository's volume for degraded, critical |
+| `backpressure_threshold` | 80 | % of a connection's limit |
+| `bulletin_threshold` | 5 | ERROR bulletins in 15 minutes that fire the bulletin alert |
+
+A NiFi whose content repository sits at 85% by design, for example, gets
+`repo_threshold` 92 and stops showing as degraded, while the rest keep
+the default. The defaults themselves are macros; see
+[Thresholds](references.md#thresholds).
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/nifi_overview_lookup.png)
 
