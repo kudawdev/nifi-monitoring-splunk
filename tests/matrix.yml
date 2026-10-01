@@ -141,7 +141,8 @@ profiles:
     collection: hec
 
 ci:
-  # Runs on every pull request: one profile per NiFi major.
+  # Run by dev.yml and testing.yml, both dispatched by hand: one profile per
+  # NiFi major.
   # One per strategy and per architecture: enough to catch a regression in
   # any of them without running the whole matrix on every change.
   pull_request:
@@ -149,7 +150,7 @@ ci:
     - nifi2-current
     - cluster
     - nifi2-hec
-  # Runs before a release.
+  # Run by main.yml, before a release.
   release:
     - nifi1-legacy
     - nifi1-last

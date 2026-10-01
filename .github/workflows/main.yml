@@ -1,4 +1,4 @@
-name: Appinspect, Test, Merge and Release
+name: Appinspect, Test and Release
 
 on: workflow_dispatch
 
@@ -58,7 +58,6 @@ jobs:
     container: kudaw/appinspect:latest
     outputs:
       APP_VERSION: ${{ steps.get_app_id.outputs.APP_VERSION }}
-      matrix: ${{ matrix.applications }}
     steps:
       - uses: actions/checkout@v4
       - name: Build nifi_TA_monitoring with ucc-gen
@@ -130,19 +129,19 @@ jobs:
 
   publish:
     needs: [unittest, integration, appinspect]
+    # The release is tagged with the version alone, so dispatching this from
+    # a feature branch would publish that branch as the release.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         id: download
         with:
           path: artifacts
       - name: list file detail
         run: ls -lR 
-      # - name: list file detail
-      #   run: ls -l ${{ matrix.applications }}-${{needs.appinspect.outputs.APP_VERSION}}.tar.gz
-      # - name: show path
-      #   run: echo $(pwd)
       - name: Release
         uses: softprops/action-gh-release@v2
         with:

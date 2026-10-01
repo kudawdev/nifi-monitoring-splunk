@@ -58,7 +58,6 @@ jobs:
     container: kudaw/appinspect:latest
     outputs:
       APP_VERSION: ${{ steps.get_app_id.outputs.APP_VERSION }}
-      matrix: ${{ matrix.applications }}
     steps:
       - uses: actions/checkout@v4
       - name: Build nifi_TA_monitoring with ucc-gen

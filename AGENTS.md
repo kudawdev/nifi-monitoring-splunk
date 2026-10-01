@@ -99,8 +99,8 @@ mkdocs build
 
 ## Workflows
 
-- `dev.yml` — manual; AppInspect + unit tests.
-- `testing.yml` — manual (`workflow_dispatch`); AppInspect + unit tests.
+- `dev.yml` — manual; version gate + AppInspect + unit tests + the four `ci.pull_request` integration profiles.
+- `testing.yml` — manual (`workflow_dispatch`); the same as `dev.yml`.
 - `main.yml` — manual (`workflow_dispatch`); version gate + AppInspect + unit tests + the **integration matrix** (`integration` job, one runner per profile in `matrix.yml`'s `ci.release`) + **pre-release** GitHub release with both `.tar.gz` artifacts, tagged with `APP_VERSION` pulled from `app.conf`. `publish` depends on `integration`.
 - `docs.yml` — manual; builds and publishes MkDocs.
 
