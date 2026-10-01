@@ -17,7 +17,7 @@ docs_dir: doc
 # Navigation
 nav:
   - Introduction: index.md
-  - Overview: overview.md
+  - Dashboards: overview.md
   - Compatibility and collection strategy: compatibility.md
   - Install NIFI Monitoring: installation.md
   - Configure Nifi Monitoring 1.2:
@@ -99,7 +99,7 @@ plugins:
       nav_translations:
         es:
           Introduction: Introducción
-          Overview: Vista General
+          Dashboards: Dashboards
           Compatibility and collection strategy: Compatibilidad y estrategia de recolección
           Configure Nifi Monitoring 2.0: Configurar Nifi Monitoring 2.0
           "Pull strategy": Estrategia pull

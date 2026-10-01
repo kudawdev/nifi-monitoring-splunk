@@ -29,6 +29,10 @@ Se distribuye como dos apps:
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/view_overview.png)
 
+Ocho vistas te llevan desde la flota completa hasta una sola conexión —
+míralas todas, con lo que significa cada indicador, en
+[Dashboards](overview.es.md).
+
 ## Dependencias
 
 - [Lookup File Editor](https://splunkbase.splunk.com/app/1724/), para editar el inventario de instancias.

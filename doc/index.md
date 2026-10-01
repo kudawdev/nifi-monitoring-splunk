@@ -29,6 +29,10 @@ It ships as two apps:
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/view_overview.png)
 
+Eight views take you from the whole fleet down to a single connection —
+see every one, with what each indicator means, in
+[Dashboards](overview.md).
+
 ## Dependencies
 
 - [Lookup File Editor](https://splunkbase.splunk.com/app/1724/), to edit the instance inventory.
