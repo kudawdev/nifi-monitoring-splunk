@@ -1,18 +1,14 @@
 <nav search_view="search">
-  <view name="home" default='true' />
-  <view name="nifi_overview" />  
-  <collection label="Nifi Instance Panels">
-  	<view name="nifi_instances_detail" />
-    <view name="nifi_bulletin" />
-    <view name="nifi_logs" />
-    <view name="nifi_status_history" />
-  </collection>
+  <view name="nifi_overview" default="true" />
+  <view name="nifi_instance" />
+  <view name="nifi_components" />
+  <view name="nifi_bulletins" />
+  <view name="nifi_logs" />
+  <view name="nifi_cluster" />
+  <view name="nifi_alerts" />
   <collection label="Configuration">
-    	<a href="lookup_edit?namespace=nifi_monitoring&amp;lookup=instance&amp;type=kv&amp;owner=nobody">NiFi Instances</a>
-  		<collection label="Internal Monitoring">
-    		<view name="nifi_internal_monitoring" />
-    	</collection>
+    <a href="lookup_edit?namespace=nifi_monitoring&amp;lookup=instance&amp;type=kv&amp;owner=nobody">NiFi Instances</a>
+    <view name="nifi_collection_health" />
   </collection>
-  <view name="alerts" />
   <view name="search" />
 </nav>

@@ -1,0 +1,922 @@
+<dashboard version="2" theme="light" hideEdit="false">
+  <label>Instance</label>
+  <description>What is happening on this instance?</description>
+  <definition><![CDATA[
+{
+    "dataSources": {
+        "ds_bytes": {
+            "name": "ds_bytes",
+            "options": {
+                "extend": "ds_tp",
+                "query": "| eval Received = round(bytes_in / 1048576, 1), Sent = round(bytes_out / 1048576, 1), Written = round(bytes_written / 1048576, 1) | fields _time Received Sent Written"
+            },
+            "type": "ds.chain"
+        },
+        "ds_diag": {
+            "name": "System diagnostics",
+            "options": {
+                "query": "`index_nifi` sourcetype=\"nifi:api:system_diagnostics\" host=\"$host$\"\n| eval heap = round('systemDiagnostics.aggregateSnapshot.usedHeapBytes' * 100 / 'systemDiagnostics.aggregateSnapshot.maxHeapBytes', 1),\n       total = 'systemDiagnostics.aggregateSnapshot.totalThreads', daemon = 'systemDiagnostics.aggregateSnapshot.daemonThreads',\n       load = 'systemDiagnostics.aggregateSnapshot.processorLoadAverage', cores = 'systemDiagnostics.aggregateSnapshot.availableProcessors'\n| fields _time heap total daemon load cores",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_fleet": {
+            "name": "This instance",
+            "options": {
+                "query": "| `nifi_fleet` | search host=\"$host$\"",
+                "queryParameters": {
+                    "earliest": "-24h",
+                    "latest": "now"
+                },
+                "refresh": "1m",
+                "refreshType": "delay"
+            },
+            "type": "ds.search"
+        },
+        "ds_flowfiles": {
+            "name": "ds_flowfiles",
+            "options": {
+                "extend": "ds_tp",
+                "query": "| rename flowfiles_in as Received, flowfiles_out as Sent | fields _time Received Sent"
+            },
+            "type": "ds.chain"
+        },
+        "ds_gc": {
+            "name": "ds_gc",
+            "options": {
+                "query": "`index_nifi` sourcetype=\"nifi:api:system_diagnostics\" host=\"$host$\"\n| eval gc = mvzip('systemDiagnostics.aggregateSnapshot.garbageCollection{}.name', 'systemDiagnostics.aggregateSnapshot.garbageCollection{}.collectionMillis', \"|\")\n| fields _time gc | mvexpand gc\n| eval collector = mvindex(split(gc, \"|\"), 0), ms = tonumber(mvindex(split(gc, \"|\"), 1))\n| sort 0 _time | streamstats current=f last(ms) as previous by collector\n| eval spent = if(ms >= previous, ms - previous, null())\n| timechart span=5m sum(spent) by collector",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_header": {
+            "name": "ds_header",
+            "options": {
+                "extend": "ds_fleet",
+                "query": "| eval Health = case(health == \"critical\", \"✕ Critical\", health == \"degraded\", \"! Degraded\", health == \"stale\", \"○ Stale\", health == \"no_data\", \"○ No data\", true(), \"✓ Healthy\")\n| eval \"Last data\" = case(isnull(age), \"never\", age < 120, round(age) . \" s ago\", age < 7200, round(age / 60) . \" min ago\", true(), floor(age / 3600) . \" h \" . round((age % 3600) / 60) . \" min ago\") . \" · interval \" . interval . \" s\"\n| table Health health_reason cluster nifi_version java_version uptime \"Last data\"\n| rename health_reason as Reason, cluster as Cluster, nifi_version as NiFi, java_version as Java, uptime as Uptime"
+            },
+            "type": "ds.chain"
+        },
+        "ds_heap": {
+            "name": "ds_heap",
+            "options": {
+                "extend": "ds_diag",
+                "query": "| timechart span=5m max(heap) as \"Heap used %\" | eval host = \"$host$\" | `nifi_instance_thresholds` | eval Threshold = heap_warn | fields _time \"Heap used %\" Threshold"
+            },
+            "type": "ds.chain"
+        },
+        "ds_input_host": {
+            "name": "Choices for Instance",
+            "options": {
+                "query": "| `nifi_fleet` | sort health_rank host | fields host",
+                "queryParameters": {
+                    "earliest": "-24h",
+                    "latest": "now"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_k_components": {
+            "name": "ds_k_components",
+            "options": {
+                "extend": "ds_fleet",
+                "query": "| eval value = \"▶ \" . running . \"  ■ \" . stopped . \"  ⚠ \" . invalid . \"  ⏻ \" . disabled | fields value"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_errors": {
+            "name": "ds_k_errors",
+            "options": {
+                "extend": "ds_fleet",
+                "query": "| fields bulletin_errors"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_queued": {
+            "name": "ds_k_queued",
+            "options": {
+                "extend": "ds_fleet",
+                "query": "| fields flowfiles_queued"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_queued_mb": {
+            "name": "ds_k_queued_mb",
+            "options": {
+                "extend": "ds_fleet",
+                "query": "| eval mb = round(bytes_queued / 1048576, 1) | fields mb"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_threads": {
+            "name": "ds_k_threads",
+            "options": {
+                "extend": "ds_fleet",
+                "query": "| fields threads"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_versioned": {
+            "name": "ds_k_versioned",
+            "options": {
+                "extend": "ds_fleet",
+                "query": "| eval value = up_to_date . \" · \" . locally_modified . \" · \" . stale_groups . \" · \" . sync_failure | fields value"
+            },
+            "type": "ds.chain"
+        },
+        "ds_load": {
+            "name": "ds_load",
+            "options": {
+                "extend": "ds_diag",
+                "query": "| timechart span=5m max(load) as \"Load average\", max(cores) as Cores"
+            },
+            "type": "ds.chain"
+        },
+        "ds_recent": {
+            "name": "ds_recent",
+            "options": {
+                "query": "`index_nifi` sourcetype IN (\"nifi:api:bulletin_board\", \"nifi:reporting:bulletin\") host=\"$host$\"\n| head 10\n| eval Time = strftime(_time, \"%Y-%m-%d %H:%M:%S\")\n| table Time bulletinLevel bulletinSourceName bulletinMessage\n| rename bulletinLevel as Level, bulletinSourceName as Component, bulletinMessage as Message",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_repo_time": {
+            "name": "ds_repo_time",
+            "options": {
+                "extend": "ds_repos",
+                "query": "| timechart span=5m max(pct) by repo | eval host = \"$host$\" | `nifi_instance_thresholds` | eval Threshold = repo_warn | fields - host heap_* repo_threshold* repo_warn repo_crit backpressure_* bulletin_*"
+            },
+            "type": "ds.chain"
+        },
+        "ds_repos": {
+            "name": "Repositories",
+            "options": {
+                "query": "`index_nifi` sourcetype=\"nifi:api:system_diagnostics\" host=\"$host$\"\n| `nifi_repositories` | fields _time repository | mvexpand repository\n| eval _r = split(repository, \"|\"), type = mvindex(_r, 0), identifier = mvindex(_r, 1),\n       used = tonumber(mvindex(_r, 2)), total = tonumber(mvindex(_r, 3)), pct = round(used * 100 / total, 1),\n       repo = type . \" · \" . identifier\n| fields _time repo type identifier used total pct",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_repos_now": {
+            "name": "ds_repos_now",
+            "options": {
+                "extend": "ds_repos",
+                "query": "| dedup repo\n| eval \"Used GB\" = round(used / 1073741824, 1), \"Total GB\" = round(total / 1073741824, 1)\n| sort type identifier\n| table type identifier \"Used GB\" \"Total GB\" pct\n| rename type as Repository, identifier as Identifier, pct as \"Used %\""
+            },
+            "type": "ds.chain"
+        },
+        "ds_threads": {
+            "name": "ds_threads",
+            "options": {
+                "extend": "ds_diag",
+                "query": "| timechart span=5m max(total) as Total, max(daemon) as Daemon"
+            },
+            "type": "ds.chain"
+        },
+        "ds_tp": {
+            "name": "Throughput",
+            "options": {
+                "query": "| tstats latest(Throughput.bytes_in) as bytes_in, latest(Throughput.bytes_out) as bytes_out,\n         latest(Throughput.bytes_written) as bytes_written,\n         latest(Throughput.flowfiles_in) as flowfiles_in, latest(Throughput.flowfiles_out) as flowfiles_out\n  from datamodel=NIFI.Throughput where host=\"$host$\" by _time span=5m",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        }
+    },
+    "defaults": {
+        "dataSources": {
+            "ds.search": {
+                "options": {
+                    "queryParameters": {
+                        "earliest": "$time.earliest$",
+                        "latest": "$time.latest$"
+                    }
+                }
+            }
+        }
+    },
+    "description": "What is happening on this instance?",
+    "inputs": {
+        "input_host": {
+            "context": {
+                "formattedConfig": {
+                    "number": {
+                        "prefix": ""
+                    }
+                },
+                "formattedStatics": ">statics | formatByType(formattedConfig)",
+                "label": ">primary | seriesByName(\"host\") | renameSeries(\"label\") | formatByType(formattedConfig)",
+                "statics": [],
+                "value": ">primary | seriesByName(\"host\") | renameSeries(\"value\") | formatByType(formattedConfig)"
+            },
+            "dataSources": {
+                "primary": "ds_input_host"
+            },
+            "options": {
+                "items": ">frame(label, value) | prepend(formattedStatics) | objects()",
+                "selectFirstSearchResult": true,
+                "token": "host"
+            },
+            "title": "Instance",
+            "type": "input.dropdown"
+        },
+        "input_time": {
+            "options": {
+                "defaultValue": "-4h@m,now",
+                "token": "time"
+            },
+            "title": "Time range",
+            "type": "input.timerange"
+        }
+    },
+    "layout": {
+        "globalInputs": [
+            "input_host",
+            "input_time"
+        ],
+        "options": {
+            "height": 1840,
+            "width": 1440
+        },
+        "structure": [
+            {
+                "item": "viz_header",
+                "position": {
+                    "h": 110,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_now",
+                "position": {
+                    "h": 40,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 110
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_threads",
+                "position": {
+                    "h": 130,
+                    "w": 212,
+                    "x": 0,
+                    "y": 150
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_queued",
+                "position": {
+                    "h": 130,
+                    "w": 212,
+                    "x": 212,
+                    "y": 150
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_queued_mb",
+                "position": {
+                    "h": 130,
+                    "w": 212,
+                    "x": 424,
+                    "y": 150
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_components",
+                "position": {
+                    "h": 130,
+                    "w": 296,
+                    "x": 636,
+                    "y": 150
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_versioned",
+                "position": {
+                    "h": 130,
+                    "w": 296,
+                    "x": 932,
+                    "y": 150
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_errors",
+                "position": {
+                    "h": 130,
+                    "w": 212,
+                    "x": 1228,
+                    "y": 150
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_jvm",
+                "position": {
+                    "h": 40,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 280
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_heap",
+                "position": {
+                    "h": 280,
+                    "w": 720,
+                    "x": 0,
+                    "y": 320
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_threads_time",
+                "position": {
+                    "h": 280,
+                    "w": 720,
+                    "x": 720,
+                    "y": 320
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_load",
+                "position": {
+                    "h": 280,
+                    "w": 720,
+                    "x": 0,
+                    "y": 600
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_gc",
+                "position": {
+                    "h": 280,
+                    "w": 720,
+                    "x": 720,
+                    "y": 600
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_storage",
+                "position": {
+                    "h": 40,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 880
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_repos",
+                "position": {
+                    "h": 260,
+                    "w": 600,
+                    "x": 0,
+                    "y": 920
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_repo_time",
+                "position": {
+                    "h": 260,
+                    "w": 840,
+                    "x": 600,
+                    "y": 920
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_tp",
+                "position": {
+                    "h": 70,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 1180
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_bytes",
+                "position": {
+                    "h": 260,
+                    "w": 720,
+                    "x": 0,
+                    "y": 1250
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_flowfiles",
+                "position": {
+                    "h": 260,
+                    "w": 720,
+                    "x": 720,
+                    "y": 1250
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_recent",
+                "position": {
+                    "h": 330,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 1510
+                },
+                "type": "block"
+            }
+        ],
+        "type": "grid"
+    },
+    "title": "Instance",
+    "visualizations": {
+        "viz_bytes": {
+            "dataSources": {
+                "primary": "ds_bytes"
+            },
+            "description": "MB per 5 minutes · received from and sent to outside NiFi, and written to the content repository",
+            "options": {
+                "legendDisplay": "bottom",
+                "nullValueDisplay": "connect",
+                "seriesColors": [
+                    "#2A78D6",
+                    "#EB6834",
+                    "#1BAF7A",
+                    "#EDA100"
+                ],
+                "showRoundedY2AxisLabels": false,
+                "showSplitSeries": false,
+                "xAxisTitleVisibility": "hide",
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "Data in, out and processed",
+            "type": "splunk.line"
+        },
+        "viz_components": {
+            "dataSources": {
+                "primary": "ds_k_components"
+            },
+            "description": "running · stopped · invalid · disabled",
+            "options": {
+                "majorFontSize": 22,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Components",
+            "type": "splunk.singlevalue"
+        },
+        "viz_errors": {
+            "context": {
+                "majorColorEditorConfig": [
+                    {
+                        "to": 1,
+                        "value": "#0CA30C"
+                    },
+                    {
+                        "from": 1,
+                        "value": "#D03B3B"
+                    }
+                ]
+            },
+            "dataSources": {
+                "primary": "ds_k_errors"
+            },
+            "eventHandlers": [
+                {
+                    "options": {
+                        "newTab": false,
+                        "url": "/app/nifi_monitoring/nifi_bulletins?form.host=$host$&form.level=ERROR&form.time.earliest=$time.earliest$&form.time.latest=$time.latest$"
+                    },
+                    "type": "drilldown.customUrl"
+                }
+            ],
+            "options": {
+                "majorColor": "> majorValue | rangeValue(majorColorEditorConfig)",
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"bulletin_errors\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "ERROR bulletins · 15 min",
+            "type": "splunk.singlevalue"
+        },
+        "viz_flowfiles": {
+            "dataSources": {
+                "primary": "ds_flowfiles"
+            },
+            "description": "Per 5 minutes, from and to outside NiFi",
+            "options": {
+                "legendDisplay": "bottom",
+                "nullValueDisplay": "connect",
+                "seriesColors": [
+                    "#2A78D6",
+                    "#EB6834",
+                    "#1BAF7A",
+                    "#EDA100"
+                ],
+                "showRoundedY2AxisLabels": false,
+                "showSplitSeries": false,
+                "xAxisTitleVisibility": "hide",
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "FlowFiles received and sent",
+            "type": "splunk.line"
+        },
+        "viz_gc": {
+            "dataSources": {
+                "primary": "ds_gc"
+            },
+            "description": "Milliseconds spent per 5 minutes (delta, not the running total)",
+            "options": {
+                "legendDisplay": "bottom",
+                "nullValueDisplay": "connect",
+                "seriesColors": [
+                    "#2A78D6",
+                    "#EB6834",
+                    "#1BAF7A",
+                    "#EDA100"
+                ],
+                "showRoundedY2AxisLabels": false,
+                "showSplitSeries": false,
+                "xAxisTitleVisibility": "hide",
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "GC time per collector",
+            "type": "splunk.line"
+        },
+        "viz_header": {
+            "context": {
+                "HealthRowColorsEditorConfig": [
+                    {
+                        "match": "✕ Critical",
+                        "value": "#D03B3B"
+                    },
+                    {
+                        "match": "! Degraded",
+                        "value": "#B07A00"
+                    },
+                    {
+                        "match": "○ Stale",
+                        "value": "#9A9890"
+                    },
+                    {
+                        "match": "○ No data",
+                        "value": "#9A9890"
+                    },
+                    {
+                        "match": "✓ Healthy",
+                        "value": "#0CA30C"
+                    }
+                ],
+                "tableHeaderBackgroundColorConfig": {
+                    "channel": "rgb",
+                    "value": "#E1E0D9"
+                },
+                "tableRowColorMaxContrast": {
+                    "maximum": "#0B0B0B",
+                    "minimum": "#FFFFFF"
+                }
+            },
+            "dataSources": {
+                "primary": "ds_header"
+            },
+            "options": {
+                "backgroundColor": "transparent",
+                "columnFormat": {
+                    "Health": {
+                        "rowColors": "> table | seriesByName(\"Health\") | matchValue(HealthRowColorsEditorConfig)"
+                    }
+                },
+                "count": 1,
+                "headerVisibility": "fixed",
+                "showInternalFields": false,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | noRecolor()",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "type": "splunk.table"
+        },
+        "viz_heap": {
+            "dataSources": {
+                "primary": "ds_heap"
+            },
+            "description": "% of max heap · dashed line: this instance's heap threshold",
+            "options": {
+                "legendDisplay": "bottom",
+                "lineDashStylesByField": {
+                    "Threshold": "dash"
+                },
+                "nullValueDisplay": "connect",
+                "seriesColors": [
+                    "#2A78D6",
+                    "#EB6834",
+                    "#1BAF7A",
+                    "#EDA100"
+                ],
+                "seriesColorsByField": {
+                    "Heap used %": "#2A78D6",
+                    "Threshold": "#52514E"
+                },
+                "showRoundedY2AxisLabels": false,
+                "showSplitSeries": false,
+                "xAxisTitleVisibility": "hide",
+                "yAxisMax": 100,
+                "yAxisMin": 0,
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "Heap used",
+            "type": "splunk.line"
+        },
+        "viz_jvm": {
+            "options": {
+                "fontSize": "default",
+                "markdown": "### JVM and system"
+            },
+            "type": "splunk.markdown"
+        },
+        "viz_load": {
+            "dataSources": {
+                "primary": "ds_load"
+            },
+            "description": "1-minute load · dashed line: available cores",
+            "options": {
+                "legendDisplay": "bottom",
+                "lineDashStylesByField": {
+                    "Cores": "dash"
+                },
+                "nullValueDisplay": "connect",
+                "seriesColors": [
+                    "#2A78D6",
+                    "#EB6834",
+                    "#1BAF7A",
+                    "#EDA100"
+                ],
+                "seriesColorsByField": {
+                    "Cores": "#52514E",
+                    "Load average": "#2A78D6"
+                },
+                "showRoundedY2AxisLabels": false,
+                "showSplitSeries": false,
+                "xAxisTitleVisibility": "hide",
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "Load average",
+            "type": "splunk.line"
+        },
+        "viz_now": {
+            "options": {
+                "fontSize": "default",
+                "markdown": "### Now"
+            },
+            "type": "splunk.markdown"
+        },
+        "viz_queued": {
+            "dataSources": {
+                "primary": "ds_k_queued"
+            },
+            "options": {
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"flowfiles_queued\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "FlowFiles queued",
+            "type": "splunk.singlevalue"
+        },
+        "viz_queued_mb": {
+            "dataSources": {
+                "primary": "ds_k_queued_mb"
+            },
+            "options": {
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"mb\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off",
+                "unit": "MB"
+            },
+            "title": "Bytes queued",
+            "type": "splunk.singlevalue"
+        },
+        "viz_recent": {
+            "context": {
+                "LevelRowColorsEditorConfig": [
+                    {
+                        "match": "ERROR",
+                        "value": "#D03B3B"
+                    },
+                    {
+                        "match": "WARNING",
+                        "value": "#FAB219"
+                    },
+                    {
+                        "match": "WARN",
+                        "value": "#FAB219"
+                    },
+                    {
+                        "match": "INFO",
+                        "value": "#9A9890"
+                    }
+                ],
+                "tableHeaderBackgroundColorConfig": {
+                    "channel": "rgb",
+                    "value": "#E1E0D9"
+                },
+                "tableRowColorMaxContrast": {
+                    "maximum": "#0B0B0B",
+                    "minimum": "#FFFFFF"
+                }
+            },
+            "dataSources": {
+                "primary": "ds_recent"
+            },
+            "description": "Latest 10 · click a row to open Bulletins",
+            "eventHandlers": [
+                {
+                    "options": {
+                        "newTab": false,
+                        "url": "/app/nifi_monitoring/nifi_bulletins?form.host=$host$&form.time.earliest=$time.earliest$&form.time.latest=$time.latest$"
+                    },
+                    "type": "drilldown.customUrl"
+                }
+            ],
+            "options": {
+                "backgroundColor": "transparent",
+                "columnFormat": {
+                    "Level": {
+                        "rowColors": "> table | seriesByName(\"Level\") | matchValue(LevelRowColorsEditorConfig)"
+                    },
+                    "Message": {
+                        "width": 900
+                    }
+                },
+                "count": 10,
+                "headerVisibility": "fixed",
+                "showInternalFields": false,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | noRecolor()",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Recent bulletins",
+            "type": "splunk.table"
+        },
+        "viz_repo_time": {
+            "dataSources": {
+                "primary": "ds_repo_time"
+            },
+            "description": "% used · dashed line: this instance's repository threshold",
+            "options": {
+                "legendDisplay": "bottom",
+                "lineDashStylesByField": {
+                    "Threshold": "dash"
+                },
+                "nullValueDisplay": "connect",
+                "seriesColors": [
+                    "#2A78D6",
+                    "#EB6834",
+                    "#1BAF7A",
+                    "#EDA100"
+                ],
+                "showRoundedY2AxisLabels": false,
+                "showSplitSeries": false,
+                "xAxisTitleVisibility": "hide",
+                "yAxisMax": 100,
+                "yAxisMin": 0,
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "Repository usage",
+            "type": "splunk.line"
+        },
+        "viz_repos": {
+            "context": {
+                "tableHeaderBackgroundColorConfig": {
+                    "channel": "rgb",
+                    "value": "#E1E0D9"
+                },
+                "tableRowColorMaxContrast": {
+                    "maximum": "#0B0B0B",
+                    "minimum": "#FFFFFF"
+                }
+            },
+            "dataSources": {
+                "primary": "ds_repos_now"
+            },
+            "description": "Latest value, one row per repository",
+            "options": {
+                "backgroundColor": "transparent",
+                "count": 10,
+                "headerVisibility": "fixed",
+                "showInternalFields": false,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | noRecolor()",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Repositories",
+            "type": "splunk.table"
+        },
+        "viz_storage": {
+            "options": {
+                "fontSize": "default",
+                "markdown": "### Storage"
+            },
+            "type": "splunk.markdown"
+        },
+        "viz_threads": {
+            "dataSources": {
+                "primary": "ds_k_threads"
+            },
+            "options": {
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"threads\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Active threads",
+            "type": "splunk.singlevalue"
+        },
+        "viz_threads_time": {
+            "dataSources": {
+                "primary": "ds_threads"
+            },
+            "description": "Total and daemon",
+            "options": {
+                "legendDisplay": "bottom",
+                "nullValueDisplay": "connect",
+                "seriesColors": [
+                    "#2A78D6",
+                    "#EB6834",
+                    "#1BAF7A",
+                    "#EDA100"
+                ],
+                "showRoundedY2AxisLabels": false,
+                "showSplitSeries": false,
+                "xAxisTitleVisibility": "hide",
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "JVM threads",
+            "type": "splunk.line"
+        },
+        "viz_tp": {
+            "options": {
+                "fontSize": "default",
+                "markdown": "### Throughput\nRoot process group, per 5 minutes. On the pull path it needs *Flow metrics* (`endpoint_flow_metrics`) enabled on this instance's input in the Nifi Monitoring TA; on the push path it comes from the Reporting Task."
+            },
+            "type": "splunk.markdown"
+        },
+        "viz_versioned": {
+            "dataSources": {
+                "primary": "ds_k_versioned"
+            },
+            "description": "up to date · modified · stale · failing to sync",
+            "options": {
+                "majorFontSize": 22,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Versioned process groups",
+            "type": "splunk.singlevalue"
+        }
+    }
+}
+]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+]]></meta>
+</dashboard>

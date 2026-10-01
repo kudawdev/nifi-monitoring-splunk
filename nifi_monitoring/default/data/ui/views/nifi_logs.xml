@@ -1,162 +1,456 @@
-<form hideEdit="true" version="1.1">
-  <label>Logs Monitoring Panel</label>
-  <search id="baseSearch2">
-    <query>
-| tstats count from datamodel=NIFI.Logs by _time, host, sourcetype, Logs.level, Logs.cluster span=$span$
-| rename Logs.* as *
-    </query>
-    <earliest>$time.earliest$</earliest>
-    <latest>$time.latest$</latest>
-  </search>
-  <fieldset submitButton="true" autoRun="true">
-    <input type="time" token="time" searchWhenChanged="false">
-      <label>Time</label>
-      <default>
-        <earliest>-60m@m</earliest>
-        <latest>now</latest>
-      </default>
-    </input>
-    <input type="dropdown" token="span">
-      <label>Span</label>
-      <choice value="5m">5 Minutes</choice>
-      <choice value="30m">30 Minutes</choice>
-      <choice value="1h">1 Hour</choice>
-      <choice value="1d">1 Day</choice>
-      <default>5m</default>
-      <initialValue>5m</initialValue>
-    </input>
-    <input type="dropdown" token="cluster" searchWhenChanged="false">
-      <label>Nifi Cluster</label>
-      <fieldForLabel>cluster</fieldForLabel>
-      <fieldForValue>cluster</fieldForValue>
-      <search base="baseSearch2">
-        <query>
-| dedup cluster 
-| table cluster</query>
-      </search>
-      <choice value="*">All</choice>
-      <default>*</default>
-      <initialValue>*</initialValue>
-    </input>
-    <input type="dropdown" token="host" searchWhenChanged="false">
-      <label>Nifi Instance</label>
-      <fieldForLabel>host</fieldForLabel>
-      <fieldForValue>host</fieldForValue>
-      <search base="baseSearch2">
-        <query>
-| search cluster=$cluster$
-| dedup host 
-| table host</query>
-      </search>
-      <choice value="*">All</choice>
-      <default>*</default>
-      <initialValue>*</initialValue>
-    </input>
-    <input type="dropdown" token="sourcetype">
-      <label>Sourcetype</label>
-      <choice value="*">All</choice>
-      <fieldForLabel>sourcetype</fieldForLabel>
-      <fieldForValue>sourcetype</fieldForValue>
-      <search base="baseSearch2">
-        <query>
-| dedup sourcetype 
-| table sourcetype</query>
-      </search>
-      <default>*</default>
-      <initialValue>*</initialValue>
-    </input>
-    <input type="multiselect" token="severity" searchWhenChanged="false">
-      <label>Severity</label>
-      <choice value="*">All</choice>
-      <choice value="ERROR">Error</choice>
-      <choice value="WARN">Warn</choice>
-      <choice value="INFO">Info</choice>
-      <choice value="DEBUG">Debug</choice>
-      <default>*</default>
-      <prefix>(</prefix>
-      <suffix>)</suffix>
-      <initialValue>*</initialValue>
-      <delimiter> OR </delimiter>
-      <valuePrefix>level=</valuePrefix>
-    </input>
-    <input type="text" token="customsearch" searchWhenChanged="false">
-      <label>Custom Search</label>
-      <default>*</default>
-      <initialValue>*</initialValue>
-    </input>
-  </fieldset>
-  <row>
-    <panel>
-      <single>
-        <title>Logs Events Count</title>
-        <search base="baseSearch2">
-          <query>| search host=$host$ cluster=$cluster$ sourcetype=$sourcetype$ $severity$ $customsearch$
-| stats sum(count) as count</query>
-        </search>
-        <option name="colorMode">block</option>
-        <option name="drilldown">none</option>
-        <option name="height">83</option>
-        <option name="rangeColors">["0x555","0x555"]</option>
-        <option name="rangeValues">[0]</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="unit">Events</option>
-        <option name="useColors">0</option>
-      </single>
-      <chart>
-        <title>Logs Events Behaviour</title>
-        <search base="baseSearch2">
-          <query>| search host=$host$ cluster=$cluster$ sourcetype=$sourcetype$ $severity$ $customsearch$
-|timechart sum(count) as count span=$span$ by level</query>
-        </search>
-        <option name="charting.axisTitleX.visibility">collapsed</option>
-        <option name="charting.chart">column</option>
-        <option name="charting.chart.showDataLabels">none</option>
-        <option name="charting.chart.stackMode">stacked</option>
-        <option name="charting.drilldown">none</option>
-        <option name="charting.legend.placement">bottom</option>
-        <option name="height">275</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="charting.fieldColors">{"ERROR":e57373, "INFO":4fc3f7, "WARN":ffd54f}</option>
-      </chart>
-    </panel>
-  </row>
-  <row>
-    <panel>
-      <event>
-        <title>Logs Events Details</title>
-        <search>
-          <query>`index_nifi` sourcetype=nifi:log:* host=$host$ cluster=$cluster$ sourcetype=$sourcetype$ $severity$ $customsearch$</query>
-          <earliest>$time.earliest$</earliest>
-          <latest>$time.latest$</latest>
-        </search>
-        <option name="count">20</option>
-        <option name="list.drilldown">none</option>
-        <option name="list.wrap">1</option>
-        <option name="raw.drilldown">none</option>
-        <option name="refresh.display">progressbar</option>
-        <option name="rowNumbers">0</option>
-        <option name="table.drilldown">none</option>
-        <option name="table.wrap">1</option>
-        <option name="type">raw</option>
-      </event>
-    </panel>
-  </row>
-  <row id="footer">
-    <panel>
-      <html>
-        <style>
-            [id^="footer"] .dashboard-panel {
-              background:#f2f4f5 !important;
+<dashboard version="2" theme="light" hideEdit="false">
+  <label>Logs</label>
+  <description>Application log, deprecations and API requests</description>
+  <definition><![CDATA[
+{
+    "dataSources": {
+        "ds_deprecations": {
+            "name": "ds_deprecations",
+            "options": {
+                "query": "`index_nifi` sourcetype=\"nifi:log:deprecation\" host=\"$host$\"\n| rex \"\\]\\s+(?<logger>\\S+)\\s+(?<message>.+)$\"\n| eval message = substr(message, 1, 240)\n| stats count as Occurrences, latest(_time) as last by host logger message\n| eval \"Last seen\" = strftime(last, \"%Y-%m-%d %H:%M\") | sort - Occurrences\n| table host logger message Occurrences \"Last seen\"\n| rename host as Instance, logger as Logger, message as Message",
+                "queryParameters": {
+                    "earliest": "-7d@d",
+                    "latest": "now"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_events": {
+            "name": "ds_events",
+            "options": {
+                "query": "`index_nifi` sourcetype=\"nifi:log:app\" host=\"$host$\" level=\"$level$\" $search$\n| head 50 | eval Time = strftime(_time, \"%Y-%m-%d %H:%M:%S\") | table Time host level _raw | rename host as Instance, level as Level, _raw as Event",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_input_host": {
+            "name": "Choices for Instance",
+            "options": {
+                "query": "| tstats count where `index_nifi` sourcetype=nifi:log:* by host | fields host",
+                "queryParameters": {
+                    "earliest": "-24h@h",
+                    "latest": "now"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_levels": {
+            "name": "ds_levels",
+            "options": {
+                "query": "| tstats count from datamodel=NIFI.Logs where host=\"$host$\" Logs.level=\"$level$\" by _time Logs.level span=5m\n| rename Logs.level as level | timechart span=5m sum(count) by level",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_req_class": {
+            "name": "ds_req_class",
+            "options": {
+                "query": "| tstats count from datamodel=NIFI.Request_Log where host=\"$host$\" by _time Request_Log.status span=5m\n| eval class = substr('Request_Log.status', 1, 1) . \"xx\"\n| timechart span=5m sum(count) by class",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_req_top": {
+            "name": "ds_req_top",
+            "options": {
+                "query": "| tstats count from datamodel=NIFI.Request_Log where host=\"$host$\" Request_Log.status>=400\n  by Request_Log.user Request_Log.uri_path Request_Log.status\n| rename Request_Log.* as * | sort - count | head 10\n| rename user as User, uri_path as URI, status as Status, count as Count",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        }
+    },
+    "defaults": {
+        "dataSources": {
+            "ds.search": {
+                "options": {
+                    "queryParameters": {
+                        "earliest": "$time.earliest$",
+                        "latest": "$time.latest$"
+                    }
+                }
             }
-
-          </style>
-        <div style="text-align: center; font-weight: bold; font-size: 14px;">
-           Developed by
-           <a href="https://www.kudaw.com" target="_blank" style="text-decoration: none;">
-             <img src="/static/app/nifi_monitoring/kudaw.png" style="height:34px; border:0; margin-left:10px"/>
-           </a>
-          </div>
-      </html>
-    </panel>
-  </row>
-</form>
+        }
+    },
+    "description": "Application log, deprecations and API requests",
+    "inputs": {
+        "input_host": {
+            "context": {
+                "formattedConfig": {
+                    "number": {
+                        "prefix": ""
+                    }
+                },
+                "formattedStatics": ">statics | formatByType(formattedConfig)",
+                "label": ">primary | seriesByName(\"host\") | renameSeries(\"label\") | formatByType(formattedConfig)",
+                "statics": [
+                    [
+                        "All"
+                    ],
+                    [
+                        "*"
+                    ]
+                ],
+                "value": ">primary | seriesByName(\"host\") | renameSeries(\"value\") | formatByType(formattedConfig)"
+            },
+            "dataSources": {
+                "primary": "ds_input_host"
+            },
+            "options": {
+                "defaultValue": "*",
+                "items": ">frame(label, value) | prepend(formattedStatics) | objects()",
+                "token": "host"
+            },
+            "title": "Instance",
+            "type": "input.dropdown"
+        },
+        "input_level": {
+            "options": {
+                "defaultValue": "*",
+                "items": [
+                    {
+                        "label": "All",
+                        "value": "*"
+                    },
+                    {
+                        "label": "ERROR",
+                        "value": "ERROR"
+                    },
+                    {
+                        "label": "WARN",
+                        "value": "WARN"
+                    },
+                    {
+                        "label": "INFO",
+                        "value": "INFO"
+                    }
+                ],
+                "token": "level"
+            },
+            "title": "Severity",
+            "type": "input.dropdown"
+        },
+        "input_search": {
+            "options": {
+                "defaultValue": "*",
+                "token": "search"
+            },
+            "title": "Search",
+            "type": "input.text"
+        },
+        "input_time": {
+            "options": {
+                "defaultValue": "-60m@m,now",
+                "token": "time"
+            },
+            "title": "Time range",
+            "type": "input.timerange"
+        }
+    },
+    "layout": {
+        "globalInputs": [
+            "input_time",
+            "input_host",
+            "input_level",
+            "input_search"
+        ],
+        "options": {
+            "height": 1120,
+            "width": 1440
+        },
+        "structure": [
+            {
+                "item": "viz_app",
+                "position": {
+                    "h": 40,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_levels",
+                "position": {
+                    "h": 340,
+                    "w": 600,
+                    "x": 0,
+                    "y": 40
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_events",
+                "position": {
+                    "h": 340,
+                    "w": 840,
+                    "x": 600,
+                    "y": 40
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_dep",
+                "position": {
+                    "h": 70,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 380
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_deprecations",
+                "position": {
+                    "h": 300,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 450
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_req",
+                "position": {
+                    "h": 70,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 750
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_req_class",
+                "position": {
+                    "h": 300,
+                    "w": 720,
+                    "x": 0,
+                    "y": 820
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_req_top",
+                "position": {
+                    "h": 300,
+                    "w": 720,
+                    "x": 720,
+                    "y": 820
+                },
+                "type": "block"
+            }
+        ],
+        "type": "grid"
+    },
+    "title": "Logs",
+    "visualizations": {
+        "viz_app": {
+            "options": {
+                "fontSize": "default",
+                "markdown": "### Application"
+            },
+            "type": "splunk.markdown"
+        },
+        "viz_dep": {
+            "options": {
+                "fontSize": "default",
+                "markdown": "### Deprecations\nWhat this NiFi uses that a later version removes: the list to clear before moving to NiFi 2.x. Needs the nifi-deprecation.log monitor enabled."
+            },
+            "type": "splunk.markdown"
+        },
+        "viz_deprecations": {
+            "context": {
+                "tableHeaderBackgroundColorConfig": {
+                    "channel": "rgb",
+                    "value": "#E1E0D9"
+                },
+                "tableRowColorMaxContrast": {
+                    "maximum": "#0B0B0B",
+                    "minimum": "#FFFFFF"
+                }
+            },
+            "dataSources": {
+                "primary": "ds_deprecations"
+            },
+            "options": {
+                "backgroundColor": "transparent",
+                "count": 10,
+                "headerVisibility": "fixed",
+                "showInternalFields": false,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | noRecolor()",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Deprecated usage · last 7 days",
+            "type": "splunk.table"
+        },
+        "viz_events": {
+            "context": {
+                "LevelRowColorsEditorConfig": [
+                    {
+                        "match": "ERROR",
+                        "value": "#D03B3B"
+                    },
+                    {
+                        "match": "WARNING",
+                        "value": "#FAB219"
+                    },
+                    {
+                        "match": "WARN",
+                        "value": "#FAB219"
+                    },
+                    {
+                        "match": "INFO",
+                        "value": "#9A9890"
+                    }
+                ],
+                "tableHeaderBackgroundColorConfig": {
+                    "channel": "rgb",
+                    "value": "#E1E0D9"
+                },
+                "tableRowColorMaxContrast": {
+                    "maximum": "#0B0B0B",
+                    "minimum": "#FFFFFF"
+                }
+            },
+            "dataSources": {
+                "primary": "ds_events"
+            },
+            "description": "nifi-app.log, newest first, matching the search",
+            "options": {
+                "backgroundColor": "transparent",
+                "columnFormat": {
+                    "Event": {
+                        "width": 650
+                    },
+                    "Level": {
+                        "rowColors": "> table | seriesByName(\"Level\") | matchValue(LevelRowColorsEditorConfig)"
+                    }
+                },
+                "count": 8,
+                "headerVisibility": "fixed",
+                "showInternalFields": false,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | noRecolor()",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Events",
+            "type": "splunk.table"
+        },
+        "viz_levels": {
+            "dataSources": {
+                "primary": "ds_levels"
+            },
+            "description": "Structured filters only; the search box applies to the events",
+            "options": {
+                "legendDisplay": "bottom",
+                "seriesColors": [
+                    "#2A78D6",
+                    "#EB6834",
+                    "#1BAF7A",
+                    "#EDA100"
+                ],
+                "seriesColorsByField": {
+                    "ERROR": "#D03B3B",
+                    "INFO": "#9A9890",
+                    "WARN": "#FAB219",
+                    "WARNING": "#FAB219"
+                },
+                "showRoundedY2AxisLabels": false,
+                "showSplitSeries": false,
+                "stackMode": "stacked",
+                "xAxisTitleVisibility": "hide",
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "Events by level",
+            "type": "splunk.column"
+        },
+        "viz_req": {
+            "options": {
+                "fontSize": "default",
+                "markdown": "### API requests\nFrom nifi-request.log: who calls NiFi's API and what fails."
+            },
+            "type": "splunk.markdown"
+        },
+        "viz_req_class": {
+            "dataSources": {
+                "primary": "ds_req_class"
+            },
+            "description": "5-minute buckets",
+            "options": {
+                "legendDisplay": "bottom",
+                "seriesColors": [
+                    "#2A78D6",
+                    "#EB6834",
+                    "#1BAF7A",
+                    "#EDA100"
+                ],
+                "seriesColorsByField": {
+                    "2xx": "#2A78D6",
+                    "3xx": "#1BAF7A",
+                    "4xx": "#FAB219",
+                    "5xx": "#D03B3B"
+                },
+                "showRoundedY2AxisLabels": false,
+                "showSplitSeries": false,
+                "stackMode": "stacked",
+                "xAxisTitleVisibility": "hide",
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "Requests by status class",
+            "type": "splunk.column"
+        },
+        "viz_req_top": {
+            "context": {
+                "tableHeaderBackgroundColorConfig": {
+                    "channel": "rgb",
+                    "value": "#E1E0D9"
+                },
+                "tableRowColorMaxContrast": {
+                    "maximum": "#0B0B0B",
+                    "minimum": "#FFFFFF"
+                }
+            },
+            "dataSources": {
+                "primary": "ds_req_top"
+            },
+            "description": "4xx and 5xx",
+            "options": {
+                "backgroundColor": "transparent",
+                "count": 10,
+                "headerVisibility": "fixed",
+                "showInternalFields": false,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | noRecolor()",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Top failing requests",
+            "type": "splunk.table"
+        }
+    }
+}
+]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+]]></meta>
+</dashboard>

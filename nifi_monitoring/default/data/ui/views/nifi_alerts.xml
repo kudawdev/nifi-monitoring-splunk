@@ -1,0 +1,262 @@
+<dashboard version="2" theme="light" hideEdit="false">
+  <label>Alerts</label>
+  <description>What this app can alert on, and what fired</description>
+  <definition><![CDATA[
+{
+    "dataSources": {
+        "ds_fired": {
+            "name": "Fired",
+            "options": {
+                "query": "index=_audit action=alert_fired ss_app=nifi_monitoring\n| eval Time = strftime(_time, \"%Y-%m-%d %H:%M:%S\")\n| table Time ss_name severity\n| rename ss_name as Alert, severity as Severity",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_k_enabled": {
+            "name": "ds_k_enabled",
+            "options": {
+                "extend": "ds_shipped",
+                "query": "| stats count(eval(State==\"✓ Enabled\")) as e, count as t | eval value = e . \" / \" . t"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_fired": {
+            "name": "ds_k_fired",
+            "options": {
+                "extend": "ds_fired",
+                "query": "| stats count as value"
+            },
+            "type": "ds.chain"
+        },
+        "ds_shipped": {
+            "name": "Alerts shipped with the app",
+            "options": {
+                "query": "| rest splunk_server=local count=0 /servicesNS/-/nifi_monitoring/saved/searches\n| search eai:acl.app=\"nifi_monitoring\" title=\"NiFi - *\"\n| eval State = if(disabled == 1 OR disabled == \"1\", \"○ Disabled\", \"✓ Enabled\")\n| table title State description cron_schedule\n| rename title as Alert, description as Condition, cron_schedule as Schedule",
+                "queryParameters": {
+                    "earliest": "-1m",
+                    "latest": "now"
+                }
+            },
+            "type": "ds.search"
+        }
+    },
+    "defaults": {
+        "dataSources": {
+            "ds.search": {
+                "options": {
+                    "queryParameters": {
+                        "earliest": "$time.earliest$",
+                        "latest": "$time.latest$"
+                    }
+                }
+            }
+        }
+    },
+    "description": "What this app can alert on, and what fired",
+    "inputs": {
+        "input_time": {
+            "options": {
+                "defaultValue": "-24h@h,now",
+                "token": "time"
+            },
+            "title": "Time range",
+            "type": "input.timerange"
+        }
+    },
+    "layout": {
+        "globalInputs": [
+            "input_time"
+        ],
+        "options": {
+            "height": 810,
+            "width": 1440
+        },
+        "structure": [
+            {
+                "item": "viz_enabled",
+                "position": {
+                    "h": 130,
+                    "w": 360,
+                    "x": 0,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_fired",
+                "position": {
+                    "h": 130,
+                    "w": 360,
+                    "x": 360,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_manage",
+                "position": {
+                    "h": 130,
+                    "w": 720,
+                    "x": 720,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_shipped",
+                "position": {
+                    "h": 360,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 130
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_fired_table",
+                "position": {
+                    "h": 320,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 490
+                },
+                "type": "block"
+            }
+        ],
+        "type": "grid"
+    },
+    "title": "Alerts",
+    "visualizations": {
+        "viz_enabled": {
+            "dataSources": {
+                "primary": "ds_k_enabled"
+            },
+            "description": "They ship disabled; Settings › Searches, reports, and alerts to enable",
+            "options": {
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Alerts enabled",
+            "type": "splunk.singlevalue"
+        },
+        "viz_fired": {
+            "context": {
+                "majorColorEditorConfig": [
+                    {
+                        "to": 1,
+                        "value": "#0CA30C"
+                    },
+                    {
+                        "from": 1,
+                        "value": "#D03B3B"
+                    }
+                ]
+            },
+            "dataSources": {
+                "primary": "ds_k_fired"
+            },
+            "options": {
+                "majorColor": "> majorValue | rangeValue(majorColorEditorConfig)",
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Fired in range",
+            "type": "splunk.singlevalue"
+        },
+        "viz_fired_table": {
+            "context": {
+                "tableHeaderBackgroundColorConfig": {
+                    "channel": "rgb",
+                    "value": "#E1E0D9"
+                },
+                "tableRowColorMaxContrast": {
+                    "maximum": "#0B0B0B",
+                    "minimum": "#FFFFFF"
+                }
+            },
+            "dataSources": {
+                "primary": "ds_fired"
+            },
+            "options": {
+                "backgroundColor": "transparent",
+                "count": 10,
+                "headerVisibility": "fixed",
+                "showInternalFields": false,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | noRecolor()",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Fired",
+            "type": "splunk.table"
+        },
+        "viz_manage": {
+            "options": {
+                "fontSize": "default",
+                "markdown": "**Manage** them in *Settings › Searches, reports, and alerts*, app *nifi_monitoring*: enable, change the recipients, throttle. Thresholds are the `nifi_threshold_*` macros, the same the panels use."
+            },
+            "type": "splunk.markdown"
+        },
+        "viz_shipped": {
+            "context": {
+                "StateRowColorsEditorConfig": [
+                    {
+                        "match": "✓ Enabled",
+                        "value": "#0CA30C"
+                    },
+                    {
+                        "match": "○ Disabled",
+                        "value": "#9A9890"
+                    }
+                ],
+                "tableHeaderBackgroundColorConfig": {
+                    "channel": "rgb",
+                    "value": "#E1E0D9"
+                },
+                "tableRowColorMaxContrast": {
+                    "maximum": "#0B0B0B",
+                    "minimum": "#FFFFFF"
+                }
+            },
+            "dataSources": {
+                "primary": "ds_shipped"
+            },
+            "options": {
+                "backgroundColor": "transparent",
+                "columnFormat": {
+                    "Condition": {
+                        "width": 650
+                    },
+                    "State": {
+                        "rowColors": "> table | seriesByName(\"State\") | matchValue(StateRowColorsEditorConfig)"
+                    }
+                },
+                "count": 10,
+                "headerVisibility": "fixed",
+                "showInternalFields": false,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | noRecolor()",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Alerts shipped with the app",
+            "type": "splunk.table"
+        }
+    }
+}
+]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+]]></meta>
+</dashboard>

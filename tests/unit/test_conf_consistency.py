@@ -26,9 +26,24 @@ TA_GENERATED = TA_BUILT
 
 
 def conf(path):
+    """A .conf file as Splunk reads it, backslash line continuation included:
+    a long SPL definition is easier to review split over lines."""
+    with open(path, encoding="utf-8") as handle:
+        text = re.sub(r"\\\n", "\n ", handle.read())
     parser = configparser.ConfigParser(strict=False, interpolation=None)
-    parser.read(path)
+    parser.read_string(text, source=path)
     return parser
+
+
+def load_mkdocs():
+    """mkdocs.yml, tolerating the !!python/name tags mkdocs itself resolves
+    (the mermaid fence's format function), which safe_load refuses."""
+    import yaml
+    class Loader(yaml.SafeLoader):
+        pass
+    Loader.add_multi_constructor("tag:yaml.org,2002:python/", lambda loader, suffix, node: None)
+    with open(os.path.join(REPO, "mkdocs.yml")) as handle:
+        return yaml.load(handle, Loader=Loader)
 
 
 class VersionStanzaTest(unittest.TestCase):
@@ -345,7 +360,7 @@ class IndexConfigurationTest(unittest.TestCase):
             with self.subTest(view=name):
                 if "index=*" in text:
                     self.assertEqual(
-                        name, "nifi_internal_monitoring.xml",
+                        name, "nifi_collection_health.xml",
                         "%s scans every index" % name,
                     )
 
@@ -378,12 +393,17 @@ class DashboardQueryTest(unittest.TestCase):
 
     def test_the_disk_panel_reads_the_numeric_fields(self):
         """It used to read the human-readable strings ("847.61 GB", "16.0%"),
-        which display fine but cannot be aggregated or thresholded."""
-        text = dict(self.views())["nifi_overview.xml"]
+        which display fine but cannot be aggregated or thresholded. Every
+        repository panel now reads them through the nifi_repositories macro."""
+        text = conf(os.path.join(APP, "default", "macros.conf"))["nifi_repositories"]["definition"]
         self.assertIn("usedSpaceBytes", text)
         self.assertIn("totalSpaceBytes", text)
         self.assertNotIn("{}.freeSpace", text)
         self.assertNotIn("{}.utilization", text)
+        for name, view in self.views():
+            if "Repositor" in view:
+                with self.subTest(view=name):
+                    self.assertNotIn("utilization", view)
 
     def test_datamodel_fields_are_object_qualified(self):
         """tstats against a datamodel needs Object.field, not a bare field."""
@@ -453,12 +473,13 @@ class DatamodelCoverageTest(unittest.TestCase):
             obj = [o for o in self.model["objects"] if o["objectName"] == name][0]
             return {f["fieldName"] for f in obj["fields"] if f["fieldName"].startswith("bulletin")}
 
-        board = fields("Bulletin_Board")
-        task = fields("Reporting_Bulletin")
-        shared = board & task
-        self.assertTrue(shared, "the two bulletin objects share no field names")
-        # the two the board genuinely cannot provide
-        self.assertEqual(task - board, {"bulletinGroupName", "bulletinGroupPath"})
+        # Since R-2 both are children of Bulletins, which holds the shared
+        # names; each child adds only what its own path provides.
+        shared = fields("Bulletins")
+        self.assertTrue({"bulletinLevel", "bulletinCategory", "bulletinSourceName",
+                         "bulletinMessage"} <= shared)
+        self.assertEqual(fields("Reporting_Bulletin"), {"bulletinGroupName", "bulletinGroupPath"})
+        self.assertEqual(fields("Bulletin_Board"), {"bulletinNodeAddress"})
 
 
 class DocumentationTest(unittest.TestCase):
@@ -495,8 +516,16 @@ class DocumentationTest(unittest.TestCase):
             import yaml
         except ImportError:
             self.skipTest("PyYAML not installed")
-        config = yaml.safe_load(open(os.path.join(REPO, "mkdocs.yml")))
-        listed = {list(entry.values())[0].replace(".md", "") for entry in config["nav"]}
+        config = load_mkdocs()
+        def pages(entries):
+            # the nav nests: a section's value is a list of pages
+            for entry in entries:
+                value = list(entry.values())[0] if isinstance(entry, dict) else entry
+                if isinstance(value, list):
+                    yield from pages(value)
+                else:
+                    yield value.replace(".md", "")
+        listed = set(pages(config["nav"]))
         self.assertEqual(set(self.pages()), listed)
 
     def test_mkdocs_points_at_the_public_docs(self):
@@ -505,7 +534,7 @@ class DocumentationTest(unittest.TestCase):
             import yaml
         except ImportError:
             self.skipTest("PyYAML not installed")
-        config = yaml.safe_load(open(os.path.join(REPO, "mkdocs.yml")))
+        config = load_mkdocs()
         self.assertEqual(config["docs_dir"], "doc")
 
     def test_the_docs_do_not_link_to_the_removed_template_folder(self):
@@ -649,8 +678,9 @@ class DatamodelObjectShapeTest(unittest.TestCase):
             owners = {f.get("owner") for f in obj.get("fields", [])
                       if f["fieldName"] not in inherited}
             with self.subTest(object=name):
+                # a child's own fields are owned by its lineage, Parent.Child
                 self.assertLessEqual(
-                    owners - {name, obj.get("parentName")}, set(),
+                    owners - {name, obj.get("parentName"), obj.get("lineage")}, set(),
                     "%s declares fields owned by something else: %s"
                     % (name, owners))
 
