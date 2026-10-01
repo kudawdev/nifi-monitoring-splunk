@@ -11,7 +11,7 @@ cluster. In one place you get:
 - **Bulletins**: the errors and warnings NiFi generates, traceable back
   to the component that raised them.
 - **NiFi's logs** (optional, via a Universal Forwarder): app, bootstrap,
-  user and request logs, searchable without a terminal on every host.
+  user, request and deprecation logs, searchable without a terminal on every host.
 - **Flow metrics** (optional): throughput and per-component detail.
 - **Cluster visibility**: each node's role and heap, without opening
   every node separately.

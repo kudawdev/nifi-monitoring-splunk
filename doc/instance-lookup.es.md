@@ -1,15 +1,15 @@
 # Lookup de Instancias
 
 Configura esto sin importar la versión de la app o la estrategia de
-recolección que uses — sin esto, ningún panel del dashboard muestra
-datos.
+recolección que uses. El inventario le da a cada instancia su cluster y,
+opcionalmente, umbrales propios, y es lo que hace que una instancia que
+nunca envió datos aparezca como *No data* en lugar de faltar. Sin él, las
+instancias que envían datos igual aparecen, con cluster "—" y los umbrales
+de la app.
 
 Requiere [NIFI Monitoring instalado](installation.es.md).
 
-Abre la app **Nifi Monitoring** (no la TA). Abre en el Overview, que
-queda vacío hasta que este inventario tiene una fila por instancia.
-
-En la barra lateral izquierda, ve a **Configuration > NiFi Instances**.
+Abre la app **Nifi Monitoring** (no la TA). En el menú de la app, ve a **Configuration > NiFi Instances**.
 Esto abre el editor de lookups sobre el lookup `instance`:
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/instance_lookup_editor.png)
@@ -30,8 +30,8 @@ index=* sourcetype=nifi* | dedup host | table host
     1. Estrategia push: inicia el flow de NiFi — ver [Inicia el flow](configuration-push.es.md#5-inicia-el-flow).
     2. Estrategia pull: los data inputs configurados deben estar habilitados.
 
-Agrega una fila por host, con el cluster al que pertenece. Una vez que
-cada host tiene su fila, el panel Overview lo toma.
+Agrega una fila por host, con el cluster al que pertenece. El Overview toma
+una fila nueva en su siguiente actualización.
 
 Las demás columnas son umbrales opcionales solo para esa instancia — déjalas
 vacías para usar el valor por defecto de la app:

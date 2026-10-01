@@ -29,9 +29,10 @@ colapsados en el propio formulario — son opcionales, vuelve a ellos solo
 si necesitas esa función puntual.
 
 !!! note "La pantalla genérica de Splunk también funciona, pero conviene evitarla"
-    *Settings > Data inputs > NiFi* escribe el mismo `inputs.conf`, pero
-    no tiene el formulario agrupado, la validación de campos ni el Test
-    connection del paso 2.
+    *Settings > Data inputs > NiFi* escribe el mismo `inputs.conf` y corre
+    la misma validación al guardar, pero no tiene ni el formulario agrupado
+    ni el Test connection del paso 2, y guarda la contraseña en texto plano
+    en `inputs.conf` en lugar del almacén de contraseñas de Splunk.
 
 ## 1. Instancia de NiFi
 
@@ -59,9 +60,10 @@ Tres checkboxes, todos activados por defecto:
 
 - **Flow status** — `GET /flow/status`. Los contadores resumen sobre los
   que se construye cada panel del dashboard.
-- **System diagnostics** — `GET /system-diagnostics`. Heap, threads y uso
-  de repositorios. Así detecta también el add-on la versión de NiFi, por lo
-  que desactivarlo deshabilita el reporte de versión.
+- **System diagnostics** — `GET /system-diagnostics`. Heap, threads, uso
+  de repositorios y las versiones de NiFi y Java que muestran las vistas.
+  Desactivarlo deja esas columnas vacías. El add-on igual lee la versión de
+  NiFi de vez en cuando para elegir sus endpoints, sin indexarla.
 - **Bulletin board** — `GET /flow/bulletin-board`. Boletines individuales,
   consultados con un cursor para no contar dos veces. El board conserva
   solo una ventana corta, así que un intervalo mayor a esa ventana puede
@@ -87,7 +89,9 @@ desplegado:
   y la estrategia `All components` de abajo escala eso con el tamaño del
   flow, así que revisa el volumen antes de activarlo.
 - **Registries**: nombres de registries separados por coma, ej.
-  `NIFI,JVM`. Vacío los recolecta todos.
+  `NIFI,JVM`. Vacío los recolecta todos. Los nombres conocidos son `NIFI`,
+  `JVM`, `BULLETIN`, `CONNECTION` y `CLUSTER`, más `VERSION_INFO`, que solo
+  se pide a NiFi 2.x; cualquier otro nombre se rechaza al guardar.
 - **Strategy**: `All process groups` o `All components`. `All components`
   emite una muestra por componente, que es lo que multiplica el volumen.
 - **Sample filter**: una expresión regular comparada contra el nombre de la
@@ -174,7 +178,9 @@ Opcional — solo si necesitas consultar un endpoint REST de NiFi que no
 está en la lista fija de *Endpoints* del paso 3. Usa el apartado **Custom
 endpoints**: una línea por endpoint, con el formato `nombre,path` (por
 ejemplo `queue_stats,/flow/connections/1234-5678-90ab-cdef/status`). El
-path es relativo a la NiFi API URL configurada arriba.
+nombre solo admite letras, dígitos, `_`, `.` y `-`; el path empieza con
+`/`, es relativo a la NiFi API URL configurada arriba — no una URL
+completa — y no tiene espacios. Cualquier otra cosa se rechaza al guardar.
 
 Tú le pones el nombre; el sourcetype lo pone el add-on. `queue_stats` se
 indexa como `nifi:api:custom:queue_stats`, así que todo lo que declares se
@@ -214,9 +220,7 @@ cluster,/controller/cluster
   con el primer endpoint y descarta el resto. `splunk btool inputs list`
   muestra qué quedó realmente en efecto.
 
-Una vez completado el formulario, haz clic en **Next** y el input queda creado.
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_success.png)
+Una vez completado el formulario, haz clic en **Add** y el input queda creado.
 
 Repite este proceso por cada instancia de NiFi que quieras monitorear.
 

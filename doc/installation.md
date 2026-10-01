@@ -3,7 +3,7 @@
 Both apps are required: **Nifi Monitoring TA** parses and indexes NiFi's
 data; **Nifi Monitoring** (the dashboards) depends on it, regardless of
 [collection strategy](compatibility.md#choosing-a-collection-strategy).
-Four apps are needed in total, all from the Splunk application manager
+Three apps are needed in total, all from the Splunk application manager
 (**Apps > Manage Apps > Install app from file**):
 
 1. **Nifi Monitoring TA** — parses and indexes NiFi's data. Install this

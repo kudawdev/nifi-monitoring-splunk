@@ -151,9 +151,9 @@ ENDPOINT_CHECKBOXES = [
     ("endpoint_flow_status", "Flow status", "1",
      "GET /flow/status. The summary counters every dashboard panel is built on."),
     ("endpoint_system_diagnostics", "System diagnostics", "1",
-     "GET /system-diagnostics. Heap, threads and repository usage. Also how the "
-     "add-on detects the NiFi version, so leaving it off disables version "
-     "reporting."),
+     "GET /system-diagnostics. Heap, threads, repository usage and the NiFi and "
+     "Java versions the views show. Leaving it off empties those columns; the "
+     "add-on still reads the NiFi version now and then to choose its endpoints."),
     ("endpoint_bulletin_board", "Bulletin board", "1",
      "GET /flow/bulletin-board. Individual bulletins, polled with a cursor so "
      "nothing is counted twice. The board keeps a short window, so an interval "

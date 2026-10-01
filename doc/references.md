@@ -1,8 +1,10 @@
 # Sourcetypes
 
-The different sourcetypes used by the application provide a corresponding type of information. Most come from the TA's modular input polling the NiFi REST API (the **pull** path); `nifi:reporting:task` and `nifi:reporting:bulletin` come from NiFi's own reporting tasks pushing to Splunk's HEC (the **push** path) — see [Compatibility and collection strategy](compatibility.md#choosing-a-collection-strategy).
+The different sourcetypes used by the application provide a corresponding type of information. Most come from the TA's modular input polling the NiFi REST API (the **pull** path); on the **push** path the flow inside NiFi sends the same `nifi:api:*` sourcetypes to Splunk's HEC, plus `nifi:reporting:task` and `nifi:reporting:bulletin` from NiFi's own reporting tasks — see [Compatibility and collection strategy](compatibility.md#choosing-a-collection-strategy).
 
 ### Logs
+
+Read from NiFi's log files by a Universal Forwarder, with the monitors the TA ships disabled. The push flow also sends the app, bootstrap and user logs, but not the request or deprecation logs.
 
 - **nifi:log:app** / **nifi:log:bootstrap**
 
@@ -14,7 +16,7 @@ The record of web activity where users interact with NiFi and the actions they c
 
 - **nifi:log:request**
 
-NiFi's request log (`nifi-request.log`), in the same NCSA combined format as Splunk's own `access_combined`. Unlike the other logs, each event carries its own timestamp — the request time, not the collection time.
+NiFi's request log (`nifi-request.log`), in the same NCSA combined format as Splunk's own `access_combined`. As with the other logs, each event's time is the one written in the line — here, the request time.
 
 - **nifi:log:deprecation**
 
@@ -60,7 +62,7 @@ Bulletins — errors and warnings raised by components — from `/flow/bulletin-
 
 - **nifi:api:version_info**
 
-The polled NiFi instance's version, used to gate version-dependent endpoints and fields.
+A record of the polled instance's NiFi, Java and operating system versions and build, written whenever `/system-diagnostics` is polled. The TA itself reads the version from `/system-diagnostics` to choose its endpoints.
 
 ### Reporting tasks (push)
 
@@ -81,7 +83,8 @@ The `NIFI` datamodel groups the sourcetypes by concept, so a panel does not need
 | `Bulletins` | Every bulletin; children `Bulletin_Board` (pull) and `Reporting_Bulletin` (push) | `nifi:api:bulletin_board`, `nifi:reporting:bulletin` |
 | `Throughput` | Data in, out and written by the whole flow, as `bytes_in`, `bytes_out`, `bytes_written`, `flowfiles_in`, `flowfiles_out`; children `Reporting_Task` (push) and `Flow_Metrics_Root` (pull) | `nifi:reporting:task`, the root group's `nifi:api:flow_metrics` |
 | `Component_Status` | One row per component status snapshot, as `component_label`, `component_kind` and the metrics in the `nifi_status_metrics` lookup; children `Processors` and `Process_Groups` | `nifi:api:*_status`, and the push flow's `nifi:api:*_history` |
-| `Flow_Status`, `System_Diagnostics`, `Node_Diagnostics`, `Cluster_Nodes`, `Flow_Metrics`, `Version_Info`, `Logs`, `Request_Log` | One sourcetype each | as named |
+| `Flow_Status`, `System_Diagnostics`, `Node_Diagnostics`, `Cluster_Nodes`, `Flow_Metrics`, `Version_Info`, `Request_Log` | One sourcetype each | as named |
+| `Logs` | The app, bootstrap, user and deprecation logs, with `level` | `nifi:log:*` except `nifi:log:request` |
 
 ## Thresholds
 

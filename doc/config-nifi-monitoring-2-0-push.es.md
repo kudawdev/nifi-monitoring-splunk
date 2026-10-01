@@ -43,9 +43,11 @@ el flow de NiFi.
     certificado o autenticación.
 
     Deja el HEC en HTTPS y configura NiFi para eso en su lugar: pon
-    `splunk_hec` (más abajo) en `https://<host>:8088/`, y agrégale a los
-    procesadores `InvokeHTTP` de **SendHEC** un SSL Context Service que
-    confíe en el certificado de Splunk.
+    `splunk_hec` (más abajo) en `https://<host>:8088`, y agrégale al
+    procesador `Send2Splunk-HEC` (un `InvokeHTTP`) de **SendHEC** un SSL
+    Context Service que confíe en el certificado de Splunk: un
+    **StandardSSLContextService** con solo **Truststore Filename**,
+    **Truststore Password** y **Truststore Type** completados.
 
     Destildar **Enable SSL** en **Settings > Data Inputs > HTTP Event
     Collector > Global Settings** es un cambio a nivel de toda la
@@ -82,9 +84,9 @@ hasta que los completes en el paso siguiente:
 
 Contiene:
 
--   Monitoring API
--   Monitoring Logs
--   Monitoring ReportingTask
+-   Monitoring - API
+-   Monitoring - Logs
+-   Monitoring - ReportingTask
 -   SendHEC
 
 ## 3. Configura los ajustes del flow
@@ -97,11 +99,11 @@ derecho > *Parameter Contexts*, y configura:
 | Parámetro | Qué es |
 |---|---|
 | `instance_name` | El `host` con que se envían los eventos `nifi:api:*`: el `host` de la fila de este NiFi en la lookup `instance`. **Obligatorio en un cluster**, donde la API se consulta desde el nodo primario — si queda vacío, cada evento lleva el nombre del nodo que sea primario en ese momento, que cambia en cada failover y no coincide con la lookup, así que el overview muestra el cluster como Down. Vacío usa el hostname del nodo, que es lo correcto para un NiFi de un solo nodo. Los logs siempre llevan el nombre del nodo |
-| `nifi_api_url` | La API REST de esta instancia, ej. `http://127.0.0.1:8080/nifi-api/` |
-| `nifi_path` | Directorio de instalación de NiFi, para leer sus logs. En cluster, la misma ruta en cada nodo |
+| `nifi_api_url` | La API REST de esta instancia, ej. `http://127.0.0.1:8080/nifi-api`, sin barra final. En cluster, una dirección en la que escuche el servidor web del nodo (`nifi.web.http.host`), que a menudo no es `127.0.0.1` |
+| `nifi_path` | Directorio de instalación de NiFi, para leer sus logs. Debe terminar en `/`, ej. `/opt/nifi/nifi-current/`: el flow le agrega `logs`. En cluster, la misma ruta en cada nodo |
 | `process_groups_list` | Ids de los grupos de procesos a monitorear, uno por línea |
 | `processors_list` | Ids de los procesadores a monitorear, uno por línea |
-| `splunk_hec` | El servidor Splunk con el input HEC, ej. `http://<host>:8088/` |
+| `splunk_hec` | El servidor Splunk con el input HEC, ej. `http://<host>:8088`, sin barra final |
 | `splunk_hec_token` | El token del [paso 1](#1-configura-el-http-event-collector-hec-en-splunk). Es un parámetro **sensible**, así que NiFi nunca lo escribe en un flow exportado |
 
 Dos parámetros se distribuyen vacíos a propósito, y hasta que tengan
@@ -111,16 +113,10 @@ propiedad requerida vacía es mejor que arrancarlo apuntando a los ids de
 componentes de otra instalación.
 
 !!! note "Si tu NiFi es HTTPS"
-    Poner `nifi_api_url` en `https://...` deja inválidos a los
-    procesadores `GetHTTP` de **Monitoring API**, con warnings de "SSL
-    context is invalid", hasta que tengan uno que confíe en el
-    certificado de tu propio NiFi. Agrega un **StandardSSLContextService**
-    dentro de los Controller Services de ese process group (clic derecho
-    sobre el process group > *Configure* > *Controller Services*),
-    completando solo **Truststore Filename**, **Truststore Password** y
-    **Truststore Type** — solo necesita confiar en el certificado de NiFi,
-    no presentar uno propio. Habilítalo, y asignalo en cada `GetHTTP`
-    inválido.
+    Usa la estrategia pull. Un NiFi con HTTPS siempre exige que sus
+    usuarios se autentiquen, y este flow llama a la API de NiFi sin
+    credenciales, así que cada llamada es rechazada — ver
+    [Elegir una estrategia de recolección](compatibility.es.md#elegir-una-estrategia-de-recoleccion).
 
 ## 4. Configura los componentes de NiFi
 
@@ -165,17 +161,6 @@ Agrega y configura estas tres:
     * Transport Protocol: `HTTP`
     * Record Writer: `JsonRecordSetWriter`
     * Output Format: `Record Format`
-
-!!! note "Si tu NiFi es HTTPS"
-    Que `nifi_api_url` sea `https://` hace que las URL de arriba también
-    lo sean, lo que agrega una propiedad **SSL Context Service** en las
-    dos reporting tasks. Asígnale un `StandardSSLContextService` con los
-    mismos valores de Truststore del [paso 3](#3-configura-los-ajustes-del-flow).
-    Crea este desde la misma ventana de **Controller Settings** donde
-    están estas reporting tasks, no desde el diálogo *Configure* del
-    process group: las reporting tasks son componentes a nivel de todo
-    NiFi y no ven un controller service que esté dentro de un process
-    group.
 
 Inicia cada reporting task:
 

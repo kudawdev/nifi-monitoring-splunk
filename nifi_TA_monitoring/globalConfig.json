@@ -264,7 +264,7 @@
                             "label": "System diagnostics",
                             "field": "endpoint_system_diagnostics",
                             "defaultValue": 1,
-                            "help": "GET /system-diagnostics. Heap, threads and repository usage. Also how the add-on detects the NiFi version, so leaving it off disables version reporting."
+                            "help": "GET /system-diagnostics. Heap, threads, repository usage and the NiFi and Java versions the views show. Leaving it off empties those columns; the add-on still reads the NiFi version now and then to choose its endpoints."
                         },
                         {
                             "type": "checkbox",

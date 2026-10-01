@@ -26,8 +26,8 @@ necesita una fuente que no habilitaste lo dice en su descripción.
 ## Overview
 
 La página de inicio: ¿está bien la flota ahora? Seis cifras y, debajo, una
-fila por instancia del [inventario](instance-lookup.es.md), de la peor a la
-mejor.
+fila por instancia que está en el [inventario](instance-lookup.es.md) o que
+envió datos, de la peor a la mejor.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/view_overview.png)
 
@@ -39,15 +39,16 @@ mejor.
 - **Instances**: cada fila tiene un estado de salud y su motivo —
   *Critical*, *Degraded*, *Stale* (sin datos por más tiempo del que permite
   su intervalo de polling), *No data* o *Healthy*. Una instancia del
-  inventario que nunca envió nada igual tiene su fila. Un clic en la fila
+  inventario que nunca envió nada igual tiene su fila; una que envía datos
+  pero no está en el inventario también, con cluster "—". Un clic en la fila
   la abre en **Instance**.
 - Boletines por nivel y FlowFiles en cola por instancia, en el rango de
   tiempo elegido.
 
 ## Instance
 
-Qué está pasando en una instancia. Abre en la primera del inventario, de
-la peor a la mejor, y el selector de arriba cambia a otra.
+Qué está pasando en una instancia. Abre en la peor de la lista del
+Overview, y el selector de arriba cambia a otra.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/view_instance.png)
 
@@ -102,13 +103,15 @@ el bulletin board de NiFi.
 
 ## Logs
 
-Los archivos de log de NiFi, enviados por un Universal Forwarder o por el
-flujo push.
+Los archivos de log de NiFi, enviados por un Universal Forwarder
+(cualquiera de ellos) o por el flujo push (solo los logs de aplicación,
+bootstrap y user — Deprecations y API requests necesitan el forwarder).
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/view_logs.png)
 
-- **Application**: `nifi-app.log` por nivel, y sus eventos. El cuadro de
-  búsqueda se aplica a los eventos.
+- **Application**: eventos por nivel en los logs de NiFi (todos menos el de
+  requests), y los eventos de `nifi-app.log`. El cuadro de búsqueda se
+  aplica a los eventos.
 - **Deprecations**: lo que una instancia usa y una versión posterior de
   NiFi elimina, desde `nifi-deprecation.log` — la lista a resolver antes de
   pasar a NiFi 2.x.
@@ -169,6 +172,7 @@ un panel está vacío.
 - Cuántos eventos ve la app a través del macro `index_nifi`, y en qué
   índice están realmente los datos de NiFi: si no coinciden, apunta el
   macro a ese índice (ver [Actualizar](upgrading.es.md)).
+- **Instances behind**: cuántas instancias están *Stale* o en *No data*.
 - Cuándo envió cada instancia cada tipo de dato por última vez, marcado
   como atrasado o faltante según su intervalo de polling. Una celda vacía
   es una fuente que no está habilitada para esa instancia, no un error.

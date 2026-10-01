@@ -41,10 +41,11 @@ NiFi's flow.
     certificate or authentication error.
 
     Keep the HEC on HTTPS and configure NiFi for it instead: set
-    `splunk_hec` (below) to `https://<host>:8088/`, and give the
-    `InvokeHTTP` processors under **SendHEC** an SSL Context Service that
-    trusts Splunk's certificate -- the same kind of controller service
-    used elsewhere on this page for NiFi's own certificate.
+    `splunk_hec` (below) to `https://<host>:8088`, and give the
+    `Send2Splunk-HEC` processor (an `InvokeHTTP`) under **SendHEC** an SSL
+    Context Service that trusts Splunk's certificate: a
+    **StandardSSLContextService** with only **Truststore Filename**,
+    **Truststore Password** and **Truststore Type** filled in.
 
     Turning **Enable SSL** off under **Settings > Data Inputs > HTTP
     Event Collector > Global Settings** is an instance-wide change: it
@@ -60,9 +61,9 @@ Import [`flow_definition/nifi-1.x/NiFiMonitoring.json`](https://github.com/kudaw
 Drag a *process group* box onto the canvas, select the import icon in the
 pop-up, and choose the file. The imported process group contains:
 
--   Monitoring API
--   Monitoring Logs
--   Monitoring ReportingTask
+-   Monitoring - API
+-   Monitoring - Logs
+-   Monitoring - ReportingTask
 -   SendHEC
 
 ## 3. Configure the flow's settings
@@ -71,24 +72,32 @@ Right-click on the NiFiMonitoring box > *Variables*, and set:
 
 | Setting | What it is |
 |---|---|
-| `instance_name` | The `host` the `nifi:api:*` events are sent with: the `host` of this NiFi's row in the `instance` lookup. **Required on a cluster**, where the API is polled from the primary node — left empty, each event carries the name of whichever node is primary, which changes on every failover and does not match the lookup, so the overview reports the cluster Down. Empty uses the node's hostname, which is right for a single NiFi. Logs always carry the node's name |
-| `nifi_api_url` | This instance's REST API, e.g. `http://127.0.0.1:8080/nifi-api/` |
-| `nifi_path` | NiFi's install directory, used to tail its logs. On a cluster, the same path on every node |
+| `instance_name` | The `host` the `nifi:api:*` events are sent with: the `host` of this NiFi's row in the `instance` lookup. Empty uses the node's hostname, which is right for a single NiFi. Logs always carry the node's name. On a cluster, see the warning below |
+| `nifi_api_url` | This instance's REST API, e.g. `http://127.0.0.1:8080/nifi-api`, with no trailing slash. On a cluster, an address the node's web server listens on (`nifi.web.http.host`), which is often not `127.0.0.1` |
+| `nifi_path` | NiFi's install directory, used to tail its logs. It must end in `/`, e.g. `/opt/nifi/nifi-current/`: the flow appends `logs` to it. On a cluster, the same path on every node |
 | `process_groups_list` | Ids of the process groups to monitor, one per line |
 | `processors_list` | Ids of the processors to monitor, one per line |
-| `splunk_hec` | The Splunk server with the HEC input, e.g. `http://<host>:8088/` |
+| `splunk_hec` | The Splunk server with the HEC input, e.g. `http://<host>:8088`, with no trailing slash |
 | `splunk_hec_token` | The token from [step 1](#1-configure-the-http-event-collector-hec-in-splunk) |
 
+!!! warning "On a cluster, make the API sources primary-only"
+    Unlike the 2.x flow, the 1.x flow runs every processor on every node,
+    so each node polls the cluster-wide API and sends its own copy: N nodes
+    mean N times the `nifi:api:*` events and N times the licence. Open
+    **Monitoring - API** and set *Execution* to **Primary node** on
+    `GetHTTP-flow_status`, `GetHTTP-system_diagnostics` and the
+    `GenerateFlowFile` inside each `GetHTTP-*_history` group — only those
+    sources, since a processor fed by a connection would strand what is
+    queued on the other nodes. Leave the logs branch on all nodes. Then set
+    `instance_name` to the cluster's `host` in the lookup: otherwise each
+    event carries the name of whichever node is primary, which changes on
+    every failover.
+
 !!! note "If NiFi serves HTTPS"
-    Setting `nifi_api_url` to `https://...` makes the `GetHTTP` processors
-    inside **Monitoring API** invalid, with "SSL context is invalid"
-    warnings, until they have one to trust NiFi's own certificate. Add a
-    **StandardSSLContextService** inside that process group's own
-    Controller Services (right-click the process group > *Configure* >
-    *Controller Services*), filling in only **Truststore Filename**,
-    **Truststore Password** and **Truststore Type** — it only needs to
-    trust NiFi's certificate, not present one of its own. Enable it, then
-    set it on each invalid `GetHTTP`.
+    Use the pull strategy instead. A NiFi serving HTTPS always requires
+    its users to authenticate, and this flow calls NiFi's API without
+    credentials, so every call is refused — see
+    [Choosing a collection strategy](compatibility.md#choosing-a-collection-strategy).
 
 ## 4. Configure the NiFi components
 
@@ -150,17 +159,6 @@ Configure each one:
     * Output Format: `Record Format`
 
 ![image](/nifi-monitoring-splunk/assets/images/nifi/metrics_reporting_task.png)
-
-!!! note "If NiFi serves HTTPS"
-    `nifi_api_url` being `https://` makes the URLs above `https://` too,
-    which adds an **SSL Context Service** property to both reporting
-    tasks. Set it to a `StandardSSLContextService` with the same
-    Truststore values as [step 3](#3-configure-the-flows-settings).
-    Create this one from the **Controller Settings** window these
-    reporting tasks are already in, not from the process group's
-    *Configure* dialog: reporting tasks are NiFi-wide components and
-    cannot see a controller service scoped to a process group, even
-    though it is the same NiFi and the same certificate.
 
 Start each reporting task: click **►** on each of them.
 

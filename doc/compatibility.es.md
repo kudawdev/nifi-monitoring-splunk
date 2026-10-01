@@ -47,8 +47,10 @@ Dos cosas existen solo en un cluster:
 - **En la estrategia push, solo el nodo primario consulta la API.** Un
   cluster no envía una copia de los mismos datos por cada nodo. El tail de
   logs sí corre en todos los nodos, porque los archivos de log son por
-  nodo, no por cluster. Esto lo maneja el flow de forma automática; no hay
-  nada que configurar.
+  nodo, no por cluster. El flow 2.x lo hace solo; el flow 1.x ejecuta todo
+  en todos los nodos, y sus fuentes de la API se tienen que poner en
+  *Primary node* a mano — ver
+  [Estrategia push (1.2)](configuration-push.es.md#3-configura-los-ajustes-del-flow).
 
 ## Elegir una estrategia de recolección
 
@@ -158,7 +160,7 @@ requiere instalar nada dentro de NiFi.
 |---|---|---|
 | Dirección de red requerida | Splunk → NiFi | NiFi → Splunk |
 | Autenticación de NiFi soportada | Ninguna, single-user o LDAP | **Únicamente ninguna** |
-| Qué se instala dentro de NiFi | Nada | Un process group (39 procesadores), 3 reporting tasks, 2 puertos de entrada Site-to-Site; un archivo de flow distinto por versión mayor de NiFi |
+| Qué se instala dentro de NiFi | Nada | Un process group (37 procesadores), 3 reporting tasks, 2 puertos de entrada Site-to-Site; un archivo de flow distinto por versión mayor de NiFi |
 
 ### Comparación de funcionalidades
 
@@ -166,10 +168,10 @@ requiere instalar nada dentro de NiFi.
 |---|---|---|
 | Flow status, diagnostics, status history | sí | sí |
 | Flow metrics (`/flow/metrics`) | sí | no |
-| Detección de versión de NiFi | sí | no |
+| Endpoints elegidos según la versión de NiFi | sí | no |
 | Bulletins individuales | sí, por polling | sí, sin pérdida |
 | `bulletinGroupName` / `bulletinGroupPath` | no | sí |
-| Archivos de log de NiFi | vía Universal Forwarder (ver abajo) | vía el flow |
+| Archivos de log de NiFi | vía Universal Forwarder (ver abajo) | app, bootstrap y user vía el flow; request y deprecation solo vía Universal Forwarder |
 
 Los bulletins son el único punto donde push es realmente mejor: una
 reporting task envía cada bulletin en el momento en que ocurre, mientras
@@ -190,7 +192,9 @@ Un forwarder maneja la rotación de logs y mantiene su propio checkpoint,
 y si Splunk queda inalcanzable encola en disco en lugar de generar
 presión sobre el mismo flow que NiFi usa para su trabajo real.
 
-`TailFile` dentro del flow sigue soportado para cuando un forwarder no es
+`TailFile` dentro del flow envía solo `nifi-app.log`, `nifi-bootstrap.log`
+y `nifi-user.log`: los logs de request y deprecation, que lee la vista
+**Logs**, necesitan el forwarder. Sigue soportado para cuando un forwarder no es
 una opción — por ejemplo, NiFi corriendo en un contenedor al que no se le
 puede agregar un sidecar.
 

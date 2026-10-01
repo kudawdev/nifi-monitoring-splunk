@@ -33,7 +33,7 @@ Events keep the `host` value you configured (the cluster's name) and add a `node
 Two things exist only on a cluster:
 
 - **Bulletins carry the node that raised them.** Framework bulletins (categories such as *Clustering* or *Primary Node*) describe the cluster itself rather than a component, so they have no source name.
-- **On the push strategy, only the primary node polls the API.** A cluster does not send one copy of the same data per node. Log tailing still runs on every node, because log files are per node, not cluster-wide. This is handled by the flow automatically; there is nothing to configure.
+- **On the push strategy, only the primary node polls the API.** A cluster does not send one copy of the same data per node. Log tailing still runs on every node, because log files are per node, not cluster-wide. The 2.x flow does this by itself; the 1.x flow runs everything on every node, and its API sources have to be set to *Primary node* by hand — see [Push strategy (1.2)](configuration-push.md#3-configure-the-flows-settings).
 
 ## Choosing a collection strategy
 
@@ -141,7 +141,7 @@ enabled, and it requires installing nothing inside NiFi.
 |---|---|---|
 | Network direction required | Splunk → NiFi | NiFi → Splunk |
 | NiFi authentication supported | None, single-user, or LDAP | **None only** |
-| What you install inside NiFi | Nothing | A process group (39 processors), 3 reporting tasks, 2 Site-to-Site input ports; one flow file per NiFi major version |
+| What you install inside NiFi | Nothing | A process group (37 processors), 3 reporting tasks, 2 Site-to-Site input ports; one flow file per NiFi major version |
 
 ### Feature comparison
 
@@ -149,10 +149,10 @@ enabled, and it requires installing nothing inside NiFi.
 |---|---|---|
 | Flow status, diagnostics, status history | yes | yes |
 | Flow metrics (`/flow/metrics`) | yes | no |
-| NiFi version detection | yes | no |
+| Endpoints chosen by NiFi version | yes | no |
 | Individual bulletins | yes, by polling | yes, without loss |
 | `bulletinGroupName` / `bulletinGroupPath` | no | yes |
-| NiFi log files | via Universal Forwarder (see below) | via the flow |
+| NiFi log files | via Universal Forwarder (see below) | app, bootstrap and user via the flow; request and deprecation only via Universal Forwarder |
 
 Bulletins are the one place push is genuinely better: a reporting task
 pushes each bulletin as it happens, while polling reads a board that only
@@ -172,7 +172,9 @@ A forwarder handles log rotation and keeps its own checkpoint, and if
 Splunk becomes unreachable it queues on disk instead of applying
 backpressure to the same flow NiFi uses for real work.
 
-`TailFile` inside the flow remains supported for when a forwarder is not
+`TailFile` inside the flow ships only `nifi-app.log`, `nifi-bootstrap.log`
+and `nifi-user.log`: the request and deprecation logs, which the **Logs**
+view reads, need the forwarder. It remains supported for when a forwarder is not
 an option — NiFi running in a container you cannot add a sidecar to, for
 example.
 

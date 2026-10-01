@@ -84,6 +84,6 @@ value intact).
 
 ### Verified result
 
-Importing `nifi-2.x/NiFiMonitoring.json` into NiFi 2.11.0: 39 processors,
-37 valid. The two that are not are the `GenerateFlowFile` pair above; giving
-`processors_list` and `process_groups_list` any value takes it to 39 of 39.
+Importing `nifi-2.x/NiFiMonitoring.json` into NiFi 2.11.0: 37 processors,
+35 valid. The two that are not are the `GenerateFlowFile` pair above; giving
+`processors_list` and `process_groups_list` any value takes it to 37 of 37.

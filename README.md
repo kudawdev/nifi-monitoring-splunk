@@ -83,7 +83,8 @@ cd tests
 
 A scenario is a NiFi version and architecture; a strategy is how the data
 gets out of it, by the add-on pulling the REST API or by the flow pushing to
-the HEC. Every scenario is covered against both. Full detail in
+the HEC. Both strategies are covered, across NiFi lines and topologies,
+though not every scenario against both. Full detail in
 [tests/README.md](tests/README.md).
 
 ## Workflows

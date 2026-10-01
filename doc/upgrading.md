@@ -17,7 +17,9 @@ form when you open one.
 
 The `index_nifi` macro was `index=*`, which made every panel and the
 datamodel acceleration scan every event index on the instance. It now points
-at `index=nifi`, and the app ships that index.
+at `index=nifi`, and the app ships that index. On a distributed
+deployment the index has to exist on the indexers too: the app is
+installed on the search head, so deploy its `indexes.conf` to them as well.
 
 **If your NiFi data is somewhere else, every dashboard will be empty.** Do
 not guess where: open **Configuration > Collection Health**, which reports how many events
@@ -41,7 +43,7 @@ existed. **An input pointing at a NiFi with a self-signed certificate will
 stop connecting.** The error says what to do; you have two options:
 
 - point **CA bundle path** at a bundle that trusts the certificate, or
-- clear **Verify TLS certificate**, accepting an unverified connection.
+- clear **Verify the TLS certificate**, accepting an unverified connection.
 
 ### `nifi:api:site_to_site` is no longer collected
 
@@ -159,9 +161,9 @@ The TA writes the status history as `nifi:api:processors_status` and
    **Apps > Manage Apps > Install app from file**, pick the new `.tar.gz`,
    and tick **Upgrade app. Checking this will overwrite the existing version
    of this app.** They must land on the same version number. Then restart
-   Splunk (**Settings > Server controls > Restart Splunk**): both apps add or
-   change REST endpoints (`restmap.conf`, `web.conf`), which only take effect
-   after a restart.
+   Splunk (**Settings > Server controls > Restart Splunk**): the TA adds REST
+   endpoints (`restmap.conf`, `web.conf`), which only take effect after a
+   restart.
 
 3. **If the index from step 1 is not `nifi`, override the macro.** Edit
    `local/macros.conf` under `nifi_monitoring` (or use
@@ -185,9 +187,8 @@ The TA writes the status history as `nifi:api:processors_status` and
 
 6. **Re-save the password on every input that authenticates.** Open it,
    overwrite the password field -- it shows as a mask, typing over it is
-   what actually moves it -- and save. Check
-   **Settings > Server settings > Logging**, or `index=_internal
-   nifi_TA_monitoring "1.x add-on"`, for which inputs still say
+   what actually moves it -- and save. Search `index=_internal
+   nifi_TA_monitoring "1.x add-on"` for which inputs still say
    `Input <name> is using the credential the 1.x add-on stored...`: those are
    the ones still pending.
 
@@ -211,8 +212,8 @@ The TA writes the status history as `nifi:api:processors_status` and
 - **`nifi:log:deprecation`**, which records the deprecated components an
   instance still uses. Enable it before planning a move to NiFi 2.x.
 - **`nifi:log:request`**, NiFi's HTTP access log.
-- An **inventory panel** showing each instance's NiFi version, Java version
-  and which collection strategy its data arrived by.
+- An **inventory panel** showing each instance's NiFi version and Java
+  version.
 - **Eight alerts**, shipped disabled: instance without data, repository
   filling up, sustained high heap, ERROR bulletin spike, backpressure,
   cluster node disconnected, versioned flow sync failure and TA HTTP errors.

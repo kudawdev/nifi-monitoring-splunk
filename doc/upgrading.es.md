@@ -17,7 +17,10 @@ el formulario nuevo solo aparece cuando abres uno.
 
 El macro `index_nifi` era `index=*`, lo que hacía que cada panel y la
 aceleración del datamodel escanearan todos los índices de eventos de la
-instancia. Ahora apunta a `index=nifi`, y la app trae ese índice.
+instancia. Ahora apunta a `index=nifi`, y la app trae ese índice. En un despliegue
+distribuido el índice tiene que existir también en los indexers: la app se
+instala en el search head, así que despliega su `indexes.conf` también en
+ellos.
 
 **Si tus datos de NiFi están en otro lado, todos los dashboards van a quedar
 vacíos.** No adivines dónde: abre **Configuration > Collection Health**, que informa
@@ -41,7 +44,7 @@ opción existiera. **Un input que apunte a un NiFi con certificado autofirmado
 va a dejar de conectar.** El error dice qué hacer; tienes dos opciones:
 
 - apuntar **CA bundle path** a un bundle que valide el certificado, o
-- destildar **Verify TLS certificate**, aceptando una conexión sin verificar.
+- destildar **Verify the TLS certificate**, aceptando una conexión sin verificar.
 
 ### `nifi:api:site_to_site` deja de recolectarse
 
@@ -161,8 +164,8 @@ sobre `nifi:api:*_history` siguen funcionando solo para el camino push.
    y marca **Upgrade app. Checking this will overwrite the existing version
    of this app.** Las dos tienen que quedar en el mismo número de versión.
    Después reinicia Splunk (**Settings > Server controls > Restart
-   Splunk**): las dos apps agregan o cambian endpoints REST (`restmap.conf`,
-   `web.conf`), que solo toman efecto después de reiniciar.
+   Splunk**): la TA agrega endpoints REST (`restmap.conf`, `web.conf`), que
+   solo toman efecto después de reiniciar.
 
 3. **Si el índice del paso 1 no es `nifi`, sobrescribe el macro.** Edita
    `local/macros.conf` dentro de `nifi_monitoring` (o usa
@@ -186,9 +189,9 @@ sobre `nifi:api:*_history` siguen funcionando solo para el camino push.
 
 6. **Vuelve a guardar la contraseña en cada input que autentica.** Ábrelo,
    sobrescribe el campo de contraseña -- se muestra como una máscara,
-   escribir encima es lo que realmente la mueve -- y guarda. Revisa
-   **Settings > Server settings > Logging**, o `index=_internal
-   nifi_TA_monitoring "1.x add-on"`, para ver qué inputs todavía dicen
+   escribir encima es lo que realmente la mueve -- y guarda. Busca
+   `index=_internal nifi_TA_monitoring "1.x add-on"` para ver qué inputs
+   todavía dicen
    `Input <name> is using the credential the 1.x add-on stored...`: esos son
    los que faltan.
 
@@ -215,7 +218,7 @@ sobre `nifi:api:*_history` siguen funcionando solo para el camino push.
   2.x.
 - **`nifi:log:request`**, el log de acceso HTTP de NiFi.
 - Un **panel de inventario** con la versión de NiFi y de Java de cada
-  instancia, y con qué estrategia llegaron sus datos.
+  instancia.
 - **Ocho alertas**, deshabilitadas al instalar: instancia sin datos,
   repositorio llenándose, heap alto sostenido, pico de boletines ERROR,
   backpressure, nodo de cluster desconectado, fallo de sincronización de un

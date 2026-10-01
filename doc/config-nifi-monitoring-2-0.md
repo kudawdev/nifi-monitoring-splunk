@@ -7,7 +7,7 @@ title: Pull strategy (2.0)
 Step-by-step setup on the Splunk side, from the apps already installed to
 working dashboards. This page assumes the **pull** strategy (the TA
 polling NiFi's REST API) — the default and recommended one. For **push**,
-see [Push strategy: Direct Sending](configuration-push.md) instead.
+see [Push strategy: Direct Sending (2.0)](config-nifi-monitoring-2-0-push.md) instead.
 
 Not sure which strategy you need? See
 [Choosing a collection strategy](compatibility.md#choosing-a-collection-strategy)
@@ -48,17 +48,18 @@ Then, under **Advanced**, set:
   index (`nifi_monitoring/default/indexes.conf`), and every dashboard
   reads through the `index_nifi` macro, which points at `index=nifi` by
   default. Leaving this field at its default value breaks every panel.
+- **Host field value** — leave it empty for a single NiFi, and the instance
+  name above is used. **On a cluster, set it to the cluster's name**, the
+  same `host` as its row in the [instance lookup](instance-lookup.md); the
+  add-on names each node in a separate field.
 
 Leave every other section (Endpoints, Status History, Flow metrics, Custom
 endpoints) at its default for a first setup — see
 [Pull strategy: Splunk Data Input NiFi](configuration-pull.md) for what each
 one does.
 
-Click **Next** to create the input.
-
-![image](/nifi-monitoring-splunk/assets/images/splunk/data_input_success.png)
-
-It now shows up as a row under **Inputs**:
+Click **Add** to create the input. It now shows up as a row under
+**Inputs**:
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/ta_inputs_created.png)
 
@@ -97,7 +98,8 @@ thing you can do for panel latency, at the cost of a summary index:
 
 ## Next
 
-- Your collection strategy has fields not covered here (custom endpoints,
-  flow metrics, log sourcetypes): [Pull strategy](configuration-pull.md) /
-  [Push strategy](configuration-push.md).
+- Fields not covered here (custom endpoints, flow metrics):
+  [Pull strategy](configuration-pull.md). Log sourcetypes:
+  [Setting up the Universal Forwarder](compatibility.md#setting-up-the-universal-forwarder).
+  The other strategy: [Push strategy (2.0)](config-nifi-monitoring-2-0-push.md).
 - Sourcetype and field reference: [Data Reference](references.md).

@@ -7,7 +7,7 @@ title: Estrategia pull (2.0)
 Guía paso a paso del lado de Splunk, desde las apps ya instaladas hasta
 los dashboards con datos. Esta página asume la estrategia **pull** (el TA
 consultando la API REST de NiFi) — la opción por defecto y recomendada.
-Para **push**, ver [Estrategia push: Envío Directo](configuration-push.es.md)
+Para **push**, ver [Estrategia push: Envío Directo (2.0)](config-nifi-monitoring-2-0-push.es.md)
 en su lugar.
 
 ¿No sabes qué estrategia necesitas? Revisa
@@ -51,6 +51,11 @@ Después, en **Advanced**, configura:
   dashboards leen a través de la macro `index_nifi`, que apunta a
   `index=nifi` por defecto. Dejar este campo en su valor por defecto rompe
   todos los paneles.
+- **Host field value** — déjalo vacío para un NiFi de un solo nodo, y se
+  usa el nombre de instancia de arriba. **En un cluster, pon el nombre del
+  cluster**, el mismo `host` de su fila en el
+  [lookup de instancias](instance-lookup.es.md); el add-on nombra cada nodo
+  en un campo aparte.
 
 Deja el resto de las secciones (Endpoints, Status History, Flow metrics,
 Custom endpoints) en su valor por defecto para una primera
@@ -101,9 +106,9 @@ Splunk mantiene aparte un índice de resumen que ocupa espacio en disco.
 
 ## Siguiente paso
 
-- Tu estrategia de recolección tiene campos que no cubre esta página
-  (custom endpoints, flow metrics, sourcetypes de log):
-  [Estrategia pull](configuration-pull.es.md) /
-  [Estrategia push](configuration-push.es.md).
+- Campos que no cubre esta página (custom endpoints, flow metrics):
+  [Estrategia pull](configuration-pull.es.md). Sourcetypes de log:
+  [Configurar el Universal Forwarder](compatibility.es.md#configurar-el-universal-forwarder).
+  La otra estrategia: [Estrategia push (2.0)](config-nifi-monitoring-2-0-push.es.md).
 - Referencia de sourcetypes y campos:
   [Referencia de Datos](references.es.md).

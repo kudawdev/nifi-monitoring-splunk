@@ -1,14 +1,14 @@
 # Instance Lookup
 
-Configure this regardless of app version or collection strategy —
-without it, no dashboard panel shows data.
+Configure this regardless of app version or collection strategy. The
+inventory gives each instance its cluster and, optionally, thresholds of its
+own, and it is what makes an instance that has never sent data show as
+*No data* instead of missing. Without it, instances that send data still
+show up, with cluster "—" and the app-wide thresholds.
 
 Requires [NIFI Monitoring installed](installation.md).
 
-Open the **Nifi Monitoring** app (not the TA). It opens on the Overview,
-which stays empty until this inventory has a row per instance.
-
-In the left sidebar, go to **Configuration > NiFi Instances**. This opens
+Open the **Nifi Monitoring** app (not the TA). In the app menu, go to **Configuration > NiFi Instances**. This opens
 the lookup editor on the `instance` lookup:
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/instance_lookup_editor.png)
@@ -28,8 +28,8 @@ index=* sourcetype=nifi* | dedup host | table host
     1. Push strategy: start the NiFi flow — see [Start the flow](configuration-push.md#5-start-the-flow).
     2. Pull strategy: the configured data inputs must be enabled.
 
-Add one row per host, with the cluster it belongs to. Once every host has
-a row, the Overview panel picks it up.
+Add one row per host, with the cluster it belongs to. The Overview picks a
+new row up on its next refresh.
 
 The other columns are optional thresholds for that instance alone — leave
 them empty to use the app-wide default:

@@ -26,7 +26,8 @@ needs a source you have not enabled says which one in its description.
 ## Overview
 
 The landing page: is the fleet healthy right now? Six figures, then one row
-per instance in the [inventory](instance-lookup.md), worst first.
+per instance that is in the [inventory](instance-lookup.md) or has sent data,
+worst first.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/view_overview.png)
 
@@ -37,15 +38,16 @@ per instance in the [inventory](instance-lookup.md), worst first.
 - **Instances**: each row has a health state and the reason for it —
   *Critical*, *Degraded*, *Stale* (no data for longer than its polling
   interval allows), *No data* or *Healthy*. An instance listed in the
-  inventory that has never sent anything still gets its row. Click a row
+  inventory that has never sent anything still gets its row; one that sends
+  data but is not listed gets its row too, with cluster "—". Click a row
   to open it in **Instance**.
 - Bulletins by level and FlowFiles queued per instance, over the selected
   time range.
 
 ## Instance
 
-What is happening on one instance. It opens on the first one of the
-inventory, worst first, and the selector at the top switches to another.
+What is happening on one instance. It opens on the worst one of the
+Overview list, and the selector at the top switches to another.
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/view_instance.png)
 
@@ -98,13 +100,15 @@ as an id on the pull path, which is all NiFi's bulletin board provides.
 
 ## Logs
 
-NiFi's own log files, shipped by a Universal Forwarder or by the push
-flow.
+NiFi's own log files, shipped by a Universal Forwarder (any of them) or by
+the push flow (application, bootstrap and user logs only — Deprecations and
+API requests need the forwarder).
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/view_logs.png)
 
-- **Application**: `nifi-app.log` by level, and its events. The search box
-  applies to the events.
+- **Application**: events by level across NiFi's logs (all but the request
+  log), and the `nifi-app.log` events. The search box applies to the
+  events.
 - **Deprecations**: what an instance uses that a later NiFi removes, from
   `nifi-deprecation.log` — the list to clear before moving to NiFi 2.x.
 - **API requests**: `nifi-request.log` by status class, and the requests
@@ -164,6 +168,7 @@ empty.
 - How many events the app can see through the `index_nifi` macro, and in
   which index the NiFi data actually is: if they differ, point the macro
   at that index (see [Upgrading](upgrading.md)).
+- **Instances behind**: how many instances are *Stale* or have *No data*.
 - When each instance last sent each kind of data, marked late or missing
   against its polling interval. A blank cell is a source that is not
   enabled for that instance, not an error.

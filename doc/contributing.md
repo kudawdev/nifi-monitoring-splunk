@@ -1,12 +1,16 @@
 # Contributing
 
-Thank you for your interest in our content, if you want to contribute to the development of this project the best way to do it is by sending a well structured and complete Pull Request, with tests and documentation. Try to be focused, doing more than one thing in a single request will make it harder to process.
+If you want to contribute to the development of this project, the best way
+is a well structured and complete pull request, with tests and
+documentation. Keep it focused: more than one thing in the same request makes
+it harder to review.
 
 ## Running the tests
 
-The add-on is generated, so the first step is building it. Nothing else needs
-installing: the unit tests use the standard library only, and the integration
-environment needs Docker and nothing more.
+The add-on is generated, so the first step is building it. You need Docker
+and Python 3, and network access the first time: the build installs
+`ucc-gen` from PyPI into a virtualenv of its own. The unit tests use the
+standard library only.
 
 ```
 ./tests/build-ta.sh
@@ -15,8 +19,8 @@ cd tests/unit && python3 -m unittest discover -v
 
 The integration harness brings up NiFi and Splunk in containers and checks
 that data actually arrives and that the fields come out. It covers ten
-scenarios — every supported NiFi version and architecture, against both ways
-of getting data out of NiFi:
+scenarios — NiFi 1.23.2, 1.28.1, 2.0.0 and 2.11.0, standalone, multi-instance
+and cluster, across both ways of getting data out of NiFi:
 
 ```
 cd tests
@@ -28,12 +32,16 @@ cd tests
 `run.sh` exits non-zero if anything fails, and tears the stack down
 afterwards. `--keep` leaves it running so you can look around, and `--bare`
 brings up the machines without installing anything, which is how to exercise
-the installation itself.
+the installation itself; it leaves them running too.
+
+`make check` runs the lint, the unit tests, AppInspect and the integration
+scenarios in the same image CI uses; `make integration` runs only the
+scenarios.
 
 A pull request does not need the whole matrix. Run the unit tests, plus the
 one scenario closest to what you changed — `./run.sh --list` says what each
-one covers. CI runs four scenarios on a pull request and all ten on a
-release.
+one covers. CI runs by hand, not on every pull request: the dev and testing
+workflows run four scenarios, and the release workflow all ten.
 
 There is more detail, including the known rough edges of the environment, in
 [`tests/README.md`](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/tests/README.md).
