@@ -51,6 +51,7 @@ cd tests
 ./run.sh nifi1-legacy      # NiFi 1.23.2 + Splunk 9.4, unsecured
 ./run.sh --keep nifi2-current   # leave the stack up to poke at it
 ./run.sh --bare cluster    # the environment only, for installing by hand
+./run.sh --showcase multi-instance   # a healthy fleet, for screenshots
 ```
 
 Or a whole set at once, which is what `make check` calls:
@@ -111,6 +112,24 @@ While a stack is up:
 | Splunk HEC | http://localhost:38088 (token in `.env`) |
 | NiFi (unsecured profiles) | http://localhost:38080/nifi |
 | NiFi (single-user profiles) | https://localhost:38443/nifi (`admin` / see `env/nifi-singleuser.env`) |
+
+## Screenshots for the documentation
+
+```
+./run.sh --showcase multi-instance   # Overview, Instance, Components, Bulletins, Logs, Alerts, Collection Health
+./run.sh --showcase cluster          # Cluster
+```
+
+The other profiles build a deliberately broken workload — an invalid
+component, a processor that fails on every run, a connection pinned at its
+backpressure limit — because the assertions need every panel to have
+something to show. That is the wrong picture for the documentation: every
+instance reads *Degraded*. `--showcase` builds a healthy one instead (two
+process groups with steady traffic, a queue that fills and drains, a WARN
+bulletin every five minutes), gives the inventory the cluster names
+`production` and `edge`, enables the alerts the app ships, skips the
+assertions and leaves the stack up. Give it half an hour before taking the
+screenshots, so the charts have a history.
 
 Run the assertions against a stack you started yourself:
 

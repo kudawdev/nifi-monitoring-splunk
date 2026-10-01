@@ -29,6 +29,9 @@ SOURCE = os.path.join(TESTS_DIR, "provision", "splunk", "instance.csv")
 #: configured instance and reports one that sends nothing as Down, so a stray
 #: row shows up as a phantom instance that is permanently down.
 SOURCE_MULTI = os.path.join(TESTS_DIR, "provision", "splunk", "instance-multi.csv")
+#: run.sh --showcase: the same hosts, with cluster names that read like a
+#: real fleet in the documentation's screenshots.
+SOURCE_SHOWCASE = os.path.join(TESTS_DIR, "provision", "splunk", "instance-showcase.csv")
 
 
 def wait_for_kvstore(service, timeout=300, interval=5):
@@ -80,6 +83,11 @@ def main():
     for source in sources:
         with open(source) as handle:
             rows.extend(csv.DictReader(handle))
+    if env("SHOWCASE", "0") == "1":
+        with open(SOURCE_SHOWCASE) as handle:
+            names = {row["host"]: row["cluster"] for row in csv.DictReader(handle)}
+        for row in rows:
+            row["cluster"] = names.get(row["host"], row["cluster"])
 
     for row in rows:
         record = {k: v for k, v in row.items() if v not in (None, "")}

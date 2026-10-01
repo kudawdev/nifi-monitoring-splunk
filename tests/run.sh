@@ -7,6 +7,7 @@
 #   ./run.sh --list cluster       # everything about one profile
 #   ./run.sh --keep nifi2-current # leave the stack running afterwards
 #   ./run.sh --bare cluster       # the environment only: install nothing
+#   ./run.sh --showcase multi-instance  # a healthy fleet for screenshots, kept up
 #
 # Exits non-zero if the stack fails to come up or any assertion fails, so CI
 # can call it directly.
@@ -28,6 +29,10 @@ KEEP=0
 # the form is the one path nothing here exercises, and it is the first thing
 # every user does.
 BARE=0
+# --showcase installs everything but builds a healthy workload instead of the
+# deliberately broken one the assertions need, and skips the assertions: it
+# is the environment the documentation's screenshots are taken from.
+SHOWCASE=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -55,6 +60,7 @@ PY
             exit 0
             ;;
         --keep) KEEP=1; shift ;;
+        --showcase) SHOWCASE=1; KEEP=1; shift ;;
         --bare) BARE=1; KEEP=1; shift ;;
         -h|--help) sed -n '2,12p' "$0" | sed 's/^# \?//'; exit 0 ;;
         -*) echo "unknown option: $1" >&2; exit 2 ;;
@@ -82,6 +88,9 @@ fi
 python3 matrix.py "$PROFILE" > .env
 if [ "$BARE" -eq 1 ]; then
     echo "BARE=1" >> .env
+fi
+if [ "$SHOWCASE" -eq 1 ]; then
+    echo "SHOWCASE=1" >> .env
 fi
 cat .env | sed 's/^/    /'
 set -a; . ./.env; set +a
@@ -166,6 +175,23 @@ python3 integration/provision_workload.py
 if [ "${COLLECTION:-pull}" = "hec" ]; then
     echo "==> installing and starting the flow inside NiFi (push path)"
     python3 integration/provision_flow.py
+fi
+
+if [ "$SHOWCASE" -eq 1 ]; then
+    echo "==> enabling the alerts the app ships"
+    python3 integration/enable_alerts.py
+    cat <<SHOWCASE_NOTES
+
+==> showcase environment up: a healthy workload, no assertions run.
+
+    Splunk      http://localhost:${SPLUNK_WEB_PORT:-38000}   admin / ${SPLUNK_PASSWORD:-Password123}
+
+    Let it collect for half an hour or so before taking screenshots, so the
+    charts have a history. Tear down with:
+      cd tests && docker compose --profile '*' down -v
+
+SHOWCASE_NOTES
+    exit 0
 fi
 
 echo "==> running assertions"
