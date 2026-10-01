@@ -3,7 +3,7 @@
   "displayName": "NIFI",
   "description": "",
   "objectSummary": {
-    "Event-Based": 8,
+    "Event-Based": 11,
     "Transaction-Based": 0,
     "Search-Based": 0
   },
@@ -265,559 +265,59 @@
       "lineage": "Flow_Status"
     },
     {
-      "objectName": "Reporting_Task",
-      "displayName": "Reporting Task",
-      "parentName": "BaseEvent",
-      "comment": "",
-      "fields": [
-        {
-          "fieldName": "ActiveThreads",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "ActiveThreads",
-          "comment": ""
-        },
-        {
-          "fieldName": "BytesQueued",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "BytesQueued",
-          "comment": ""
-        },
-        {
-          "fieldName": "BytesReadLast5Minutes",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "BytesReadLast5Minutes",
-          "comment": ""
-        },
-        {
-          "fieldName": "BytesReceivedLast5Minutes",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "BytesReceivedLast5Minutes",
-          "comment": ""
-        },
-        {
-          "fieldName": "BytesSentLast5Minutes",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "BytesSentLast5Minutes",
-          "comment": ""
-        },
-        {
-          "fieldName": "BytesWrittenLast5Minutes",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "BytesWrittenLast5Minutes",
-          "comment": ""
-        },
-        {
-          "fieldName": "FlowFilesQueued",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "FlowFilesQueued",
-          "comment": ""
-        },
-        {
-          "fieldName": "FlowFilesReceivedLast5Minutes",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "FlowFilesReceivedLast5Minutes",
-          "comment": ""
-        },
-        {
-          "fieldName": "FlowFilesSentLast5Minutes",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "FlowFilesSentLast5Minutes",
-          "comment": ""
-        },
-        {
-          "fieldName": "TotalTaskDurationNanoSeconds",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "TotalTaskDurationNanoSeconds",
-          "comment": ""
-        },
-        {
-          "fieldName": "TotalTaskDurationSeconds",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "TotalTaskDurationSeconds",
-          "comment": ""
-        },
-        {
-          "fieldName": "appid",
-          "owner": "Reporting_Task",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "appid",
-          "comment": ""
-        },
-        {
-          "fieldName": "availableCores",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "availableCores",
-          "comment": ""
-        },
-        {
-          "fieldName": "instanceid",
-          "owner": "Reporting_Task",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "instanceid",
-          "comment": ""
-        },
-        {
-          "fieldName": "jvmdaemon_thread_count",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "jvmdaemon_thread_count",
-          "comment": ""
-        },
-        {
-          "fieldName": "jvmfile_descriptor_usage",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "jvmfile_descriptor_usage",
-          "comment": ""
-        },
-        {
-          "fieldName": "jvmheap_usage",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "jvmheap_usage",
-          "comment": ""
-        },
-        {
-          "fieldName": "jvmheap_used",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "jvmheap_used",
-          "comment": ""
-        },
-        {
-          "fieldName": "jvmnon_heap_usage",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "jvmnon_heap_usage",
-          "comment": ""
-        },
-        {
-          "fieldName": "jvmthread_count",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "jvmthread_count",
-          "comment": ""
-        },
-        {
-          "fieldName": "jvmthread_statesblocked",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "jvmthread_statesblocked",
-          "comment": ""
-        },
-        {
-          "fieldName": "jvmthread_statesrunnable",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "jvmthread_statesrunnable",
-          "comment": ""
-        },
-        {
-          "fieldName": "jvmthread_statesterminated",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "jvmthread_statesterminated",
-          "comment": ""
-        },
-        {
-          "fieldName": "jvmthread_statestimed_waiting",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "jvmthread_statestimed_waiting",
-          "comment": ""
-        },
-        {
-          "fieldName": "jvmuptime",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "jvmuptime",
-          "comment": ""
-        },
-        {
-          "fieldName": "loadAverage1min",
-          "owner": "Reporting_Task",
-          "type": "number",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "loadAverage1min",
-          "comment": ""
-        },
-        {
-          "fieldName": "cluster",
-          "owner": "Reporting_Task",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "cluster",
-          "comment": ""
-        },
-        {
-          "fieldName": "_time",
-          "owner": "BaseEvent",
-          "type": "timestamp",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "_time",
-          "comment": ""
-        },
-        {
-          "fieldName": "host",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "host",
-          "comment": ""
-        },
-        {
-          "fieldName": "source",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "source",
-          "comment": ""
-        },
-        {
-          "fieldName": "sourcetype",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "sourcetype",
-          "comment": ""
-        }
-      ],
-      "calculations": [],
-      "constraints": [
-        {
-          "search": "`index_nifi` sourcetype=\"nifi:reporting:task\"",
-          "owner": "Reporting_Task"
-        }
-      ],
-      "lineage": "Reporting_Task"
-    },
-    {
-      "objectName": "Reporting_Bulletin",
-      "displayName": "Reporting Bulletin",
-      "parentName": "BaseEvent",
-      "comment": "",
-      "fields": [
-        {
-          "fieldName": "bulletinCategory",
-          "owner": "Reporting_Bulletin",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "bulletinCategory",
-          "comment": ""
-        },
-        {
-          "fieldName": "bulletinGroupId",
-          "owner": "Reporting_Bulletin",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "bulletinGroupId",
-          "comment": ""
-        },
-        {
-          "fieldName": "bulletinGroupName",
-          "owner": "Reporting_Bulletin",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "bulletinGroupName",
-          "comment": ""
-        },
-        {
-          "fieldName": "bulletinGroupPath",
-          "owner": "Reporting_Bulletin",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "bulletinGroupPath",
-          "comment": ""
-        },
-        {
-          "fieldName": "bulletinLevel",
-          "owner": "Reporting_Bulletin",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "bulletinLevel",
-          "comment": ""
-        },
-        {
-          "fieldName": "bulletinSourceName",
-          "owner": "Reporting_Bulletin",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "bulletinSourceName",
-          "comment": ""
-        },
-        {
-          "fieldName": "bulletinSourceType",
-          "owner": "Reporting_Bulletin",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "bulletinSourceType",
-          "comment": ""
-        },
-        {
-          "fieldName": "cluster",
-          "owner": "Reporting_Bulletin",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "cluster",
-          "comment": ""
-        },
-        {
-          "fieldName": "_time",
-          "owner": "BaseEvent",
-          "type": "timestamp",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "_time",
-          "comment": ""
-        },
-        {
-          "fieldName": "host",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "host",
-          "comment": ""
-        },
-        {
-          "fieldName": "source",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "source",
-          "comment": ""
-        },
-        {
-          "fieldName": "sourcetype",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "sourcetype",
-          "comment": ""
-        }
-      ],
-      "calculations": [],
-      "constraints": [
-        {
-          "search": "`index_nifi` sourcetype=\"nifi:reporting:bulletin\"",
-          "owner": "Reporting_Bulletin"
-        }
-      ],
-      "lineage": "Reporting_Bulletin"
-    },
-    {
       "objectName": "System_Diagnostics",
       "displayName": "System Diagnostics",
       "parentName": "BaseEvent",
       "comment": "",
       "fields": [
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.availableProcessors",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.availableProcessors",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.processorLoadAverage",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.processorLoadAverage",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.daemonThreads",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.daemonThreads",
+          "comment": ""
+        },
+        {
+          "fieldName": "systemDiagnostics.aggregateSnapshot.totalThreads",
+          "owner": "System_Diagnostics",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "systemDiagnostics.aggregateSnapshot.totalThreads",
+          "comment": ""
+        },
         {
           "fieldName": "systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage.freeSpaceBytes",
           "owner": "System_Diagnostics",
@@ -1149,6 +649,28 @@
           "comment": "",
           "calculationType": "Eval",
           "expression": "if(isnotnull('systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.usedSpaceBytes'),round(('systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.usedSpaceBytes'*100)/'systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage.totalSpaceBytes',2),\"no\")"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "heap_pct",
+              "owner": "System_Diagnostics",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "heap_pct",
+              "comment": ""
+            }
+          ],
+          "calculationID": "uw58ro3x4e3",
+          "owner": "System_Diagnostics",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "round('systemDiagnostics.aggregateSnapshot.usedHeapBytes' * 100 / 'systemDiagnostics.aggregateSnapshot.maxHeapBytes', 1)"
         }
       ],
       "constraints": [
@@ -1158,6 +680,1424 @@
         }
       ],
       "lineage": "System_Diagnostics"
+    },
+    {
+      "objectName": "Bulletins",
+      "displayName": "Bulletins",
+      "parentName": "BaseEvent",
+      "comment": "Every bulletin, whichever way it arrived: the TA's bulletin-board poll (pull) or the SiteToSiteBulletinReportingTask (push). Panels query this object, never a child.",
+      "fields": [
+        {
+          "fieldName": "bulletinCategory",
+          "owner": "Bulletins",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "bulletinCategory",
+          "comment": ""
+        },
+        {
+          "fieldName": "bulletinLevel",
+          "owner": "Bulletins",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "bulletinLevel",
+          "comment": ""
+        },
+        {
+          "fieldName": "bulletinSourceName",
+          "owner": "Bulletins",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "bulletinSourceName",
+          "comment": ""
+        },
+        {
+          "fieldName": "bulletinSourceId",
+          "owner": "Bulletins",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "bulletinSourceId",
+          "comment": ""
+        },
+        {
+          "fieldName": "bulletinSourceType",
+          "owner": "Bulletins",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "bulletinSourceType",
+          "comment": ""
+        },
+        {
+          "fieldName": "bulletinGroupId",
+          "owner": "Bulletins",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "bulletinGroupId",
+          "comment": ""
+        },
+        {
+          "fieldName": "bulletinMessage",
+          "owner": "Bulletins",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "bulletinMessage",
+          "comment": ""
+        },
+        {
+          "fieldName": "cluster",
+          "owner": "Bulletins",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "cluster",
+          "comment": ""
+        },
+        {
+          "fieldName": "_time",
+          "owner": "BaseEvent",
+          "type": "timestamp",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "_time",
+          "comment": ""
+        },
+        {
+          "fieldName": "host",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "host",
+          "comment": ""
+        },
+        {
+          "fieldName": "source",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "source",
+          "comment": ""
+        },
+        {
+          "fieldName": "sourcetype",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "sourcetype",
+          "comment": ""
+        }
+      ],
+      "calculations": [],
+      "constraints": [
+        {
+          "search": "`index_nifi` sourcetype IN (\"nifi:api:bulletin_board\", \"nifi:reporting:bulletin\")",
+          "owner": "Bulletins"
+        }
+      ],
+      "lineage": "Bulletins"
+    },
+    {
+      "objectName": "Bulletin_Board",
+      "displayName": "Bulletin Board (pull)",
+      "parentName": "Bulletins",
+      "comment": "",
+      "fields": [
+        {
+          "fieldName": "bulletinNodeAddress",
+          "owner": "Bulletins.Bulletin_Board",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "bulletinNodeAddress",
+          "comment": ""
+        }
+      ],
+      "calculations": [],
+      "constraints": [
+        {
+          "search": "sourcetype=\"nifi:api:bulletin_board\"",
+          "owner": "Bulletins.Bulletin_Board"
+        }
+      ],
+      "lineage": "Bulletins.Bulletin_Board"
+    },
+    {
+      "objectName": "Reporting_Bulletin",
+      "displayName": "Reporting Bulletin (push)",
+      "parentName": "Bulletins",
+      "comment": "",
+      "fields": [
+        {
+          "fieldName": "bulletinGroupName",
+          "owner": "Bulletins.Reporting_Bulletin",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "bulletinGroupName",
+          "comment": ""
+        },
+        {
+          "fieldName": "bulletinGroupPath",
+          "owner": "Bulletins.Reporting_Bulletin",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "bulletinGroupPath",
+          "comment": ""
+        }
+      ],
+      "calculations": [],
+      "constraints": [
+        {
+          "search": "sourcetype=\"nifi:reporting:bulletin\"",
+          "owner": "Bulletins.Reporting_Bulletin"
+        }
+      ],
+      "lineage": "Bulletins.Reporting_Bulletin"
+    },
+    {
+      "objectName": "Throughput",
+      "displayName": "Throughput",
+      "parentName": "BaseEvent",
+      "comment": "Data in and out of the whole flow, normalised to one set of names: the Reporting Task's 5-minute counters on the push path, the root process group's flow metrics on the pull path.",
+      "fields": [
+        {
+          "fieldName": "cluster",
+          "owner": "Throughput",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "cluster",
+          "comment": ""
+        },
+        {
+          "fieldName": "_time",
+          "owner": "BaseEvent",
+          "type": "timestamp",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "_time",
+          "comment": ""
+        },
+        {
+          "fieldName": "host",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "host",
+          "comment": ""
+        },
+        {
+          "fieldName": "source",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "source",
+          "comment": ""
+        },
+        {
+          "fieldName": "sourcetype",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "sourcetype",
+          "comment": ""
+        }
+      ],
+      "calculations": [
+        {
+          "outputFields": [
+            {
+              "fieldName": "bytes_in",
+              "owner": "Throughput",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "bytes_in",
+              "comment": ""
+            }
+          ],
+          "calculationID": "23pscuifgws",
+          "owner": "Throughput",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('BytesReceivedLast5Minutes', if(metric_name==\"nifi_amount_bytes_received\", metric_value, null()))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "bytes_out",
+              "owner": "Throughput",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "bytes_out",
+              "comment": ""
+            }
+          ],
+          "calculationID": "k35qw13tts8",
+          "owner": "Throughput",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('BytesSentLast5Minutes', if(metric_name==\"nifi_amount_bytes_sent\", metric_value, null()))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "bytes_read",
+              "owner": "Throughput",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "bytes_read",
+              "comment": ""
+            }
+          ],
+          "calculationID": "4viwd7mg3ne",
+          "owner": "Throughput",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('BytesReadLast5Minutes', if(metric_name==\"nifi_amount_bytes_read\", metric_value, null()))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "bytes_written",
+              "owner": "Throughput",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "bytes_written",
+              "comment": ""
+            }
+          ],
+          "calculationID": "q0ahlkfas62",
+          "owner": "Throughput",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('BytesWrittenLast5Minutes', if(metric_name==\"nifi_amount_bytes_written\", metric_value, null()))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "flowfiles_in",
+              "owner": "Throughput",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "flowfiles_in",
+              "comment": ""
+            }
+          ],
+          "calculationID": "rtflwpza8sw",
+          "owner": "Throughput",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('FlowFilesReceivedLast5Minutes', if(metric_name==\"nifi_amount_flowfiles_received\", metric_value, null()))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "flowfiles_out",
+              "owner": "Throughput",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "flowfiles_out",
+              "comment": ""
+            }
+          ],
+          "calculationID": "hfyg8h1v77i",
+          "owner": "Throughput",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('FlowFilesSentLast5Minutes', if(metric_name==\"nifi_amount_flowfiles_sent\", metric_value, null()))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "flowfiles_queued",
+              "owner": "Throughput",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "flowfiles_queued",
+              "comment": ""
+            }
+          ],
+          "calculationID": "l21i91hn26i",
+          "owner": "Throughput",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('FlowFilesQueued', if(metric_name==\"nifi_amount_items_queued\", metric_value, null()))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "bytes_queued",
+              "owner": "Throughput",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "bytes_queued",
+              "comment": ""
+            }
+          ],
+          "calculationID": "1mib6u7066t",
+          "owner": "Throughput",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('BytesQueued', if(metric_name==\"nifi_size_content_queued_total\", metric_value, null()))"
+        }
+      ],
+      "constraints": [
+        {
+          "search": "`index_nifi` (sourcetype=\"nifi:reporting:task\" OR (sourcetype=\"nifi:api:flow_metrics\" component_type=\"RootProcessGroup\"))",
+          "owner": "Throughput"
+        }
+      ],
+      "lineage": "Throughput"
+    },
+    {
+      "objectName": "Reporting_Task",
+      "displayName": "Reporting Task (push)",
+      "parentName": "Throughput",
+      "comment": "",
+      "fields": [
+        {
+          "fieldName": "ActiveThreads",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "ActiveThreads",
+          "comment": ""
+        },
+        {
+          "fieldName": "BytesQueued",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "BytesQueued",
+          "comment": ""
+        },
+        {
+          "fieldName": "BytesReadLast5Minutes",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "BytesReadLast5Minutes",
+          "comment": ""
+        },
+        {
+          "fieldName": "BytesReceivedLast5Minutes",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "BytesReceivedLast5Minutes",
+          "comment": ""
+        },
+        {
+          "fieldName": "BytesSentLast5Minutes",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "BytesSentLast5Minutes",
+          "comment": ""
+        },
+        {
+          "fieldName": "BytesWrittenLast5Minutes",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "BytesWrittenLast5Minutes",
+          "comment": ""
+        },
+        {
+          "fieldName": "FlowFilesQueued",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "FlowFilesQueued",
+          "comment": ""
+        },
+        {
+          "fieldName": "FlowFilesReceivedLast5Minutes",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "FlowFilesReceivedLast5Minutes",
+          "comment": ""
+        },
+        {
+          "fieldName": "FlowFilesSentLast5Minutes",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "FlowFilesSentLast5Minutes",
+          "comment": ""
+        },
+        {
+          "fieldName": "TotalTaskDurationNanoSeconds",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "TotalTaskDurationNanoSeconds",
+          "comment": ""
+        },
+        {
+          "fieldName": "TotalTaskDurationSeconds",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "TotalTaskDurationSeconds",
+          "comment": ""
+        },
+        {
+          "fieldName": "appid",
+          "owner": "Throughput.Reporting_Task",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "appid",
+          "comment": ""
+        },
+        {
+          "fieldName": "availableCores",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "availableCores",
+          "comment": ""
+        },
+        {
+          "fieldName": "instanceid",
+          "owner": "Throughput.Reporting_Task",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "instanceid",
+          "comment": ""
+        },
+        {
+          "fieldName": "jvmdaemon_thread_count",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "jvmdaemon_thread_count",
+          "comment": ""
+        },
+        {
+          "fieldName": "jvmfile_descriptor_usage",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "jvmfile_descriptor_usage",
+          "comment": ""
+        },
+        {
+          "fieldName": "jvmheap_usage",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "jvmheap_usage",
+          "comment": ""
+        },
+        {
+          "fieldName": "jvmheap_used",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "jvmheap_used",
+          "comment": ""
+        },
+        {
+          "fieldName": "jvmnon_heap_usage",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "jvmnon_heap_usage",
+          "comment": ""
+        },
+        {
+          "fieldName": "jvmthread_count",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "jvmthread_count",
+          "comment": ""
+        },
+        {
+          "fieldName": "jvmthread_statesblocked",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "jvmthread_statesblocked",
+          "comment": ""
+        },
+        {
+          "fieldName": "jvmthread_statesrunnable",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "jvmthread_statesrunnable",
+          "comment": ""
+        },
+        {
+          "fieldName": "jvmthread_statesterminated",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "jvmthread_statesterminated",
+          "comment": ""
+        },
+        {
+          "fieldName": "jvmthread_statestimed_waiting",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "jvmthread_statestimed_waiting",
+          "comment": ""
+        },
+        {
+          "fieldName": "jvmuptime",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "jvmuptime",
+          "comment": ""
+        },
+        {
+          "fieldName": "loadAverage1min",
+          "owner": "Throughput.Reporting_Task",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "loadAverage1min",
+          "comment": ""
+        }
+      ],
+      "calculations": [],
+      "constraints": [
+        {
+          "search": "sourcetype=\"nifi:reporting:task\"",
+          "owner": "Throughput.Reporting_Task"
+        }
+      ],
+      "lineage": "Throughput.Reporting_Task"
+    },
+    {
+      "objectName": "Flow_Metrics_Root",
+      "displayName": "Flow Metrics, root group (pull)",
+      "parentName": "Throughput",
+      "comment": "",
+      "fields": [
+        {
+          "fieldName": "metric_name",
+          "owner": "Throughput.Flow_Metrics_Root",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "metric_name",
+          "comment": ""
+        },
+        {
+          "fieldName": "metric_value",
+          "owner": "Throughput.Flow_Metrics_Root",
+          "type": "number",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "metric_value",
+          "comment": ""
+        }
+      ],
+      "calculations": [],
+      "constraints": [
+        {
+          "search": "sourcetype=\"nifi:api:flow_metrics\"",
+          "owner": "Throughput.Flow_Metrics_Root"
+        }
+      ],
+      "lineage": "Throughput.Flow_Metrics_Root"
+    },
+    {
+      "objectName": "Component_Status",
+      "displayName": "Component Status",
+      "parentName": "BaseEvent",
+      "comment": "One row per component status snapshot. The TA writes flat events (nifi:api:*_status); the push flow still sends the nested status history (nifi:api:*_history), read here from its latest snapshot.",
+      "fields": [
+        {
+          "fieldName": "cluster",
+          "owner": "Component_Status",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "cluster",
+          "comment": ""
+        },
+        {
+          "fieldName": "_time",
+          "owner": "BaseEvent",
+          "type": "timestamp",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "_time",
+          "comment": ""
+        },
+        {
+          "fieldName": "host",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "host",
+          "comment": ""
+        },
+        {
+          "fieldName": "source",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "source",
+          "comment": ""
+        },
+        {
+          "fieldName": "sourcetype",
+          "owner": "BaseEvent",
+          "type": "string",
+          "fieldSearch": "",
+          "required": false,
+          "multivalue": false,
+          "hidden": false,
+          "editable": true,
+          "displayName": "sourcetype",
+          "comment": ""
+        }
+      ],
+      "calculations": [
+        {
+          "outputFields": [
+            {
+              "fieldName": "component_key",
+              "owner": "Component_Status",
+              "type": "string",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "component_key",
+              "comment": ""
+            }
+          ],
+          "calculationID": "x89x41xpv4a",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce(component_id, 'statusHistory.componentDetails.Id')"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "component_label",
+              "owner": "Component_Status",
+              "type": "string",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "component_label",
+              "comment": ""
+            }
+          ],
+          "calculationID": "do4gt6gg2fr",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce(component_name, 'statusHistory.componentDetails.Name')"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "component_kind",
+              "owner": "Component_Status",
+              "type": "string",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "component_kind",
+              "comment": ""
+            }
+          ],
+          "calculationID": "6gbbugi6ul5",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce(component_type, if(like(sourcetype, \"%processors%\"), \"processor\", \"process_group\"))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "taskMillis",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "taskMillis",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs00taskmi",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('taskMillis', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.taskMillis', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "taskCount",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "taskCount",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs01taskco",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('taskCount', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.taskCount', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "inputCount",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "inputCount",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs02inputc",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('inputCount', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.inputCount', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "inputBytes",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "inputBytes",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs03inputb",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('inputBytes', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.inputBytes', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "outputCount",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "outputCount",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs04output",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('outputCount', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.outputCount', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "outputBytes",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "outputBytes",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs05output",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('outputBytes', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.outputBytes', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "bytesRead",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "bytesRead",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs06bytesr",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('bytesRead', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.bytesRead', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "bytesWritten",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "bytesWritten",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs07bytesw",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('bytesWritten', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.bytesWritten', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "bytesTransferred",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "bytesTransferred",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs08bytest",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('bytesTransferred', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.bytesTransferred', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "flowFilesRemoved",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "flowFilesRemoved",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs09flowfi",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('flowFilesRemoved', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.flowFilesRemoved', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "averageLineageDuration",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "averageLineageDuration",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs10averag",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('averageLineageDuration', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.averageLineageDuration', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "cpuTime",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "cpuTime",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs11cputim",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('cpuTime', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.cpuTime', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "garbageCollectionTime",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "garbageCollectionTime",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs12garbag",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('garbageCollectionTime', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.garbageCollectionTime', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "contentRepoReadTime",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "contentRepoReadTime",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs13conten",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('contentRepoReadTime', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.contentRepoReadTime', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "contentRepoWriteTime",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "contentRepoWriteTime",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs14conten",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('contentRepoWriteTime', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.contentRepoWriteTime', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "sessionCommitTime",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "sessionCommitTime",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs15sessio",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('sessionCommitTime', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.sessionCommitTime', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "queuedCount",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "queuedCount",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs16queued",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('queuedCount', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.queuedCount', -1)))"
+        },
+        {
+          "outputFields": [
+            {
+              "fieldName": "queuedBytes",
+              "owner": "Component_Status",
+              "type": "number",
+              "fieldSearch": "",
+              "required": false,
+              "multivalue": false,
+              "hidden": false,
+              "editable": true,
+              "displayName": "queuedBytes",
+              "comment": ""
+            }
+          ],
+          "calculationID": "cs17queued",
+          "owner": "Component_Status",
+          "editable": true,
+          "comment": "",
+          "calculationType": "Eval",
+          "expression": "coalesce('queuedBytes', tonumber(mvindex('statusHistory.aggregateSnapshots{}.statusMetrics.queuedBytes', -1)))"
+        }
+      ],
+      "constraints": [
+        {
+          "search": "`index_nifi` sourcetype IN (\"nifi:api:processors_status\", \"nifi:api:process_groups_status\", \"nifi:api:processors_history\", \"nifi:api:process_groups_history\")",
+          "owner": "Component_Status"
+        }
+      ],
+      "lineage": "Component_Status"
+    },
+    {
+      "objectName": "Processors",
+      "displayName": "Processors",
+      "parentName": "Component_Status",
+      "comment": "",
+      "fields": [],
+      "calculations": [],
+      "constraints": [
+        {
+          "search": "sourcetype IN (\"nifi:api:processors_status\", \"nifi:api:processors_history\")",
+          "owner": "Component_Status.Processors"
+        }
+      ],
+      "lineage": "Component_Status.Processors"
+    },
+    {
+      "objectName": "Process_Groups",
+      "displayName": "Process Groups",
+      "parentName": "Component_Status",
+      "comment": "",
+      "fields": [],
+      "calculations": [],
+      "constraints": [
+        {
+          "search": "sourcetype IN (\"nifi:api:process_groups_status\", \"nifi:api:process_groups_history\")",
+          "owner": "Component_Status.Process_Groups"
+        }
+      ],
+      "lineage": "Component_Status.Process_Groups"
     },
     {
       "objectName": "Logs",
@@ -1246,306 +2186,6 @@
         }
       ],
       "lineage": "Logs"
-    },
-    {
-      "objectName": "Status_History",
-      "displayName": "Status History",
-      "parentName": "BaseEvent",
-      "comment": "",
-      "fields": [
-        {
-          "fieldName": "cluster",
-          "owner": "Status_History",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "cluster",
-          "comment": ""
-        },
-        {
-          "fieldName": "statusHistory.componentDetails.Id",
-          "owner": "Status_History",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "id",
-          "comment": ""
-        },
-        {
-          "fieldName": "statusHistory.componentDetails.Name",
-          "owner": "Status_History",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "name",
-          "comment": ""
-        },
-        {
-          "fieldName": "_time",
-          "owner": "BaseEvent",
-          "type": "timestamp",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "_time",
-          "comment": ""
-        },
-        {
-          "fieldName": "host",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "host",
-          "comment": ""
-        },
-        {
-          "fieldName": "source",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "source",
-          "comment": ""
-        },
-        {
-          "fieldName": "sourcetype",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "sourcetype",
-          "comment": ""
-        }
-      ],
-      "calculations": [],
-      "constraints": [
-        {
-          "search": "`index_nifi` sourcetype=nifi:api:process*",
-          "owner": "Status_History"
-        }
-      ],
-      "lineage": "Status_History"
-    },
-    {
-      "objectName": "Status_History_Process_Groups",
-      "displayName": "Status History Process Groups",
-      "parentName": "Status_History",
-      "comment": "",
-      "fields": [
-        {
-          "fieldName": "cluster",
-          "owner": "Status_History",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "cluster",
-          "comment": ""
-        },
-        {
-          "fieldName": "statusHistory.componentDetails.Id",
-          "owner": "Status_History",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "id",
-          "comment": ""
-        },
-        {
-          "fieldName": "statusHistory.componentDetails.Name",
-          "owner": "Status_History",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "name",
-          "comment": ""
-        },
-        {
-          "fieldName": "_time",
-          "owner": "BaseEvent",
-          "type": "timestamp",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "_time",
-          "comment": ""
-        },
-        {
-          "fieldName": "host",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "host",
-          "comment": ""
-        },
-        {
-          "fieldName": "source",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "source",
-          "comment": ""
-        },
-        {
-          "fieldName": "sourcetype",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "sourcetype",
-          "comment": ""
-        }
-      ],
-      "calculations": [],
-      "constraints": [
-        {
-          "search": "sourcetype=\"nifi:api:process_groups_history\"",
-          "owner": "Status_History.Status_History_Process_Groups"
-        }
-      ],
-      "lineage": "Status_History.Status_History_Process_Groups"
-    },
-    {
-      "objectName": "Status_History_Processors",
-      "displayName": "Status History Processors",
-      "parentName": "Status_History",
-      "comment": "",
-      "fields": [
-        {
-          "fieldName": "cluster",
-          "owner": "Status_History",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "cluster",
-          "comment": ""
-        },
-        {
-          "fieldName": "statusHistory.componentDetails.Id",
-          "owner": "Status_History",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "id",
-          "comment": ""
-        },
-        {
-          "fieldName": "statusHistory.componentDetails.Name",
-          "owner": "Status_History",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "name",
-          "comment": ""
-        },
-        {
-          "fieldName": "_time",
-          "owner": "BaseEvent",
-          "type": "timestamp",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "_time",
-          "comment": ""
-        },
-        {
-          "fieldName": "host",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "host",
-          "comment": ""
-        },
-        {
-          "fieldName": "source",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "source",
-          "comment": ""
-        },
-        {
-          "fieldName": "sourcetype",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "sourcetype",
-          "comment": ""
-        }
-      ],
-      "calculations": [],
-      "constraints": [
-        {
-          "search": "sourcetype=\"nifi:api:processors_history\"",
-          "owner": "Status_History.Status_History_Processors"
-        }
-      ],
-      "lineage": "Status_History.Status_History_Processors"
     },
     {
       "objectName": "Flow_Metrics",
@@ -1778,178 +2418,6 @@
         }
       ],
       "lineage": "Flow_Metrics"
-    },
-    {
-      "objectName": "Bulletin_Board",
-      "displayName": "Bulletin Board",
-      "parentName": "BaseEvent",
-      "comment": "Bulletins polled from /flow/bulletin-board. Field names match Reporting_Bulletin so both collection paths feed the same searches; bulletinGroupName and bulletinGroupPath have no equivalent here.",
-      "fields": [
-        {
-          "fieldName": "bulletinCategory",
-          "owner": "Bulletin_Board",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "bulletinCategory",
-          "comment": ""
-        },
-        {
-          "fieldName": "bulletinLevel",
-          "owner": "Bulletin_Board",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "bulletinLevel",
-          "comment": ""
-        },
-        {
-          "fieldName": "bulletinSourceName",
-          "owner": "Bulletin_Board",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "bulletinSourceName",
-          "comment": ""
-        },
-        {
-          "fieldName": "bulletinSourceId",
-          "owner": "Bulletin_Board",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "bulletinSourceId",
-          "comment": ""
-        },
-        {
-          "fieldName": "bulletinSourceType",
-          "owner": "Bulletin_Board",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "bulletinSourceType",
-          "comment": ""
-        },
-        {
-          "fieldName": "bulletinMessage",
-          "owner": "Bulletin_Board",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "bulletinMessage",
-          "comment": ""
-        },
-        {
-          "fieldName": "bulletinGroupId",
-          "owner": "Bulletin_Board",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "bulletinGroupId",
-          "comment": ""
-        },
-        {
-          "fieldName": "bulletinNodeAddress",
-          "owner": "Bulletin_Board",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "bulletinNodeAddress",
-          "comment": ""
-        },
-        {
-          "fieldName": "cluster",
-          "owner": "Bulletin_Board",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "cluster",
-          "comment": ""
-        },
-        {
-          "fieldName": "_time",
-          "owner": "BaseEvent",
-          "type": "timestamp",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "_time",
-          "comment": ""
-        },
-        {
-          "fieldName": "host",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "host",
-          "comment": ""
-        },
-        {
-          "fieldName": "source",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "source",
-          "comment": ""
-        },
-        {
-          "fieldName": "sourcetype",
-          "owner": "BaseEvent",
-          "type": "string",
-          "fieldSearch": "",
-          "required": false,
-          "multivalue": false,
-          "hidden": false,
-          "editable": true,
-          "displayName": "sourcetype",
-          "comment": ""
-        }
-      ],
-      "calculations": [],
-      "constraints": [
-        {
-          "search": "`index_nifi` sourcetype=\"nifi:api:bulletin_board\"",
-          "owner": "Bulletin_Board"
-        }
-      ],
-      "lineage": "Bulletin_Board"
     },
     {
       "objectName": "Version_Info",
@@ -2973,15 +3441,18 @@
   ],
   "objectNameList": [
     "Flow_Status",
-    "Reporting_Task",
-    "Reporting_Bulletin",
     "System_Diagnostics",
-    "Logs",
-    "Status_History",
-    "Status_History_Process_Groups",
-    "Status_History_Processors",
-    "Flow_Metrics",
+    "Bulletins",
     "Bulletin_Board",
+    "Reporting_Bulletin",
+    "Throughput",
+    "Reporting_Task",
+    "Flow_Metrics_Root",
+    "Component_Status",
+    "Processors",
+    "Process_Groups",
+    "Logs",
+    "Flow_Metrics",
     "Version_Info",
     "Request_Log",
     "Node_Diagnostics",

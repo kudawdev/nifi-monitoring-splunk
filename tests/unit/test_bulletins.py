@@ -200,7 +200,8 @@ class BulletinFieldMappingTest(unittest.TestCase):
         self.assertIn("TRUNCATE = 0", self.stanza("nifi:api:bulletin_board"))
 
     def test_datamodel_bulletin_fields_are_aliased_where_the_board_has_them(self):
-        obj = [o for o in self.datamodel["objects"] if o["objectName"] == "Reporting_Bulletin"][0]
+        # the shared names live on the Bulletins parent (R-2)
+        obj = [o for o in self.datamodel["objects"] if o["objectName"] == "Bulletins"][0]
         wanted = {f["fieldName"] for f in obj["fields"]}
         stanza = self.stanza("nifi:api:bulletin_board")
         for field in ("bulletinCategory", "bulletinGroupId", "bulletinLevel",
