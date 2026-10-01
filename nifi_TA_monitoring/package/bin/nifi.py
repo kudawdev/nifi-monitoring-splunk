@@ -40,8 +40,11 @@ class NiFiScript(Script):
     endpoints = [
             {"name":"endpoint_flow_status", "sourcetype":"nifi:api:flow_status", "path":"/flow/status"},
             {"name":"endpoint_system_diagnostics", "sourcetype":"nifi:api:system_diagnostics", "path":"/system-diagnostics"},
-            {"name":"endpoint_processors_history", "sourcetype":"nifi:api:processors_history", "path":"/flow/processors/{id}/status/history"},
-            {"name":"endpoint_process_groups_history", "sourcetype":"nifi:api:process_groups_history", "path":"/flow/process-groups/{id}/status/history"},
+            # One flat event per status snapshot (R-3), under its own sourcetype:
+            # the push flow still sends the nested *_history shape, and one
+            # sourcetype holding two shapes is what the datamodel cannot resolve.
+            {"name":"endpoint_processors_history", "sourcetype":"nifi:api:processors_status", "path":"/flow/processors/{id}/status/history", "component_type":"processor"},
+            {"name":"endpoint_process_groups_history", "sourcetype":"nifi:api:process_groups_status", "path":"/flow/process-groups/{id}/status/history", "component_type":"process_group"},
             {"name":"endpoint_bulletin_board", "sourcetype":"nifi:api:bulletin_board", "path":"/flow/bulletin-board"},
             # The json producer of the metrics endpoint appears in NiFi 1.16;
             # 1.15 and older only have the prometheus text format.
@@ -285,6 +288,69 @@ class NiFiScript(Script):
             service.storage_passwords.create(token, key, self.token_realm)
         except Exception as error:
             self._log(ew, EventWriter.WARN, '{} Could not store the renewed token: {}'.format(self.pid, error))
+
+    # Status history. NiFi keeps one snapshot per component per minute (by
+    # default) and returns the whole retained window on every call, so the
+    # input resumes from the newest snapshot it wrote for each component. A
+    # component seen for the first time gets only its most recent snapshots,
+    # not days of backfill.
+    history_backfill_snapshots = 60
+
+    @staticmethod
+    def snapshot_millis(raw):
+        """A snapshot timestamp as epoch milliseconds, or None.
+
+        NiFi serialises it as epoch milliseconds, a number or a numeric
+        string depending on the version.
+        """
+        try:
+            value = int(float(raw))
+        except (TypeError, ValueError):
+            return None
+        return value if value > 0 else None
+
+    @classmethod
+    def status_snapshots(cls, payload, component_type):
+        """The status history of one component as flat events.
+
+        One dict per aggregate snapshot, oldest first: the component's
+        identity, the snapshot's epoch-millisecond `timestamp` and every
+        status metric as a top-level field. None when the payload is not a
+        status history.
+        """
+        try:
+            history = json.loads(payload)['statusHistory']
+        except (TypeError, ValueError, KeyError):
+            return None
+        details = history.get('componentDetails') or {}
+        identity = {
+            'component_id': details.get('Id'),
+            'component_name': details.get('Name'),
+            'component_type': component_type,
+            'component_class': details.get('Type'),
+            'group_id': details.get('Group Id'),
+        }
+        identity = {k: v for k, v in identity.items() if v is not None}
+        events = []
+        for snapshot in history.get('aggregateSnapshots') or []:
+            millis = cls.snapshot_millis(snapshot.get('timestamp'))
+            if millis is None:
+                continue
+            event = dict(identity)
+            event['timestamp'] = millis
+            for name, value in (snapshot.get('statusMetrics') or {}).items():
+                event[name] = value
+            events.append(event)
+        events.sort(key=lambda e: e['timestamp'])
+        return events
+
+    @classmethod
+    def snapshots_after(cls, events, cursor):
+        """The snapshots newer than `cursor`, or the most recent few when
+        there is no cursor yet."""
+        if cursor is None:
+            return events[-cls.history_backfill_snapshots:]
+        return [e for e in events if e['timestamp'] > cursor]
 
     @staticmethod
     def bulletins_of(payload):
@@ -909,7 +975,7 @@ class NiFiScript(Script):
         # index system_diagnostics and the version is already known and
         # fresh, the call is skipped entirely; when it does index it, the
         # response is reused so the endpoint is never fetched twice.
-        wants_diagnostics = input_item.get('endpoint_system_diagnostics') == '1'
+        wants_diagnostics = self._is_enabled(input_item.get('endpoint_system_diagnostics'))
         cached = self.__cached_version(ew, input_name)
         diagnostics = None
         version_info = None
@@ -961,13 +1027,17 @@ class NiFiScript(Script):
                 continue
 
             if ep.get('name') == 'endpoint_bulletin_board':
-                if input_item.get('endpoint_bulletin_board') not in ('1', None, ''):
+                # On by default: absent or empty means enabled.
+                if not self._is_enabled(input_item.get('endpoint_bulletin_board'), default=True):
                     continue
                 self.__collect_bulletins(ew, base_url, path, sourcetype, auth_type,
                                          username, iname, session_key, input_name, input_item)
                 continue
 
-            if input_item.get(ep.get('name')) == '1':
+            # Any boolean Splunk accepts -- 1, true, True, yes -- not just '1':
+            # `endpoint_flow_status = true` in inputs.conf used to switch the
+            # endpoint off without a word.
+            if self._is_enabled(input_item.get(ep.get('name'))):
                 try:
                     if path == "/system-diagnostics":
                         response = diagnostics   # already fetched for version detection
@@ -989,54 +1059,13 @@ class NiFiScript(Script):
                 except Exception as e:
                     self._log(ew, EventWriter.ERROR, '{} There was an error when request: {}'.format(self.pid, e))
             
-            elif (ep.get('name') == 'endpoint_processors_history') and (processors):
-                plist = self._split_ids(processors)
-                self._log(ew, EventWriter.INFO, '{} list of plist: {}'.format(self.pid, plist))
-                for p in plist:
-                    new_path = path.format(id=p)
-                    self._log(ew, EventWriter.INFO, '{} endpoint_processors_history: {}'.format(self.pid, p))
-                    try:
-                        response = self.__get_request(ew, base_url, new_path, auth_type, username, iname, session_key)
-                        self._log(ew, EventWriter.DEBUG, '{} Response: {}'.format(self.pid, response))
-                        data_json = json.loads(response)
-                        if "aggregateSnapshots" in data_json["statusHistory"]:
-                            data_json["statusHistory"]["aggregateSnapshots"] = data_json["statusHistory"]["aggregateSnapshots"][-1:]
+            elif ep.get('name') in ('endpoint_processors_history', 'endpoint_process_groups_history'):
+                ids = processors if ep.get('name') == 'endpoint_processors_history' else process_groups
+                if ids:
+                    self.__collect_status_history(ew, base_url, path, sourcetype, ep['component_type'],
+                                                  self._split_ids(ids), auth_type, username, iname,
+                                                  session_key, input_name, input_item)
 
-                        data_str = json.dumps(data_json)
-                        event = Event(
-                            sourcetype=sourcetype,
-                            stanza=input_name,
-                            data=data_str,
-                            host=input_item.get("host")
-                        )
-                        ew.write_event(event)
-                    except Exception as e:
-                        self._log(ew, EventWriter.ERROR, '{} There was an error when request: {}'.format(self.pid, e))
-
-            elif (ep.get('name') == 'endpoint_process_groups_history') and (process_groups):
-                plist = self._split_ids(process_groups)
-                self._log(ew, EventWriter.INFO, '{} list of plist: {}'.format(self.pid, plist))
-                for p in plist:
-                    new_path = path.format(id=p)
-                    self._log(ew, EventWriter.INFO, '{} endpoint_process_groups_history: {}'.format(self.pid, p))
-                    try:
-                        response = self.__get_request(ew, base_url, new_path, auth_type, username, iname, session_key)
-                        self._log(ew, EventWriter.DEBUG, '{} Response: {}'.format(self.pid, response))
-                        data_json = json.loads(response)
-                        if "aggregateSnapshots" in data_json["statusHistory"]:
-                            data_json["statusHistory"]["aggregateSnapshots"] = data_json["statusHistory"]["aggregateSnapshots"][-1:]
-
-                        data_str = json.dumps(data_json)
-                        event = Event(
-                            sourcetype=sourcetype,
-                            stanza=input_name,
-                            data=data_str,
-                            host=input_item.get("host")
-                        )
-                        ew.write_event(event)
-                    except Exception as e:
-                        self._log(ew, EventWriter.ERROR, '{} There was an error when request: {}'.format(self.pid, e))
-                        
             else:
                 self._log(ew, EventWriter.INFO, 'there wasnt an endpoint detected: ')
                 pass
@@ -1139,6 +1168,41 @@ class NiFiScript(Script):
         self._log(ew, EventWriter.INFO, '{} Flow metrics collected: {} samples ({})'.format(
             self.pid, len(samples), request_path))
 
+
+    def __collect_status_history(self, ew, base_url, path, sourcetype, component_type, ids,
+                                 auth_type, username, iname, session_key, input_name, input_item):
+        """One flat event per new status snapshot of each component, with the
+        snapshot's own time as the event time."""
+        for component_id in ids:
+            checkpoint = 'history_{}'.format(component_id)
+            try:
+                response = self.__get_request(ew, base_url, path.format(id=component_id), auth_type,
+                                              username, iname, session_key)
+            except Exception as e:
+                self._log(ew, EventWriter.ERROR, '{} There was an error when request: {}'.format(self.pid, e))
+                continue
+            if response is None:
+                continue   # the failed request already said why
+            events = self.status_snapshots(response, component_type)
+            if events is None:
+                self._log(ew, EventWriter.ERROR, '{} Could not read the status history of {} {}'.format(
+                    self.pid, component_type, component_id))
+                continue
+            raw_cursor = self.__read_checkpoint(ew, input_name, checkpoint)
+            cursor = self.snapshot_millis(raw_cursor) if raw_cursor else None
+            fresh = self.snapshots_after(events, cursor)
+            for event in fresh:
+                ew.write_event(Event(
+                    sourcetype=sourcetype,
+                    stanza=input_name,
+                    time='%.3f' % (event['timestamp'] / 1000.0),
+                    data=json.dumps(event),
+                    host=input_item.get("host")
+                ))
+            if fresh:
+                self.__write_checkpoint(ew, input_name, checkpoint, fresh[-1]['timestamp'])
+            self._log(ew, EventWriter.INFO, '{} Status history of {} {}: {} new snapshots'.format(
+                self.pid, component_type, component_id, len(fresh)))
 
     def __collect_bulletins(self, ew, base_url, path, sourcetype, auth_type,
                             username, iname, session_key, input_name, input_item):
