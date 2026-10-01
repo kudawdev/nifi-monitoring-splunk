@@ -11,46 +11,10 @@ see [Push strategy: Direct Sending](configuration-push.md) instead.
 
 Not sure which strategy you need? See
 [Choosing a collection strategy](compatibility.md#choosing-a-collection-strategy)
-before you start.
+before you start — it also draws the architecture of both.
 
-**Requirement**: all four apps installed — see
+**Requirement**: all three apps installed — see
 [Install NIFI Monitoring](installation.md).
-
-## Architecture
-
-```mermaid
-%%{init: {"flowchart": {"curve": "step"}} }%%
-flowchart LR
-    subgraph nifi_host["NiFi host (customer's)"]
-        nifi[["NiFi ×N<br/>REST API · instance or cluster"]]:::externo
-        uf["Universal Forwarder<br/>(optional)"]:::propio
-    end
-
-    subgraph splunk["Splunk"]
-        ta["Nifi Monitoring TA"]:::propio
-        idx[("index nifi")]:::dato
-        logs[("NiFi logs<br/>nifi:log:*")]:::dato
-        lookup[("Instance Lookup<br/>KV store")]:::dato
-        dm["Datamodel NIFI"]:::propio
-        dash["Nifi Monitoring<br/>dashboards"]:::propio
-    end
-
-    nifi_host ~~~ splunk
-
-    nifi -->|"polled by the TA: periodic GET, one input per instance · HTTP 8080 / HTTPS 8443"| ta
-    ta -->|"writes events"| idx
-    uf -.->|"optional · S2S TCP 9997"| logs
-    idx --> dm
-    dash -->|"query"| dm
-    dash -->|"query"| lookup
-
-    classDef propio fill:#FFFFFF,stroke:#1A1A1A,color:#1A1A1A
-    classDef externo fill:#E0E0E0,stroke:#808080,color:#1A1A1A,stroke-dasharray:3
-    classDef dato fill:#F5F5F5,stroke:#1A1A1A,color:#1A1A1A
-```
-
-Solid line = data path · dashed line = optional/asynchronous · grey with dashed
-border = external component (the customer's) · light grey = storage.
 
 ## 1. Create the TA input
 

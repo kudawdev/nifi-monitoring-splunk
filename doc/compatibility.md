@@ -48,6 +48,80 @@ Two mutually exclusive ways get NiFi's data into Splunk:
 **Pick exactly one per NiFi instance — running both on the same instance
 duplicates every event.**
 
+### Architecture
+
+What runs where in each one, and what each component talks to:
+
+#### Pull
+
+```mermaid
+%%{init: {"flowchart": {"curve": "step"}} }%%
+flowchart LR
+    subgraph nifi_host["NiFi host (customer's)"]
+        nifi[["NiFi ×N<br/>REST API · instance or cluster"]]:::externo
+        uf["Universal Forwarder<br/>(optional)"]:::propio
+    end
+
+    subgraph splunk["Splunk"]
+        ta["Nifi Monitoring TA"]:::propio
+        idx[("index nifi")]:::dato
+        logs[("NiFi logs<br/>nifi:log:*")]:::dato
+        lookup[("Instance Lookup<br/>KV store")]:::dato
+        dm["Datamodel NIFI"]:::propio
+        dash["Nifi Monitoring<br/>dashboards"]:::propio
+    end
+
+    nifi_host ~~~ splunk
+
+    nifi -->|"polled by the TA: periodic GET, one input per instance · HTTP 8080 / HTTPS 8443"| ta
+    ta -->|"writes events"| idx
+    uf -.->|"optional · S2S TCP 9997"| logs
+    idx --> dm
+    dash -->|"query"| dm
+    dash -->|"query"| lookup
+
+    classDef propio fill:#FFFFFF,stroke:#1A1A1A,color:#1A1A1A
+    classDef externo fill:#E0E0E0,stroke:#808080,color:#1A1A1A,stroke-dasharray:3
+    classDef dato fill:#F5F5F5,stroke:#1A1A1A,color:#1A1A1A
+```
+
+Solid line = data path · dashed line = optional/asynchronous · grey with dashed
+border = external component (the customer's) · light grey = storage.
+
+#### Push
+
+```mermaid
+%%{init: {"flowchart": {"curve": "step"}} }%%
+flowchart LR
+    subgraph nifi_host["NiFi host (customer's)"]
+        flow[["NiFi flow ×N<br/>NiFiMonitoring process group"]]:::propio
+    end
+
+    subgraph splunk["Splunk"]
+        hec["HTTP Event Collector"]:::propio
+        idx[("index nifi")]:::dato
+        lookup[("Instance Lookup<br/>KV store")]:::dato
+        dm["Datamodel NIFI"]:::propio
+        dash["Nifi Monitoring<br/>dashboards"]:::propio
+    end
+
+    nifi_host ~~~ splunk
+
+    flow -->|"POST events · HEC HTTP 8088 / HTTPS"| hec
+    hec -->|"writes events"| idx
+    idx --> dm
+    dash -->|"query"| dm
+    dash -->|"query"| lookup
+
+    classDef propio fill:#FFFFFF,stroke:#1A1A1A,color:#1A1A1A
+    classDef externo fill:#E0E0E0,stroke:#808080,color:#1A1A1A,stroke-dasharray:3
+    classDef dato fill:#F5F5F5,stroke:#1A1A1A,color:#1A1A1A
+```
+
+Solid line = data path · grey with dashed border = external component (the
+customer's) · light grey = storage. Unlike pull, nothing on Splunk's side
+initiates a connection to NiFi — the flow pushes.
+
 ### Which one to use
 
 **Use pull, unless both of the following are true:**

@@ -8,46 +8,13 @@ Un flow que corre dentro de NiFi llama a la propia API de NiFi y envía el
 resultado directo al HTTP Event Collector (HEC) de Splunk — del lado de
 Splunk no hay que alcanzar a NiFi para nada. ¿No estás seguro de que esta
 es la estrategia que necesitas? Ver
-[Elegir una estrategia de recolección](compatibility.es.md#elegir-una-estrategia-de-recoleccion).
+[Elegir una estrategia de recolección](compatibility.es.md#elegir-una-estrategia-de-recoleccion),
+donde también está dibujada la arquitectura de las dos.
 
 Requiere las dos apps ya instaladas (ver
 [Instalar NIFI Monitoring](installation.es.md)): **Nifi Monitoring TA**
 parsea los eventos que manda este flow, aunque en esta estrategia no
 configures ningún input dentro de ella.
-
-## Arquitectura
-
-```mermaid
-%%{init: {"flowchart": {"curve": "step"}} }%%
-flowchart LR
-    subgraph nifi_host["Host de NiFi (del cliente)"]
-        flow[["Flow de NiFi ×N<br/>process group NiFiMonitoring"]]:::propio
-    end
-
-    subgraph splunk["Splunk"]
-        hec["HTTP Event Collector"]:::propio
-        idx[("index nifi")]:::dato
-        lookup[("Instance Lookup<br/>KV store")]:::dato
-        dm["Datamodel NIFI"]:::propio
-        dash["Nifi Monitoring<br/>dashboards"]:::propio
-    end
-
-    nifi_host ~~~ splunk
-
-    flow -->|"POST eventos · HEC HTTP 8088 / HTTPS"| hec
-    hec -->|"escribe eventos"| idx
-    idx --> dm
-    dash -->|"consulta"| dm
-    dash -->|"consulta"| lookup
-
-    classDef propio fill:#FFFFFF,stroke:#1A1A1A,color:#1A1A1A
-    classDef externo fill:#E0E0E0,stroke:#808080,color:#1A1A1A,stroke-dasharray:3
-    classDef dato fill:#F5F5F5,stroke:#1A1A1A,color:#1A1A1A
-```
-
-Línea sólida = plano de datos · gris con borde punteado = componente
-externo (del cliente) · gris claro = almacenamiento. A diferencia de pull,
-del lado de Splunk nadie inicia una conexión hacia NiFi — el flow empuja.
 
 ## 1. Configura el HTTP Event Collector (HEC) en Splunk
 

@@ -12,47 +12,10 @@ en su lugar.
 
 ¿No sabes qué estrategia necesitas? Revisa
 [Elegir una estrategia de recolección](compatibility.es.md#elegir-una-estrategia-de-recoleccion)
-antes de empezar.
+antes de empezar; ahí también está dibujada la arquitectura de las dos.
 
-**Requisito**: las cuatro apps instaladas — ver
+**Requisito**: las tres apps instaladas — ver
 [Instalar NIFI Monitoring](installation.es.md).
-
-## Arquitectura
-
-```mermaid
-%%{init: {"flowchart": {"curve": "step"}} }%%
-flowchart LR
-    subgraph nifi_host["Host de NiFi (del cliente)"]
-        nifi[["NiFi ×N<br/>API REST · instancia o cluster"]]:::externo
-        uf["Universal Forwarder<br/>(opcional)"]:::propio
-    end
-
-    subgraph splunk["Splunk"]
-        ta["Nifi Monitoring TA"]:::propio
-        idx[("index nifi")]:::dato
-        logs[("logs de NiFi<br/>nifi:log:*")]:::dato
-        lookup[("Instance Lookup<br/>KV store")]:::dato
-        dm["Datamodel NIFI"]:::propio
-        dash["Nifi Monitoring<br/>dashboards"]:::propio
-    end
-
-    nifi_host ~~~ splunk
-
-    nifi -->|"consultado por la TA: GET periódico, un input por instancia · HTTP 8080 / HTTPS 8443"| ta
-    ta -->|"escribe eventos"| idx
-    uf -.->|"opcional · S2S TCP 9997"| logs
-    idx --> dm
-    dash -->|"consulta"| dm
-    dash -->|"consulta"| lookup
-
-    classDef propio fill:#FFFFFF,stroke:#1A1A1A,color:#1A1A1A
-    classDef externo fill:#E0E0E0,stroke:#808080,color:#1A1A1A,stroke-dasharray:3
-    classDef dato fill:#F5F5F5,stroke:#1A1A1A,color:#1A1A1A
-```
-
-Línea sólida = plano de datos · línea punteada = opcional/asíncrono · gris
-con borde punteado = componente externo (del cliente) · gris claro =
-almacenamiento.
 
 ## 1. Crear el input de la TA
 
