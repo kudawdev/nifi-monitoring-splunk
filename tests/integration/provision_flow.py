@@ -310,7 +310,72 @@ def main():
         if len(ports) > 1:
             print("    instance %d of %d, on port %s" % (index, len(ports), port))
         provision_one()
+        install_reporting_tasks()
     return 0
+
+
+#: The reporting tasks the push documentation has an operator add by hand
+#: (doc/config-nifi-monitoring-2-0-push.md, step 4): they are NiFi-wide, not
+#: part of the flow definition, so importing the flow does not bring them.
+#: Without them the push path sends no bulletins and no flow metrics, and the
+#: Bulletins view and the Instance view's throughput were never exercised on
+#: it. Properties are named by their display name and resolved against the
+#: descriptors NiFi returns, which differ between the 1.x and 2.x lines.
+REPORTING_TASKS = [
+    ("org.apache.nifi.reporting.SiteToSiteBulletinReportingTask", "bulletin_report", {}),
+    ("org.apache.nifi.reporting.SiteToSiteMetricsReportingTask", "reporting_task",
+     {"Output Format": "record-format"}),
+]
+
+
+def site_to_site_url():
+    """Where the reporting tasks send: this NiFi's own UI URL, which a
+    cluster node reaches by service name, as nifi_api_url does."""
+    return "http://nifi:8080/nifi" if env("CLUSTER", "0") == "1" else "http://localhost:8080/nifi"
+
+
+def configure(component_path, entity, wanted):
+    """Set properties by display name; returns the updated entity."""
+    descriptors = entity["component"]["descriptors"]
+    by_display = {d["displayName"]: name for name, d in descriptors.items()}
+    properties = {}
+    for display, value in wanted.items():
+        if display not in by_display:
+            raise SystemExit("%s has no property %r" % (entity["component"]["type"], display))
+        name = by_display[display]
+        allowed = descriptors[name].get("allowableValues")
+        if allowed:   # a choice: send its value, matched by display name
+            match = [a["allowableValue"]["value"] for a in allowed
+                     if a["allowableValue"]["displayName"] == value or a["allowableValue"]["value"] == value]
+            if match:
+                value = match[0]
+        properties[name] = value
+    return call(component_path % entity["id"], method="PUT", body={
+        "revision": entity["revision"],
+        "component": {"id": entity["id"], "properties": properties}})
+
+
+def install_reporting_tasks():
+    existing = call("/flow/reporting-tasks")["reportingTasks"]
+    if any(t["component"]["type"].endswith("SiteToSiteBulletinReportingTask") for t in existing):
+        print("    reporting tasks already installed")
+        return
+    writer = call("/controller/controller-services", method="POST", body={
+        "revision": {"version": 0},
+        "component": {"type": "org.apache.nifi.json.JsonRecordSetWriter", "name": "JsonRecordSetWriter"}})
+    call("/controller-services/%s/run-status" % writer["id"], method="PUT", body={
+        "revision": call("/controller-services/%s" % writer["id"])["revision"], "state": "ENABLED"})
+    url = site_to_site_url()
+    for kind, port, extra in REPORTING_TASKS:
+        task = call("/controller/reporting-tasks", method="POST", body={
+            "revision": {"version": 0}, "component": {"type": kind}})
+        wanted = {"Destination URL": url, "Input Port Name": port, "Instance URL": url,
+                  "Transport Protocol": "HTTP", "Record Writer": writer["id"]}
+        wanted.update(extra)
+        task = configure("/reporting-tasks/%s", task, wanted)
+        call("/reporting-tasks/%s/run-status" % task["id"], method="PUT", body={
+            "revision": task["revision"], "state": "RUNNING"})
+        print("    reporting task %s -> %s: running" % (kind.rsplit(".", 1)[1], port))
 
 
 def instance_name():
@@ -360,8 +425,8 @@ def provision_one():
             ("splunk_hec_token", env("SPLUNK_HEC_TOKEN", "")),
             ("nifi_api_url", "http://localhost:8080/nifi-api"),
             ("nifi_path", "/opt/nifi/nifi-current/"),
-            ("processors_list", ""),
-            ("process_groups_list", ""),
+            ("processors_list", workload_ids()[0]),
+            ("process_groups_list", workload_ids()[1]),
             ("instance_name", instance_name()),
         ])
         print("    variable registry filled in")
@@ -383,12 +448,27 @@ def provision_one():
         ("nifi_api_url",
          "http://nifi:8080/nifi-api" if env("CLUSTER", "0") == "1"
          else "http://localhost:8080/nifi-api", False),
-        ("processors_list", "", False),
-        ("process_groups_list", "", False),
+        ("processors_list", workload_ids()[0], False),
+        ("process_groups_list", workload_ids()[1], False),
         ("instance_name", instance_name(), False),
     ])
     print("    parameter context filled in")
     finish(group_id)
+
+
+def workload_ids():
+    """The workload's component ids for this instance, written by
+    provision_workload.py, so the push flow's status-history branch has
+    something to collect rather than staying invalid."""
+    path = os.path.join(TESTS_DIR, ".workload.json")
+    if not os.path.isfile(path):
+        return "", ""
+    name = "nifi-b" if _PORT and _PORT == env("NIFI_B_HTTP_PORT", "38081") else "nifi"
+    with open(path) as handle:
+        ids = json.load(handle).get(name) or {}
+    # One id per line: the flow splits the parameter by line, as its
+    # documentation says (doc/config-nifi-monitoring-2-0-push.md).
+    return "\n".join(ids.get("processors", [])), "\n".join(ids.get("process_groups", []))
 
 
 def finish(group_id):
@@ -396,9 +476,10 @@ def finish(group_id):
     invalid = [p for p in processors if p["component"]["validationStatus"] != "VALID"]
     print("    %d processors, %d valid" % (len(processors), len(processors) - len(invalid)))
 
-    # The two GenerateFlowFile processors stay invalid while processors_list
-    # and process_groups_list are empty, which is by design: this profile
-    # exercises the API and log branches, which do not depend on them.
+    # The two GenerateFlowFile processors of the status-history branch stay
+    # invalid while processors_list and process_groups_list are empty; the
+    # harness fills them with the workload's ids (provision_workload.py), so
+    # anything listed here is a real problem.
     for processor in invalid:
         print("      not started (%s): %s"
               % (processor["component"]["validationStatus"], processor["component"]["name"]))

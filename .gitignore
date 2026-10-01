@@ -5,6 +5,7 @@ Thumbs.db
 .dccache
 __pycache__/
 tests/.env
+tests/.workload.json
 .venv-ucc/
 output/
 
@@ -17,3 +18,6 @@ output/
 dist/
 /*-appinspect.json
 /nifi_monitoring/app.manifest
+
+# Playwright MCP output (screenshots, snapshots, console logs)
+.playwright*/

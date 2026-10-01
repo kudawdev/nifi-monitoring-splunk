@@ -8,6 +8,7 @@ Skipped automatically when no stack is running, so `python3 -m unittest
 discover` stays safe to run anywhere.
 """
 
+import json
 import os
 import unittest
 
@@ -626,12 +627,14 @@ class IndexAndAccelerationTest(IntegrationTestCase):
 
 
 class DashboardPanelTest(IntegrationTestCase):
-    """Run the shipped panel queries and check they return rows.
+    """Run every data source of every shipped view and check it returns rows.
 
-    Rewriting the overview panels (dropping the joins, moving the disk panel
-    to the numeric fields) is exactly the kind of change that can leave a
-    panel silently empty, so the queries are exercised here rather than
-    eyeballed in the UI.
+    The defect this exists for is D-T: the panels used to be tested three at
+    a time, so a whole view could read a dataset only the other collection
+    path feeds -- every bulletin panel, half the instance view -- and the
+    matrix still passed. Here each data source is resolved the way Studio
+    resolves it (a chain runs its base, then its own query), with the views'
+    default tokens, and must return rows unless this profile cannot feed it.
     """
 
     VIEWS = os.path.join(
@@ -639,88 +642,173 @@ class DashboardPanelTest(IntegrationTestCase):
         "nifi_monitoring", "default", "data", "ui", "views",
     )
 
-    def panel_queries(self, view):
+    def views(self):
         import re
-        text = open(os.path.join(self.VIEWS, view)).read()
-        # strip XML comments and unescape what Simple XML escapes
-        text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
-        queries = re.findall(r"<query>(.*?)</query>", text, re.S)
-        return [
-            q.replace("&gt;", ">").replace("&lt;", "<").replace("&amp;", "&").strip()
-            for q in queries
-        ]
+        out = {}
+        for name in sorted(os.listdir(self.VIEWS)):
+            if name.endswith(".xml"):
+                text = open(os.path.join(self.VIEWS, name), encoding="utf-8").read()
+                match = re.search(r"<definition><!\[CDATA\[(.*)\]\]></definition>", text, re.S)
+                out[name[:-4]] = json.loads(match.group(1))
+        return out
+
+    def tokens(self):
+        """What the views' inputs default to, with the instance an input
+        would pick first."""
+        rows = search(self.splunk, "| inputlookup instance | fields host | head 1")
+        host = rows[0]["host"] if rows else "nifi"
+        return {"time.earliest": "-4h@m", "time.latest": "now", "cluster": "*", "host": host,
+                "kind": "processor", "metric": "taskMillis", "operation": "sum", "component": "*",
+                "level": "*", "category": "*", "source": "*", "search": "*"}
+
+    def resolve(self, definition, ds_id, tokens):
+        ds = definition["dataSources"][ds_id]
+        query = ds["options"]["query"]
+        if ds["type"] == "ds.chain":
+            base, earliest = self.resolve(definition, ds["options"]["extend"], tokens)
+            query = base + "\n" + query
+        else:
+            earliest = ds["options"].get("queryParameters", {}).get("earliest", "-4h")
+        for key, value in tokens.items():
+            query = query.replace("$%s$" % key, value)
+            earliest = earliest.replace("$%s$" % key, value)
+        return query, earliest
+
+    def may_be_empty(self, view, ds_id):
+        """The data sources this profile has nothing for, and why."""
+        pull = self.profile_collection == "pull"
+        if view == "nifi_cluster" or ds_id == "ds_input_host" and view == "nifi_cluster":
+            return not self.profile_cluster          # a standalone NiFi has no cluster
+        if ds_id in ("ds_deprecations", "ds_fired", "ds_ta_errors", "ds_ta_time"):
+            return True                              # empty on a healthy, clean NiFi
+        if view == "nifi_components" and ds_id in ("ds_connections", "ds_conn_table"):
+            return not pull                          # flow metrics: the TA only
+        if view == "nifi_logs" and ds_id.startswith("ds_req"):
+            return not self.profile_forwarder        # the request log ships with the forwarder
+        if view == "nifi_logs" and ds_id in ("ds_levels", "ds_events", "ds_input_host"):
+            return pull and not self.profile_forwarder
+        return False
 
     def wait_for_the_data_behind_the_panels(self):
-        """A panel query is not a wait condition.
-
-        Both overview panels end in a table built from the instance lookup, so
-        they return a row whether or not any diagnostics arrived -- waiting on
-        one comes back at once and the assertion then runs against a row with
-        nothing in it but host and cluster. That is the same mistake
-        IntegrationWaitsAreRealTest exists to catch, and it cannot see this
-        one: the query comes out of the dashboard XML, not out of this file.
-
-        On a cluster the wait is real rather than theoretical. The API pollers
-        carry executionNode PRIMARY, so nothing is collected at all until the
-        election settles, and the first diagnostics can be a couple of minutes
-        behind the flow being started.
-
-        The wait is on a host the lookup configures, not on any host. The
-        panels group by host, so diagnostics arriving under a host the lookup
-        does not know -- a cluster node's name, on the push path -- leave the
-        configured row empty just as surely as no diagnostics at all.
-        """
+        """The panels read the API, the workload's status history and its
+        bulletins. Waiting on a panel query is not a wait: most of them
+        return a row whatever happened."""
         wait_for_events(
             self.splunk,
             'index=nifi sourcetype="nifi:api:system_diagnostics" '
-            '[| inputlookup instance | fields host] '
-            '| stats count by host',
+            '[| inputlookup instance | fields host] | stats count by host',
             minimum=1, timeout=420)
-
-    def test_the_overview_status_panel_returns_a_row_per_instance(self):
-        self.wait_for_the_data_behind_the_panels()
-        query = self.panel_queries("nifi_overview.xml")[0]
-        rows = search(self.splunk, query)
-        self.assertTrue(rows, "the overall status panel returned nothing")
-        self.assertIn("host", rows[0])
-        self.assertEqual(rows[0].get("status"), "Up")
-
-    def test_the_disk_panel_returns_numeric_percentages(self):
-        self.wait_for_the_data_behind_the_panels()
-        query = self.panel_queries("nifi_overview.xml")[1]
-        rows = search(self.splunk, query)
-        self.assertTrue(rows, "the disk panel returned nothing")
-        row = rows[0]
-        for column in ("Content %", "Content Used GB", "Provenance %"):
-            with self.subTest(column=column):
-                self.assertIn(column, row)
-                # the point of the rewrite: a number, not "16.0%"
-                float(row[column])
-
-    def test_the_disk_percentages_are_in_range(self):
-        self.wait_for_the_data_behind_the_panels()
-        query = self.panel_queries("nifi_overview.xml")[1]
-        rows = search(self.splunk, query)
-        for column in ("Content %", "Flow %", "Provenance %"):
-            with self.subTest(column=column):
-                value = float(rows[0][column])
-                self.assertGreaterEqual(value, 0.0)
-                self.assertLessEqual(value, 100.0)
-
-    def test_the_inventory_panel_reports_the_version_and_path(self):
-        if self.profile_collection != "pull":
-            self.skipTest("the version column comes from nifi:api:version_info, "
-                          "which only the TA produces")
         wait_for_events(
             self.splunk,
-            'index=nifi sourcetype="nifi:api:version_info" | stats count by host',
+            '| tstats count from datamodel=NIFI.Component_Status by host',
             minimum=1, timeout=420)
-        queries = self.panel_queries("nifi_internal_monitoring.xml")
-        inventory = [q for q in queries if "version_info" in q][0]
-        rows = search(self.splunk, inventory)
-        self.assertTrue(rows, "the inventory panel returned nothing")
-        self.assertEqual(rows[0].get("nifi_version"), self.nifi_version)
-        self.assertIn("REST pull", str(rows[0].get("paths")))
+        wait_for_events(
+            self.splunk,
+            '| tstats count from datamodel=NIFI.Bulletins by host',
+            minimum=1, timeout=420)
+
+    def test_every_panel_this_profile_feeds_returns_rows(self):
+        self.wait_for_the_data_behind_the_panels()
+        tokens = self.tokens()
+        for view, definition in self.views().items():
+            for ds_id in definition["dataSources"]:
+                query, earliest = self.resolve(definition, ds_id, tokens)
+                with self.subTest(view=view, ds=ds_id):
+                    rows = search(self.splunk, query, earliest=earliest)
+                    if not self.may_be_empty(view, ds_id):
+                        self.assertTrue(rows, "%s.%s returned nothing:\n%s" % (view, ds_id, query[:300]))
+
+    def test_the_fleet_has_a_row_per_instance_with_its_numbers(self):
+        self.wait_for_the_data_behind_the_panels()
+        rows = search(self.splunk, "| `nifi_fleet`", earliest="-24h")
+        lookup = {r["host"] for r in search(self.splunk, "| inputlookup instance | fields host")}
+        self.assertEqual({r["host"] for r in rows} & lookup, lookup,
+                         "an instance in the lookup has no fleet row")
+        for row in rows:
+            if row["host"] not in lookup:
+                continue
+            with self.subTest(host=row["host"]):
+                self.assertNotIn(row.get("health"), ("no_data", "stale"), row.get("health_reason"))
+                self.assertTrue(0 <= float(row["heap_pct"]) <= 100)
+                self.assertTrue(0 <= float(row["worst_repo_pct"]) <= 100)
+                # the workload leaves one invalid processor and a failing one
+                self.assertGreaterEqual(int(row["invalid"]), 1)
+                self.assertEqual(row.get("health"), "degraded")
+
+    def test_the_instance_header_reports_the_version(self):
+        self.wait_for_the_data_behind_the_panels()
+        definition = self.views()["nifi_instance"]
+        query, earliest = self.resolve(definition, "ds_header", self.tokens())
+        rows = search(self.splunk, query, earliest=earliest)
+        self.assertTrue(rows)
+        self.assertEqual(rows[0].get("NiFi"), self.nifi_version)
+
+
+class InstanceThresholdTest(IntegrationTestCase):
+    """A threshold set on an instance's row of the inventory changes that
+    instance's health, and nothing else's.
+
+    What an operator does: open Configuration > NiFi Instances and fill in
+    heap_threshold for one NiFi. Here the row is written through the KV
+    store's REST API, the same store the Lookup File Editor writes to, and
+    put back the way it was afterwards.
+    """
+
+    COLLECTION = "storage/collections/data/instance"
+
+    def kv(self):
+        from support import connect
+        return connect(app="nifi_monitoring", owner="nobody")
+
+    def rows(self, service):
+        return json.loads(service.get(self.COLLECTION, output_mode="json").body.read().decode())
+
+    def write(self, service, row):
+        service.post("%s/%s" % (self.COLLECTION, row["_key"]),
+                     headers=[("Content-Type", "application/json")], body=json.dumps(row))
+
+    def fleet_row(self, host):
+        for row in search(self.splunk, "| `nifi_fleet`", earliest="-24h"):
+            if row["host"] == host:
+                return row
+        return None
+
+    def test_a_heap_threshold_on_the_row_makes_that_instance_critical(self):
+        wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:system_diagnostics" '
+            '[| inputlookup instance | fields host] | stats count by host',
+            minimum=1, timeout=420)
+        service = self.kv()
+        original = self.rows(service)[0]
+        host = original["host"]
+        before = self.fleet_row(host)
+        self.assertNotEqual(before.get("heap_severity"), "critical",
+                            "heap is already critical; the test proves nothing")
+        try:
+            changed = {k: v for k, v in original.items() if not k.startswith("_") or k == "_key"}
+            changed.update({"heap_threshold": 1, "heap_threshold_critical": 2})
+            self.write(service, changed)
+            after = self.fleet_row(host)
+            self.assertEqual(after["heap_warn"], "1")
+            self.assertEqual(after["heap_crit"], "2")
+            self.assertEqual(after["heap_severity"], "critical")
+            self.assertEqual(after["health"], "critical")
+            self.assertIn(">= 2%", after["health_reason"])
+        finally:
+            self.write(service, {k: v for k, v in original.items()
+                                 if not k.startswith("_") or k == "_key"})
+        restored = self.fleet_row(host)
+        self.assertEqual(restored["heap_warn"], before["heap_warn"])
+
+    def test_an_unlisted_host_falls_back_to_the_macros(self):
+        """The lookup's default_match puts "standalone" in every column of a
+        host it does not know; that must not become a threshold."""
+        rows = search(self.splunk,
+                      '| makeresults | eval host="not-in-the-inventory" | `nifi_instance_thresholds` '
+                      '| eval macro = `nifi_threshold_heap` | table heap_threshold heap_warn macro')
+        self.assertTrue(rows)
+        self.assertEqual(rows[0]["heap_warn"], rows[0]["macro"])
 
 
 class DatamodelObjectTest(IntegrationTestCase):
@@ -745,7 +833,8 @@ class DatamodelObjectTest(IntegrationTestCase):
         representation: an object Splunk has not registered makes tstats
         fail, which is the behaviour that matters, and it does not depend on
         how the REST endpoint happens to name its fields."""
-        for obj in ("Flow_Metrics", "Bulletin_Board", "Version_Info", "Request_Log"):
+        for obj in ("Flow_Metrics", "Bulletins", "Throughput", "Component_Status",
+                    "Version_Info", "Request_Log"):
             with self.subTest(obj=obj):
                 rows = search(
                     self.splunk, "| tstats count from datamodel=NIFI.%s" % obj
@@ -1061,33 +1150,29 @@ class ClusterTest(IntegrationTestCase):
         that no dashboard queries. Adding two more and no panel would have
         repeated it, so the panels are asserted the same way the data is."""
         import re as _re
-        views = os.path.join(
+        view = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "..", "nifi_monitoring", "default", "data", "ui", "views",
-            "nifi_internal_monitoring.xml")
-        text = _re.sub(r"<!--.*?-->", "", open(views).read(), flags=_re.S)
-        queries = [q.replace("&gt;", ">").replace("&lt;", "<").replace("&amp;", "&").strip()
-                   for q in _re.findall(r"<query>(.*?)</query>", text, _re.S)]
-        # Wait on the sourcetypes, then ask the panel. The panel query is a
-        # tstats over the datamodel: it answers with whatever the model has,
-        # which is no rows rather than one, but it is also not a string anyone
-        # reviewing this file can read -- so the wait belongs on the data.
+            "..", "nifi_monitoring", "default", "data", "ui", "views", "nifi_cluster.xml")
+        text = open(view, encoding="utf-8").read()
+        definition = json.loads(_re.search(r"<definition><!\[CDATA\[(.*)\]\]></definition>",
+                                           text, _re.S).group(1))
+        # Wait on the sourcetypes, then ask the panel: the panel is a tstats
+        # over the datamodel and answers with whatever the model has.
         for sourcetype in ("nifi:api:cluster_nodes", "nifi:api:node_diagnostics"):
             wait_for_events(
                 self.splunk,
                 'index=nifi sourcetype="%s" | stats count by node' % sourcetype,
                 minimum=self.NODES, timeout=420)
-
-        for objeto in ("Cluster_Nodes", "Node_Diagnostics"):
-            with self.subTest(object=objeto):
-                panel = [q for q in queries if objeto in q]
-                self.assertTrue(panel, "no panel queries %s" % objeto)
-                rows = search(self.splunk, panel[0])
-                self.assertEqual(
-                    len(rows), self.NODES,
-                    "%s panel returned %d rows for %d nodes"
-                    % (objeto, len(rows), self.NODES))
-                self.assertTrue(rows[0].get("node"), "the panel does not name the node")
+        host = search(self.splunk, "| tstats count from datamodel=NIFI.Cluster_Nodes by host")[0]["host"]
+        query = definition["dataSources"]["ds_nodes"]["options"]["query"].replace("$host$", host)
+        rows = search(self.splunk, query, earliest="-15m")
+        self.assertEqual(len(rows), self.NODES,
+                         "the nodes panel returned %d rows for %d nodes" % (len(rows), self.NODES))
+        for row in rows:
+            with self.subTest(node=row.get("node")):
+                self.assertTrue(row.get("node"), "the panel does not name the node")
+                self.assertEqual(row.get("status"), "CONNECTED")
+                self.assertTrue(0 < float(row["heap"]) <= 100, "no per-node heap")
 
     def test_bulletins_name_the_node_they_came_from(self):
         """Finding (c): FIELDALIAS-bulletin_node went two releases without a
@@ -1332,17 +1417,19 @@ class MultiInstanceTest(IntegrationTestCase):
         text = open(os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "..", "nifi_monitoring", "default", "data", "ui", "views",
-            "nifi_overview.xml")).read()
-        text = _re.sub(r"<!--.*?-->", "", text, flags=_re.S)
-        query = _re.findall(r"<query>(.*?)</query>", text, _re.S)[0]
-        query = query.replace("&gt;", ">").replace("&lt;", "<").replace("&amp;", "&").strip()
+            "nifi_overview.xml"), encoding="utf-8").read()
+        sources = json.loads(_re.search(r"<definition><!\[CDATA\[(.*)\]\]></definition>",
+                                        text, _re.S).group(1))["dataSources"]
+        # the instances table: the fleet search and the chain that shapes it
+        query = (sources["ds_fleet"]["options"]["query"] + "\n"
+                 + sources["ds_t_instances"]["options"]["query"]).replace("$cluster$", "*")
         wait_for_events(
             self.splunk,
             'index=nifi sourcetype="nifi:api:system_diagnostics" '
             '| stats count by host',
             minimum=len(self.HOSTS), timeout=420)
-        rows = search(self.splunk, query)
-        seen = {row["host"] for row in rows}
+        rows = search(self.splunk, query, earliest="-24h")
+        seen = {row["Instance"] for row in rows}
         for host in self.HOSTS:
             with self.subTest(host=host):
                 self.assertIn(host, seen)
@@ -1463,12 +1550,25 @@ class PushPathTest(IntegrationTestCase):
     def test_the_flow_reports_no_bulletins_at_error_level(self):
         """A processor failing inside the flow raises an ERROR bulletin, which
         is how a broken push path shows itself."""
+        # The harness workload fails on purpose (provision_workload.py), and
+        # its bulletins are also the proof that bulletins reach Splunk on this
+        # path at all: until the harness installed the reporting tasks no
+        # nifi:reporting:bulletin ever arrived, and this test passed by
+        # counting nothing.
+        workload = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:reporting:bulletin" bulletinGroupName="harness-workload" '
+            '| stats count by bulletinSourceName',
+            minimum=1, timeout=420)
+        self.assertTrue(workload, "no bulletin reached Splunk through the reporting task")
         rows = search(
             self.splunk,
-            'index=nifi sourcetype="nifi:*" bulletinLevel=ERROR | stats count',
+            'index=nifi sourcetype="nifi:*" bulletinLevel=ERROR bulletinGroupName!="harness-workload" '
+            '| stats count values(bulletinSourceName) as sources',
         )
         count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
-        self.assertEqual(count, 0, "the flow raised %d error bulletins" % count)
+        self.assertEqual(count, 0, "the flow raised %d error bulletins: %s"
+                         % (count, rows[0].get("sources") if rows else ""))
 
 
 if __name__ == "__main__":

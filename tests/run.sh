@@ -74,7 +74,11 @@ elif [ ! -d ../output/nifi_TA_monitoring ]; then
     exit 2
 fi
 
-echo "==> profile: $PROFILE${BARE:+ (bare: nothing will be installed)}"
+if [ "$BARE" -eq 1 ]; then
+    echo "==> profile: $PROFILE (bare: nothing will be installed)"
+else
+    echo "==> profile: $PROFILE"
+fi
 python3 matrix.py "$PROFILE" > .env
 if [ "$BARE" -eq 1 ]; then
     echo "BARE=1" >> .env
@@ -88,7 +92,7 @@ cleanup() {
         echo "==> --keep given, leaving the stack up"
     else
         echo "==> tearing down"
-        docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+        docker compose --profile '*' down -v --remove-orphans >/dev/null 2>&1 || true
     fi
     exit $status
 }
@@ -99,8 +103,15 @@ trap cleanup EXIT
 # next `up` claims the same published ports, and `up --wait` gives up. The
 # CI matrix runs each profile on its own runner, but running them in
 # sequence locally is the normal way to check the whole matrix.
+#
+# Every profile, not just this one's: `down` only sees the services of the
+# profiles it is given, and .env now holds this profile's. Without '*', a
+# cluster run followed by a push run left the cluster's second node,
+# ZooKeeper and both forwarders running -- the forwarders shipping logs into
+# the new Splunk, so the push run's log panels had data the push flow never
+# sent.
 echo "==> removing any previous stack"
-docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+docker compose --profile '*' down -v --remove-orphans >/dev/null 2>&1 || true
 
 for port in "$SPLUNK_WEB_PORT" "$SPLUNK_MGMT_PORT" "$SPLUNK_HEC_PORT" \
             "$NIFI_HTTP_PORT" "$NIFI_HTTPS_PORT"; do
@@ -139,7 +150,7 @@ if [ "$BARE" -eq 1 ]; then
     are in tests/additional_apps/. The push path additionally needs the flow
     from flow_definition/, imported through NiFi's own UI.
 
-    Tear down with:  cd tests && docker compose down -v
+    Tear down with:  cd tests && docker compose --profile '*' down -v
 
 BARE_NOTES
     exit 0
@@ -147,6 +158,10 @@ fi
 
 echo "==> loading the instance kvstore collection"
 python3 integration/seed_kvstore.py
+
+echo "==> building the workload the dashboards monitor"
+rm -f .workload.json
+python3 integration/provision_workload.py
 
 if [ "${COLLECTION:-pull}" = "hec" ]; then
     echo "==> installing and starting the flow inside NiFi (push path)"
