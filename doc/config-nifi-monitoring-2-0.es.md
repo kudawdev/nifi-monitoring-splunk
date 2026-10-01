@@ -1,3 +1,7 @@
+---
+title: Estrategia pull (2.0)
+---
+
 # Instalación y Configuración v2.0.0
 
 Guía paso a paso del lado de Splunk, desde las apps ya instaladas hasta
@@ -26,6 +30,7 @@ flowchart LR
     subgraph splunk["Splunk"]
         ta["Nifi Monitoring TA"]:::propio
         idx[("index nifi")]:::dato
+        logs[("logs de NiFi<br/>nifi:log:*")]:::dato
         lookup[("Instance Lookup<br/>KV store")]:::dato
         dm["Datamodel NIFI"]:::propio
         dash["Nifi Monitoring<br/>dashboards"]:::propio
@@ -33,9 +38,9 @@ flowchart LR
 
     nifi_host ~~~ splunk
 
-    ta -->|"GET periódico, un input por instancia · HTTP 8080 / HTTPS 8443"| nifi
+    nifi -->|"consultado por la TA: GET periódico, un input por instancia · HTTP 8080 / HTTPS 8443"| ta
     ta -->|"escribe eventos"| idx
-    uf -.->|"logs de NiFi (opcional) · S2S TCP 9997"| splunk
+    uf -.->|"opcional · S2S TCP 9997"| logs
     idx --> dm
     dash -->|"consulta"| dm
     dash -->|"consulta"| lookup

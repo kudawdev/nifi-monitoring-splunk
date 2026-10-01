@@ -1,3 +1,7 @@
+---
+title: Estrategia push (1.2)
+---
+
 # Estrategia push: Envío Directo
 
 Un flow que corre dentro de NiFi llama a la propia API de NiFi y envía el

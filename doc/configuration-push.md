@@ -1,3 +1,7 @@
+---
+title: Push strategy (1.2)
+---
+
 # Push strategy: Direct Sending
 
 A flow running inside NiFi calls NiFi's own API and sends the result

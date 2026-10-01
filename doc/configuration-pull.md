@@ -1,3 +1,7 @@
+---
+title: Pull strategy (1.2)
+---
+
 # Pull strategy: Splunk Data Input NiFi
 
 The TA polls NiFi's REST API on an interval and writes what it gets

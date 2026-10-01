@@ -1,3 +1,7 @@
+---
+title: Estrategia pull (1.2)
+---
+
 # Estrategia pull: Splunk Data Input NiFi
 
 La TA consulta la API REST de NiFi en un intervalo y escribe lo que

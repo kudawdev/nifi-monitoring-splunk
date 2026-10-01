@@ -21,8 +21,8 @@ nav:
   - Compatibility and collection strategy: compatibility.md
   - Install NIFI Monitoring: installation.md
   - Configure Nifi Monitoring 1.2:
-      - "Push strategy": configuration-push.md
       - "Pull strategy": configuration-pull.md
+      - "Push strategy": configuration-push.md
   - Configure Nifi Monitoring 2.0:
       - "Pull strategy": config-nifi-monitoring-2-0.md
       - "Push strategy": config-nifi-monitoring-2-0-push.md
@@ -71,7 +71,6 @@ extra:
       lang: es
 
 extra_javascript:
-- assets/js/theme.js
 - assets/js/mermaid.min.js
 - assets/js/mermaid-init.js
 extra_css:
