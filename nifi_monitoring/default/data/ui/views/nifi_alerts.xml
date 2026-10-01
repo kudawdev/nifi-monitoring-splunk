@@ -71,7 +71,7 @@
             "input_time"
         ],
         "options": {
-            "height": 810,
+            "height": 1010,
             "width": 1440
         },
         "structure": [
@@ -108,7 +108,7 @@
             {
                 "item": "viz_shipped",
                 "position": {
-                    "h": 360,
+                    "h": 560,
                     "w": 1440,
                     "x": 0,
                     "y": 130
@@ -121,7 +121,7 @@
                     "h": 320,
                     "w": 1440,
                     "x": 0,
-                    "y": 490
+                    "y": 690
                 },
                 "type": "block"
             }

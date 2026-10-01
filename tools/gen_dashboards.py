@@ -740,7 +740,7 @@ index=_audit action=alert_fired ss_app=nifi_monitoring
     v.row(130, "viz_enabled", "viz_fired", ("viz_manage", 2))
     v.table("viz_shipped", shipped, "Alerts shipped with the app", count=10, widths={"Condition": 650},
             colors={"State": [{"match": "✓ Enabled", "value": GOOD}, {"match": "○ Disabled", "value": MUTED}]})
-    v.row(360, "viz_shipped")
+    v.row(560, "viz_shipped")
     v.table("viz_fired_table", fired, "Fired", count=10)
     v.row(320, "viz_fired_table")
     return v
@@ -775,12 +775,12 @@ index=_internal sourcetype=splunkd component=ExecProcessor "nifi.py" "status_cod
 | eventstats max(interval) as interval by host
 | where isnotnull(sourcetype)
 | eval interval = coalesce(interval, `nifi_default_interval`), age = now() - last,
-       state = case(sourcetype LIKE "nifi:log:%", "✓", age <= interval * `nifi_stale_factor`, "✓", age <= 3600, "! late", true(), "✕ " . tostring(round(age), "duration")),
+       state = case(sourcetype LIKE "nifi:log:%" OR sourcetype LIKE "%bulletin%", "✓", age <= interval * `nifi_stale_factor`, "✓", age <= 3600, "! late", true(), "✕ " . tostring(round(age), "duration")),
        sourcetype = replace(sourcetype, "^nifi:", "")
 | xyseries host sourcetype state
 | rename host as Instance
 ''', earliest="-24h", latest="now"), "Last data per instance and source",
-            "✓ on time · ! late (more than nifi_stale_factor intervals) · ✕ missing for that long · blank: not collected",
+            "✓ on time · ! late (more than nifi_stale_factor intervals) · ✕ missing for that long · blank: not collected. Logs and bulletins arrive only when there is something to say, so they are never late",
             count=20)
     v.row(300, "viz_matrix")
     v.chart("viz_ta_time", "splunk.column", v.chain("ds_ta_time", ta, "| timechart span=1h count by code"),

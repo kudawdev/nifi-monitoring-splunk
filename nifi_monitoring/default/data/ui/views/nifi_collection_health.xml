@@ -45,7 +45,7 @@
         "ds_matrix": {
             "name": "ds_matrix",
             "options": {
-                "query": "| tstats latest(_time) as last where `index_nifi` sourcetype=nifi:* earliest=-24h latest=now by host sourcetype\n| append [| rest splunk_server=local count=0 /servicesNS/-/-/data/inputs/nifi | eval host = coalesce(host, title) | fields host interval]\n| eventstats max(interval) as interval by host\n| where isnotnull(sourcetype)\n| eval interval = coalesce(interval, `nifi_default_interval`), age = now() - last,\n       state = case(sourcetype LIKE \"nifi:log:%\", \"✓\", age <= interval * `nifi_stale_factor`, \"✓\", age <= 3600, \"! late\", true(), \"✕ \" . tostring(round(age), \"duration\")),\n       sourcetype = replace(sourcetype, \"^nifi:\", \"\")\n| xyseries host sourcetype state\n| rename host as Instance",
+                "query": "| tstats latest(_time) as last where `index_nifi` sourcetype=nifi:* earliest=-24h latest=now by host sourcetype\n| append [| rest splunk_server=local count=0 /servicesNS/-/-/data/inputs/nifi | eval host = coalesce(host, title) | fields host interval]\n| eventstats max(interval) as interval by host\n| where isnotnull(sourcetype)\n| eval interval = coalesce(interval, `nifi_default_interval`), age = now() - last,\n       state = case(sourcetype LIKE \"nifi:log:%\" OR sourcetype LIKE \"%bulletin%\", \"✓\", age <= interval * `nifi_stale_factor`, \"✓\", age <= 3600, \"! late\", true(), \"✕ \" . tostring(round(age), \"duration\")),\n       sourcetype = replace(sourcetype, \"^nifi:\", \"\")\n| xyseries host sourcetype state\n| rename host as Instance",
                 "queryParameters": {
                     "earliest": "-24h",
                     "latest": "now"
@@ -249,7 +249,7 @@
             "dataSources": {
                 "primary": "ds_matrix"
             },
-            "description": "✓ on time · ! late (more than nifi_stale_factor intervals) · ✕ missing for that long · blank: not collected",
+            "description": "✓ on time · ! late (more than nifi_stale_factor intervals) · ✕ missing for that long · blank: not collected. Logs and bulletins arrive only when there is something to say, so they are never late",
             "options": {
                 "backgroundColor": "transparent",
                 "count": 20,
