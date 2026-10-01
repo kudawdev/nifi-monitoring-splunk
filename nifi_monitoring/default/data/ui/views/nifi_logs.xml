@@ -7,7 +7,7 @@
         "ds_deprecations": {
             "name": "ds_deprecations",
             "options": {
-                "query": "`index_nifi` sourcetype=\"nifi:log:deprecation\" host=\"$host$\"\n| rex \"\\]\\s+(?<logger>\\S+)\\s+(?<message>.+)$\"\n| eval message = substr(message, 1, 240)\n| stats count as Occurrences, latest(_time) as last by host logger message\n| eval \"Last seen\" = strftime(last, \"%Y-%m-%d %H:%M\") | sort - Occurrences\n| table host logger message Occurrences \"Last seen\"\n| rename host as Instance, logger as Logger, message as Message",
+                "query": "`index_nifi` sourcetype=\"nifi:log:deprecation\" host=\"$host$\"\n| rex \"\\]\\s+(?<logger>\\S+)\\s+(?<message>[^\\r\\n]+)\"\n| eval message = substr(message, 1, 240)\n| stats count as Occurrences, latest(_time) as last by host logger message\n| eval \"Last seen\" = strftime(last, \"%Y-%m-%d %H:%M\") | sort - Occurrences\n| table host logger message Occurrences \"Last seen\"\n| rename host as Instance, logger as Logger, message as Message",
                 "queryParameters": {
                     "earliest": "-7d@d",
                     "latest": "now"

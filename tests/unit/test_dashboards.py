@@ -168,6 +168,43 @@ class ViewQueryTest(unittest.TestCase):
                         self.assertNotIn("$search$", ds["options"]["query"])
 
 
+class DeprecationPanelTest(unittest.TestCase):
+    """The Logs view's deprecations panel against a real nifi-deprecation.log event.
+
+    NiFi writes each deprecation with the stack trace of the call that hit it,
+    so the event is many lines long. The panel's rex used to end in `.+$`,
+    which a multi-line event never matches: message came out null and
+    `stats ... by message` dropped the row, so the panel stayed empty on the
+    very instances it exists for. The integration suite cannot catch it -- a
+    clean NiFi writes nothing to that log, so the panel is allowed to be empty
+    there.
+    """
+
+    #: The first lines of what NiFi 1.28.1 wrote when a HashContent was added.
+    EVENT = (
+        "2026-10-01 20:11:33,710 WARN [NiFi Web Server-28] "
+        "deprecation.org.apache.nifi.processors.standard.HashContent Added Deprecated "
+        "Component HashContent[id=f917fbc9-01a0-1000-0f69-27eab934932d] See alternatives "
+        "[org.apache.nifi.processors.standard.CryptographicHashContent]\n"
+        "org.apache.nifi.deprecation.log.DeprecationException: Reference Class "
+        "[org.apache.nifi.processors.standard.HashContent]\n"
+        "\tat org.apache.nifi.deprecation.log.StandardDeprecationLogger"
+        ".getExtendedArguments(StandardDeprecationLogger.java:63)\n"
+    )
+
+    def test_the_message_is_extracted_from_a_multi_line_event(self):
+        _, definition = load_views()["nifi_logs"]
+        query = definition["dataSources"]["ds_deprecations"]["options"]["query"]
+        pattern = re.search(r'\| rex "(.*?)"\n', query).group(1)
+        # SPL's rex is PCRE; Python spells named groups (?P<name>...).
+        match = re.search(pattern.replace("(?<", "(?P<"), self.EVENT)
+        self.assertIsNotNone(match, pattern)
+        self.assertEqual(match.group("logger"),
+                         "deprecation.org.apache.nifi.processors.standard.HashContent")
+        self.assertTrue(match.group("message").startswith("Added Deprecated Component HashContent"))
+        self.assertNotIn("\n", match.group("message"))
+
+
 class NavigationTest(unittest.TestCase):
 
     @classmethod

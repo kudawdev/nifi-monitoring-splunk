@@ -632,7 +632,7 @@ def logs():
     v.row(70, "viz_dep")
     v.table("viz_deprecations", v.search("ds_deprecations", r'''
 `index_nifi` sourcetype="nifi:log:deprecation" host="$host$"
-| rex "\]\s+(?<logger>\S+)\s+(?<message>.+)$"
+| rex "\]\s+(?<logger>\S+)\s+(?<message>[^\r\n]+)"
 | eval message = substr(message, 1, 240)
 | stats count as Occurrences, latest(_time) as last by host logger message
 | eval "Last seen" = strftime(last, "%Y-%m-%d %H:%M") | sort - Occurrences
