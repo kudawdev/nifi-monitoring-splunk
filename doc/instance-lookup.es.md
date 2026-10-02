@@ -27,7 +27,7 @@ index=* sourcetype=nifi* | dedup host | table host
     Los procesos de NiFi ya tienen que estar mandando datos para que esta
     búsqueda devuelva algo:
 
-    1. Estrategia push: inicia el flow de NiFi — ver [Inicia el flow](configuration-push.es.md#5-inicia-el-flow).
+    1. Estrategia push: inicia el flow de NiFi — ver [Inicia el flow](config-nifi-monitoring-2-0-push.es.md#5-inicia-el-flow).
     2. Estrategia pull: los data inputs configurados deben estar habilitados.
 
 Agrega una fila por host, con el cluster al que pertenece. El Overview toma

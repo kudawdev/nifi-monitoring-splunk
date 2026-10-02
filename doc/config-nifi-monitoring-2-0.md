@@ -7,7 +7,7 @@ title: Pull strategy (2.0)
 Step-by-step setup on the Splunk side, from the apps already installed to
 working dashboards. This page assumes the **pull** strategy (the TA
 polling NiFi's REST API) — the default and recommended one. For **push**,
-see [Push strategy: Direct Sending (2.0)](config-nifi-monitoring-2-0-push.md) instead.
+see [Push strategy (2.0)](config-nifi-monitoring-2-0-push.md) instead.
 
 Not sure which strategy you need? See
 [Choosing a collection strategy](compatibility.md#choosing-a-collection-strategy)

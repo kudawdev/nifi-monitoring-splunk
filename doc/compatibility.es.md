@@ -50,7 +50,7 @@ Dos cosas existen solo en un cluster:
   nodo, no por cluster. El flow 2.x lo hace solo; el flow 1.x ejecuta todo
   en todos los nodos, y sus fuentes de la API se tienen que poner en
   *Primary node* a mano — ver
-  [Estrategia push (1.2)](configuration-push.es.md#3-configura-los-ajustes-del-flow).
+  [Estrategia push (2.0)](config-nifi-monitoring-2-0-push.es.md#3-configura-los-ajustes-del-flow).
 
 ## Elegir una estrategia de recolección
 

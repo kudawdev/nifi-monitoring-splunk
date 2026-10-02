@@ -33,7 +33,7 @@ Events keep the `host` value you configured (the cluster's name) and add a `node
 Two things exist only on a cluster:
 
 - **Bulletins carry the node that raised them.** Framework bulletins (categories such as *Clustering* or *Primary Node*) describe the cluster itself rather than a component, so they have no source name.
-- **On the push strategy, only the primary node polls the API.** A cluster does not send one copy of the same data per node. Log tailing still runs on every node, because log files are per node, not cluster-wide. The 2.x flow does this by itself; the 1.x flow runs everything on every node, and its API sources have to be set to *Primary node* by hand — see [Push strategy (1.2)](configuration-push.md#3-configure-the-flows-settings).
+- **On the push strategy, only the primary node polls the API.** A cluster does not send one copy of the same data per node. Log tailing still runs on every node, because log files are per node, not cluster-wide. The 2.x flow does this by itself; the 1.x flow runs everything on every node, and its API sources have to be set to *Primary node* by hand — see [Push strategy (2.0)](config-nifi-monitoring-2-0-push.md#3-configure-the-flows-settings).
 
 ## Choosing a collection strategy
 

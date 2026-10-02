@@ -7,8 +7,7 @@ title: Estrategia pull (2.0)
 Guía paso a paso del lado de Splunk, desde las apps ya instaladas hasta
 los dashboards con datos. Esta página asume la estrategia **pull** (el TA
 consultando la API REST de NiFi) — la opción por defecto y recomendada.
-Para **push**, ver [Estrategia push: Envío Directo (2.0)](config-nifi-monitoring-2-0-push.es.md)
-en su lugar.
+Para **push**, ver [Estrategia push (2.0)](config-nifi-monitoring-2-0-push.es.md) en su lugar.
 
 ¿No sabes qué estrategia necesitas? Revisa
 [Elegir una estrategia de recolección](compatibility.es.md#elegir-una-estrategia-de-recoleccion)
