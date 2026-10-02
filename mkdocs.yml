@@ -21,7 +21,8 @@ nav:
   - Compatibility and collection strategy: compatibility.md
   - Install NIFI Monitoring: installation.md
   - Configure Nifi Monitoring 1.2:
-      - "Push strategy": configuration-push.md
+      - "Pull strategy": configuration-pull-1-2.md
+      - "Push strategy": configuration-push-1-2.md
   - Configure Nifi Monitoring 2.0:
       - "Pull strategy": config-nifi-monitoring-2-0.md
       - "Pull input reference": configuration-pull.md
