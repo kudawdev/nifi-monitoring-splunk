@@ -1,8 +1,14 @@
 ---
-title: Estrategia pull (1.2)
+title: Referencia del input pull
 ---
 
-# Estrategia pull: Splunk Data Input NiFi
+# Referencia del input pull
+
+Cada campo del formulario del input de la TA, una sección por grupo en el
+orden en que los muestra el formulario, más los endpoints personalizados.
+Para una primera configuración necesitas solo algunos —
+[Estrategia pull (2.0)](config-nifi-monitoring-2-0.es.md) los recorre; ven
+aquí por el resto.
 
 La TA consulta la API REST de NiFi en un intervalo y escribe lo que
 recibe. **Con esta estrategia no se configura nada dentro de NiFi** — ni

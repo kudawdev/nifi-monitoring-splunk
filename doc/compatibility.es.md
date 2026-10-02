@@ -168,6 +168,7 @@ requiere instalar nada dentro de NiFi.
 |---|---|---|
 | Flow status, diagnostics, status history | sí | sí |
 | Flow metrics (`/flow/metrics`) | sí | no |
+| [Endpoints personalizados](configuration-pull.es.md#endpoints-personalizados) (cualquier otra ruta REST) | sí | no |
 | Endpoints elegidos según la versión de NiFi | sí | no |
 | Bulletins individuales | sí, por polling | sí, sin pérdida |
 | `bulletinGroupName` / `bulletinGroupPath` | no | sí |

@@ -149,6 +149,7 @@ enabled, and it requires installing nothing inside NiFi.
 |---|---|---|
 | Flow status, diagnostics, status history | yes | yes |
 | Flow metrics (`/flow/metrics`) | yes | no |
+| [Custom endpoints](configuration-pull.md#custom-endpoints) (any other REST path) | yes | no |
 | Endpoints chosen by NiFi version | yes | no |
 | Individual bulletins | yes, by polling | yes, without loss |
 | `bulletinGroupName` / `bulletinGroupPath` | no | yes |

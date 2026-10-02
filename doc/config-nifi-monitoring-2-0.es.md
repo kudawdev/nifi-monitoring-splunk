@@ -60,7 +60,7 @@ Después, en **Advanced**, configura:
 Deja el resto de las secciones (Endpoints, Status History, Flow metrics,
 Custom endpoints) en su valor por defecto para una primera
 configuración — ver
-[Estrategia pull: Splunk Data Input NiFi](configuration-pull.es.md) para
+[Referencia del input pull](configuration-pull.es.md) para
 qué hace cada una.
 
 Haz clic en **Add** para registrar el input. Ahora aparece como una fila
@@ -107,7 +107,7 @@ Splunk mantiene aparte un índice de resumen que ocupa espacio en disco.
 ## Siguiente paso
 
 - Campos que no cubre esta página (custom endpoints, flow metrics):
-  [Estrategia pull](configuration-pull.es.md). Sourcetypes de log:
+  [Referencia del input pull](configuration-pull.es.md). Sourcetypes de log:
   [Configurar el Universal Forwarder](compatibility.es.md#configurar-el-universal-forwarder).
   La otra estrategia: [Estrategia push (2.0)](config-nifi-monitoring-2-0-push.es.md).
 - Referencia de sourcetypes y campos:

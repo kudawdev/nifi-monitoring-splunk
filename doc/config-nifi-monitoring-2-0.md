@@ -55,7 +55,7 @@ Then, under **Advanced**, set:
 
 Leave every other section (Endpoints, Status History, Flow metrics, Custom
 endpoints) at its default for a first setup — see
-[Pull strategy: Splunk Data Input NiFi](configuration-pull.md) for what each
+[Pull input reference](configuration-pull.md) for what each
 one does.
 
 Click **Add** to create the input. It now shows up as a row under
@@ -99,7 +99,7 @@ thing you can do for panel latency, at the cost of a summary index:
 ## Next
 
 - Fields not covered here (custom endpoints, flow metrics):
-  [Pull strategy](configuration-pull.md). Log sourcetypes:
+  [Pull input reference](configuration-pull.md). Log sourcetypes:
   [Setting up the Universal Forwarder](compatibility.md#setting-up-the-universal-forwarder).
   The other strategy: [Push strategy (2.0)](config-nifi-monitoring-2-0-push.md).
 - Sourcetype and field reference: [Data Reference](references.md).

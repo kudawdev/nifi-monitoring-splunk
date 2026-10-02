@@ -64,6 +64,10 @@ Bulletins — errors and warnings raised by components — from `/flow/bulletin-
 
 A record of the polled instance's NiFi, Java and operating system versions and build, written whenever `/system-diagnostics` is polled. The TA itself reads the version from `/system-diagnostics` to choose its endpoints.
 
+- **nifi:api:custom:*&lt;name&gt;***
+
+The raw response of each [custom endpoint](configuration-pull.md#custom-endpoints) an input declares, one sourcetype per endpoint name — `queue_stats` is indexed as `nifi:api:custom:queue_stats`. The app ships no field extraction and no panel for them: add your own `props.conf` stanza if you need fields. A request that fails indexes nothing. Pull only.
+
 ### Reporting tasks (push)
 
 - **nifi:reporting:task**

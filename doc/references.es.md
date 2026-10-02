@@ -64,6 +64,10 @@ Boletines — errores y advertencias generados por los componentes — desde `/f
 
 Un registro de las versiones de NiFi, Java y sistema operativo y el build de la instancia consultada, escrito cada vez que se consulta `/system-diagnostics`. La TA misma lee la versión de `/system-diagnostics` para elegir sus endpoints.
 
+- **nifi:api:custom:*&lt;nombre&gt;***
+
+La respuesta cruda de cada [endpoint personalizado](configuration-pull.es.md#endpoints-personalizados) que declara un input, un sourcetype por nombre de endpoint — `queue_stats` se indexa como `nifi:api:custom:queue_stats`. La app no trae extracción de campos ni paneles para ellos: agrega tu propia stanza en `props.conf` si necesitas campos. Una consulta que falla no indexa nada. Solo pull.
+
 ### Reporting tasks (push)
 
 - **nifi:reporting:task**

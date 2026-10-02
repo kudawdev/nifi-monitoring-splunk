@@ -1,8 +1,13 @@
 ---
-title: Pull strategy (1.2)
+title: Pull input reference
 ---
 
-# Pull strategy: Splunk Data Input NiFi
+# Pull input reference
+
+Every field of the TA's input form, one section per group in the order the
+form shows them, plus the custom endpoints. For a first setup you need only
+a few of them — [Pull strategy (2.0)](config-nifi-monitoring-2-0.md) walks
+through those; come here for the rest.
 
 The TA polls NiFi's REST API on an interval and writes what it gets
 back. **Nothing gets configured inside NiFi for this strategy** — no
