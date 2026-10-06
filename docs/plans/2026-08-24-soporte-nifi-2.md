@@ -997,7 +997,7 @@ release de 2.0.0**, que aún no se publicó: falta mergear `nifi-2` y correr
 | # | Qué falta | Estado |
 |---|---|---|
 | **CE-2** | Aplanar los arrays de los endpoints custom reusando `flatten_samples`. 8 de los 13 endpoints probados traen arrays paralelos que hoy no se pueden correlacionar. | Abierto, diferido a 2.1 |
-| **DOC-4** | Recapturar los screenshots de la pantalla de configuración del TA: los de §4 muestran el manager XML legado, que ya no es el camino recomendado. El texto sí describe la pantalla nueva. Mismo motivo que DOC-3. | Abierto |
+| **DOC-4** ✅ | Recapturar los screenshots de la pantalla de configuración del TA. Hecho el 2026-09-28 (`5482f29`): la página de configuración 2.0 muestra el formulario UCC. El 2026-10-06 se retomó `ta_objects.png`, de la página de instalación, que seguía siendo de 1.x. | Cerrado |
 | **DOC-3** ❌ | Recapturar los screenshots con la UI de NiFi 2.x. **No se hará desde acá**: es trabajo visual. 12 imágenes de 1.x siguen referenciadas en §4 de la doc, advertidas como tales. | Rechazado |
 
 **No queda código de producto pendiente para 2.0.0.** Salieron de esta lista el

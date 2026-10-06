@@ -7,7 +7,7 @@ Arranca en 2.0.0: las releases anteriores viven en los
 [GitHub Releases](https://github.com/kudawdev/nifi-monitoring-splunk/releases). Para incorporar una,
 `scripts/changelog.sh add <version>`.
 
-## 2.0.0 — 2026-09-23 — NiFi 2.x support
+## 2.0.0 — 2026-10-09 — NiFi 2.x support
 
 Written by hand. The generator classifies by Conventional Commits and this
 repository does not use them, so every commit landed under "Other" — sixty
@@ -16,6 +16,21 @@ long form of what follows.
 
 ### ⚠️ Breaking Changes
 
+- **Splunk 9.4 is the minimum.** The dashboards use Dashboard Studio features
+  verified on 9.4 and 10.4 and on nothing older; 1.x supported 9.0.
+- **The dashboards were rebuilt, and several views were renamed or merged.**
+  Bookmarks to `home`, `nifi_instances_detail`, `nifi_status_history`,
+  `nifi_bulletin` and `nifi_internal_monitoring` stop working; the upgrade
+  guide maps each to its replacement.
+- **Searches of your own on the `NIFI` datamodel may need a change.**
+  `Reporting_Bulletin` and `Reporting_Task` are now children of `Bulletins`
+  and `Throughput`, and the `Status_History` datasets became
+  `Component_Status`. A `tstats` on a dataset that became a child fails with
+  *Invalid or unaccelerable root object*.
+- **The status history has new sourcetypes.** The add-on writes
+  `nifi:api:processors_status` and `nifi:api:process_groups_status`, one event
+  per snapshot, instead of indexing each response whole. Searches on
+  `nifi:api:*_history` keep working for the push path only.
 - **The app looks in one index, not every index.** The `index_nifi` macro was
   `index=*`. It is now `index=nifi`, and the app ships that index. If your
   NiFi data is elsewhere, every dashboard goes empty until you override the
@@ -38,6 +53,19 @@ long form of what follows.
 
 ### ✨ Features
 
+- **Eight views in Dashboard Studio** — Overview, Instance, Components,
+  Bulletins, Logs, Cluster, Alerts and Collection Health — each answering one
+  question. *Status Indicator* is no longer a dependency.
+- **Eight alerts**, shipped disabled: instance without data, repository
+  filling up, sustained high heap, ERROR bulletin spike, backpressure, cluster
+  node disconnected, versioned flow sync failure and add-on HTTP errors. They
+  read the same `nifi_threshold_*` macros as the panels, which the instance
+  inventory can override per instance.
+- **One definition of health** (`nifi_health`) that knows each input's
+  polling interval: an instance polled every five minutes is no longer
+  reported down.
+- **A Components view** that names the bottleneck processor, group or
+  connection, with NiFi's own backpressure prediction.
 - **NiFi 2.x support**, from one input: the add-on detects the version and
   adapts. Covered against 1.23.2, 1.28.1, 2.0.0 and 2.11.0.
 - **Clusters are read as one instance with named nodes**, with per-node
@@ -71,6 +99,10 @@ long form of what follows.
 - The JWT and the bulletin cursor moved out of a `.env` inside the app, which
   was lost on reinstall and could be clobbered between two inputs.
 - The 2.x flow definition no longer duplicates work across cluster nodes.
+- An input created from the configuration screen saves, its **Test
+  connection** button answers, and it authenticates with the password the
+  screen encrypted. All three failed before the release, unseen by a harness
+  that wrote its inputs into `inputs.conf` directly.
 - An input with no **Host** sends its events under the input's name, as the
   form says. They carried splunkd's placeholder, `$decideOnStartup`, which
   matched no instance and so appeared on no dashboard.
@@ -87,6 +119,6 @@ long form of what follows.
   `inputs.conf` defaults, which closed four fields that were implemented and
   documented but unreachable from the UI.
 - A test harness with ten scenarios — every supported NiFi version and
-  architecture against both collection strategies — plus 310 unit tests.
+  architecture against both collection strategies — plus 372 unit tests.
 - Delivery runs through `make`; `tests/README.md` has the rest.
 
