@@ -528,6 +528,22 @@ class DocumentationTest(unittest.TestCase):
         listed = set(pages(config["nav"]))
         self.assertEqual(set(self.pages()), listed)
 
+    def test_llms_txt_lists_every_page(self):
+        """llms.txt is how agents find the docs; a page left out of its
+        sections is still published, just invisible to them."""
+        try:
+            import yaml
+        except ImportError:
+            self.skipTest("PyYAML not installed")
+        config = load_mkdocs()
+        llmstxt = next(p["llmstxt"] for p in config["plugins"]
+                       if isinstance(p, dict) and "llmstxt" in p)
+        listed = {
+            (list(entry)[0] if isinstance(entry, dict) else entry).replace(".md", "")
+            for entries in llmstxt["sections"].values() for entry in entries
+        }
+        self.assertEqual(set(self.pages()), listed)
+
     def test_mkdocs_points_at_the_public_docs(self):
         """doc/ is published; docs/ holds internal planning and must not be."""
         try:
