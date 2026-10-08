@@ -1,6 +1,11 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for any coding agent -- and any person -- working in this
+repository. It is plain Markdown with no tool-specific syntax; an agent that
+looks for another file name can be pointed here.
+
+Start with **Never** and **Before you call a change done**, at the end: they
+are the rules that are expensive to learn by breaking them.
 
 ## Repository purpose
 
@@ -30,7 +35,7 @@ Also in this repo:
 
 `nifi:api:site_to_site` and `nifi:api:controller_cluster` were **retired in 2.0.0** — nothing consumed them.
 
-**Versions must match.** `check-apps-version` in `main.yml` fails the build if `version =` differs between `nifi_monitoring/default/app.conf` and `nifi_TA_monitoring/default/app.conf`, or between the `[launcher]` and `[id]` stanzas within one app — bump all four together.
+**Versions must match.** The *App versions agree* step of `pr.yml` fails the build if `version =` differs between the `[launcher]` and `[id]` stanzas of `nifi_monitoring/default/app.conf`, or if the TA's `globalConfig.json` and `package/app.manifest` disagree with it. Never edit any of them by hand: `make bump` writes the app's and `make version-sync` derives the TA's (below).
 
 ## Common commands
 
@@ -53,8 +58,11 @@ make clean
 ```
 
 Delivery proper — `status`, `bump`, `changelog`, `promote-main`, `release` —
-is driven through the repo's own `/cicd` skill, which carries the sequence and
-what to confirm. `make contract-check` and `make self-test` verify the facade.
+follows the sequence in `.claude/skills/cicd/SKILL.md`: the order, what to
+confirm with a person before each step that pushes, and how to report it.
+Agents that load skills run it as the `cicd` skill; any other agent reads the
+file as plain instructions. Either way the work is `make`: never reimplement a
+target. `make contract-check` and `make self-test` verify the facade.
 
 **The version has one source and three derivations.** `make bump` writes
 `nifi_monitoring/default/app.conf`, and the TA's `globalConfig.json` and
@@ -65,9 +73,10 @@ inconsistent, and a unit test says so too. Never edit a version by hand.
 
 This repository does **not** use Conventional Commits, so `make suggest-level`
 and the changelog generator classify almost everything as `patch` and "Other".
-Both are unreliable here on purpose — see `.claude/skills/cicd/SKILL.md`.
+Both are unreliable here on purpose — see `.claude/skills/cicd/SKILL.md` for
+how to choose the level and write the entry instead.
 
-AppInspect is the gate. `main.yml` fails if `summary.error > 0`, `failure > 0`, or `warning > MAX_WARNING` (currently `13`; measured per app, 5 for the app and 12 for the TA).
+AppInspect is the gate. `pr.yml` fails if `summary.error > 0`, `failure > 0`, or `warning > MAX_WARNING` (currently `13`; measured per app, 5 for the app and 12 for the TA).
 
 Unit tests — standard library only, no Docker, but the build has to have run: `lib/` and the generated `.conf` files live in `output/`. Without it the checks that read them skip with a message saying so; `REQUIRE_BUILT_TA=1` turns those skips into failures, which is what CI sets.
 
@@ -99,9 +108,9 @@ mkdocs build
 
 ## Workflows
 
-- `dev.yml` — manual; version gate + AppInspect + unit tests + the four `ci.pull_request` integration profiles.
-- `testing.yml` — manual (`workflow_dispatch`); the same as `dev.yml`.
-- `main.yml` — manual (`workflow_dispatch`); version gate + AppInspect + unit tests + the **integration matrix** (`integration` job, one runner per profile in `matrix.yml`'s `ci.release`) + **pre-release** GitHub release with both `.tar.gz` artifacts, tagged with `APP_VERSION` pulled from `app.conf`. `publish` depends on `integration`.
+- `pr.yml` — on every pull request (forks too; no secrets needed): version gate, lint, unit tests with `REQUIRE_BUILT_TA=1`, `mkdocs build --strict`, and AppInspect for both apps. Stable job names, meant to be required checks.
+- `integration.yml` — manual; the integration scenarios, one runner each. Input `profiles`: `pull_request` (default, four), `release` (all ten) or profile names. Reads the lists from `tests/matrix.yml` at run time.
+- `main.yml` — manual; the **release gate**: `pr.yml`'s checks plus `integration.yml` with all ten `release` scenarios. It publishes nothing: the release is `make release`, which tags `v<version>` on `main` and attaches both packages from `dist/`. Tags up to `1.2.3` carry no `v`; they were made by an earlier `main.yml` that published, and the facade only tags with `v`. A unit test fails if any workflow publishes a release.
 - `docs.yml` — manual; builds and publishes MkDocs.
 
 ## Editing conventions specific to this repo
@@ -115,3 +124,31 @@ mkdocs build
 - Public docs live in `doc/` (published by mkdocs; `docs_dir: doc`). Internal development docs
   (plans, design notes) live in `docs/` and are NOT published.
 - Public docs are bilingual: every `*.md` has an `*.es.md` counterpart. Update both when changing user-facing docs.
+- A new public page goes in three places: `doc/<page>.md` + `.es.md`, the `nav` of `mkdocs.yml`, and the `llmstxt` sections of `mkdocs.yml` (how agents find the docs). The unit tests fail if one is missing.
+
+## Never
+
+- **Edit generated files.** `nifi_TA_monitoring/globalConfig.json` comes from `gen_globalconfig.py`, the dashboards' XML from `tools/gen_dashboards.py`, `flow_definition/nifi-2.x/NiFiMonitoring.json` from `migrate_to_nifi2.py`. Change the generator and re-run it; unit tests fail on drift.
+- **Edit `delivery.mk` or `scripts/`.** They are sealed from the `tech-cicd` contract. What does not fit goes in `delivery.conf`, or back to the contract.
+- **Edit a version by hand.** `make bump` and `make version-sync`.
+- **Install or test the TA from `nifi_TA_monitoring/`.** It is not an add-on until `tests/build-ta.sh` builds it into `output/`.
+- **Reorganize the Splunk app layout** (`default/`, `metadata/`, `static/`, `appserver/`, `bin/`, `lib/`).
+- **Vendor a dependency or let a compiled `.so` into `lib/`** (see the pins above).
+- **Publish a release from a workflow.** Releases are `make release` only.
+- **Push, tag, release, or change GitHub settings without a person's explicit go-ahead.** Each of those is outward-facing and hard to undo.
+- **Interpolate pull-request-controlled values with `${{ }}` inside a workflow's `run:`.** Pass them through `env`.
+
+## Before you call a change done
+
+Run what covers the change, and say what you ran:
+
+| You changed | Run |
+|---|---|
+| Anything | `./tests/build-ta.sh`, then `cd tests/unit && REQUIRE_BUILT_TA=1 python3 -m unittest discover` — the whole suite, not one module |
+| `doc/` or `mkdocs.yml` | `mkdocs build --strict`; both languages updated |
+| The TA, props/transforms, the app's `.conf` | `make validate` (AppInspect, the release gate) |
+| Collection, parsing, the flow, dashboards | `cd tests && ./run.sh <profile>`, the profile closest to the change (`./run.sh --list`) |
+| A workflow | The unit tests (they check the workflows against each other); it only really runs once pushed |
+
+`pr.yml` runs the first three on every pull request. A skipped test is not a
+passed one: report skips that matter, and a failure with its output.
