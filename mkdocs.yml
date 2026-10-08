@@ -1,11 +1,13 @@
 # Project information
 site_name: Nifi Monitoring Splunk
-site_author: Kudaw S.A.
+site_author: Küdaw
 site_description: Nifi Monitoring Splunk Documentation
 site_url: https://kudawdev.github.io/nifi-monitoring-splunk/
 
 # Copyright
-copyright: Copyright &copy; 2021 Kudaw S.A. All Rights Reserved
+copyright: >-
+  Copyright &copy; 2021&ndash;2026 Küdaw &middot; Developed and maintained by
+  <a href="/nifi-monitoring-splunk/about/">Küdaw</a>, specialists in data and AI
 
 # Repository information
 repo_url: https://github.com/kudawdev/nifi-monitoring-splunk
@@ -31,6 +33,7 @@ nav:
   - Data Reference: references.md
   - Upgrading to 2.0.0: upgrading.md
   - Contribute: contributing.md
+  - About Küdaw: about.md
 
 # Configuration
 theme: 
@@ -38,11 +41,14 @@ theme:
   #custom_dir: docs/theme/material
   language: en
   locale: en
+  # The app's logo, on the left. Küdaw's wordmark goes on the right of the
+  # header, from assets/css/theme.css.
   logo: assets/images/nifi.png
   favicon: assets/images/favicon.ico
+  # Küdaw's corporate palette, set in assets/css/theme.css.
   palette:
-    primary: black
-    accent: black
+    primary: custom
+    accent: custom
   font:
     text: Roboto
     code: Roboto Mono
@@ -68,6 +74,7 @@ extra_css:
 # Extensions
 markdown_extensions:
   - admonition
+  - attr_list
   - pymdownx.highlight
   - pymdownx.inlinehilite
   # Material renders mermaid fences itself, following the palette.
@@ -97,6 +104,8 @@ plugins:
         centralize the operational visibility of Apache NiFi 1.16-1.28.1 and
         2.0-2.11 in Splunk 9.4-10.x. Data arrives by pull (the TA polls NiFi's
         REST API, recommended) or push (a NiFi flow sends to Splunk's HEC).
+        Developed and maintained, as open source (MIT), by Küdaw
+        (https://www.kudaw.com), a data and AI consultancy and Splunk partner.
       full_output: llms-full.txt
       sections:
         Start here:
@@ -113,6 +122,7 @@ plugins:
           - references.md: Sourcetypes, fields and data models
           - overview.md: Tour of the dashboards
         Optional:
+          - about.md: Küdaw, who develops and maintains the apps
           - configuration-pull-1-2.md: Pull strategy on the legacy 1.2 apps
           - configuration-push-1-2.md: Push strategy on the legacy 1.2 apps
           - contributing.md: Building, testing and contributing
@@ -126,6 +136,9 @@ plugins:
         - locale: es
           name: Español
           build: true
+          copyright: >-
+            Copyright &copy; 2021&ndash;2026 Küdaw &middot; Desarrollado y mantenido por
+            <a href="/nifi-monitoring-splunk/es/about/">Küdaw</a>, especialistas en datos e IA
           nav_translations:
             Introduction: Introducción
             Dashboards: Dashboards
@@ -140,3 +153,4 @@ plugins:
             Data Reference: Referencia de Datos
             Upgrading to 2.0.0: Actualizar a 2.0.0
             Contribute: Contribuir
+            About Küdaw: Acerca de Küdaw

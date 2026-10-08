@@ -1,9 +1,27 @@
 # Contribuir
 
-Si quieres contribuir al desarrollo de este proyecto, la mejor forma es
-enviar un pull request bien estructurado y completo, con pruebas y
-documentación. Sé focalizado: meter más de una cosa en la misma solicitud la
-hace más difícil de revisar.
+Nifi Monitoring es de código abierto, bajo
+[licencia MIT](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/LICENSE),
+y la mantiene [Küdaw](about.es.md). Los reportes de errores, las correcciones,
+los endpoints nuevos y la documentación son todos bienvenidos.
+
+## Pull requests
+
+Ábrelos contra `main`. El mejor pull request es uno focalizado, con pruebas y
+documentación: meter más de una cosa en la misma solicitud la hace más difícil
+de revisar. Antes de abrirlo:
+
+- Corre las pruebas unitarias, y el escenario de integración más cercano a lo
+  que cambiaste (más abajo).
+- Si tocaste un comportamiento visible para el usuario, actualiza la
+  documentación en ambos idiomas.
+- Si agregaste un endpoint de NiFi, sigue la lista de
+  [`AGENTS.md`](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/AGENTS.md):
+  la lista de endpoints, el ruteo de sourcetype y el formulario del input van
+  juntos.
+
+Al contribuir aceptas que tu contribución queda bajo la licencia MIT, como el
+resto del proyecto.
 
 ## Cómo correr las pruebas
 
@@ -48,10 +66,34 @@ Hay más detalle, incluidas las asperezas conocidas del entorno, en
 
 ## Documentación
 
-Estas páginas son bilingües: cada `*.md` tiene su contraparte `*.es.md`, y un
-cambio en una corresponde también en la otra.
+Estas páginas viven en `doc/` y se construyen con MkDocs. Para previsualizarlas
+mientras editas:
+
+```
+pip install -r doc/requirements.txt
+mkdocs serve      # http://127.0.0.1:8000/nifi-monitoring-splunk/
+```
+
+Son bilingües: cada `*.md` tiene su contraparte `*.es.md`, y un cambio en una
+corresponde también en la otra. Una página nueva va en el `nav` de
+`mkdocs.yml` y en las secciones de `llmstxt`, que es como la encuentran los
+agentes; las pruebas unitarias fallan si falta alguna de las tres.
 
 ## Issues
 
-Si encontraste un error o tienes un pedido de función, abre un issue.
-Revisa primero los que ya existen -- puede que ya esté reportado.
+¿Encontraste un error o te falta algo? Revisa primero los
+[issues existentes](https://github.com/kudawdev/nifi-monitoring-splunk/issues)
+— puede que ya esté reportado — y si no,
+[abre uno nuevo](https://github.com/kudawdev/nifi-monitoring-splunk/issues/new).
+Un reporte de error se resuelve mucho más rápido con:
+
+- Las versiones: de ambas apps, de NiFi y de Splunk.
+- Cómo entran los datos: pull o push, y standalone, varias instancias o
+  cluster.
+- Qué esperabas y qué pasó en cambio — el panel, la búsqueda o el error en
+  pantalla.
+- En pull, el log del propio add-on:
+  `index=_internal sourcetype=splunkd component=ExecProcessor "nifi.py"` alrededor del momento del problema.
+
+Para una evaluación, una implementación o ayuda para operar las apps, escribe
+a splunk.app@kudaw.com — ver [Acerca de Küdaw](about.es.md).

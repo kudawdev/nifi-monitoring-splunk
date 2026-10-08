@@ -1,9 +1,25 @@
 # Contributing
 
-If you want to contribute to the development of this project, the best way
-is a well structured and complete pull request, with tests and
-documentation. Keep it focused: more than one thing in the same request makes
-it harder to review.
+Nifi Monitoring is open source, under the
+[MIT license](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/LICENSE),
+and maintained by [Küdaw](about.md). Bug reports, fixes, new endpoints and
+documentation are all welcome.
+
+## Pull requests
+
+Open them against `main`. The best pull request is a focused one, with tests
+and documentation: more than one thing in the same request makes it harder
+to review. Before you open it:
+
+- Run the unit tests, and the integration scenario closest to what you
+  changed (below).
+- If you touched user-facing behaviour, update the docs in both languages.
+- If you added a NiFi endpoint, follow the checklist in
+  [`AGENTS.md`](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/AGENTS.md):
+  the endpoint list, the sourcetype routing and the input form go together.
+
+By contributing you agree that your contribution is licensed under the MIT
+license, like the rest of the project.
 
 ## Running the tests
 
@@ -48,9 +64,34 @@ There is more detail, including the known rough edges of the environment, in
 
 ## Documentation
 
-These pages are bilingual: every `*.md` has an `*.es.md` counterpart, and a
-change to one belongs in the other.
+These pages live in `doc/` and are built with MkDocs. To preview them while
+you edit:
+
+```
+pip install -r doc/requirements.txt
+mkdocs serve      # http://127.0.0.1:8000/nifi-monitoring-splunk/
+```
+
+They are bilingual: every `*.md` has an `*.es.md` counterpart, and a change to
+one belongs in the other. A new page goes in the `nav` of `mkdocs.yml` and in
+the `llmstxt` sections, which is how agents find it; the unit tests fail if
+any of the three is missing.
 
 ## Issues
 
-If you found a bug or have a feature request you can register an issue. We always recommend reviewing the issues created, because it may be that it has already been reported.
+Found a bug or missing something? Check the
+[existing issues](https://github.com/kudawdev/nifi-monitoring-splunk/issues)
+first — it may already be reported — and otherwise
+[open a new one](https://github.com/kudawdev/nifi-monitoring-splunk/issues/new).
+A bug report is much faster to act on with:
+
+- The versions: both apps, NiFi and Splunk.
+- How data gets in: pull or push, and standalone, several instances or a
+  cluster.
+- What you expected and what happened instead — the panel, the search, or
+  the error on screen.
+- On pull, the add-on's own log:
+  `index=_internal sourcetype=splunkd component=ExecProcessor "nifi.py"` around the time of the problem.
+
+For an evaluation, a deployment, or help running the apps, write to
+splunk.app@kudaw.com — see [About Küdaw](about.md).
