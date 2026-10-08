@@ -35,7 +35,8 @@ are welcome — see [Contribute](contributing.md).
 
 ## Contact
 
-- About these apps — an evaluation, a deployment, or help running them:
+- About these apps — an evaluation, a deployment, or help running them —
+  and professional services for any NiFi, data or AI project:
   **splunk.app@kudaw.com**
 - Anything else: [kudaw.com/contacto](https://www.kudaw.com/contacto)
 - [LinkedIn](https://www.linkedin.com/company/kudaw-latam)
