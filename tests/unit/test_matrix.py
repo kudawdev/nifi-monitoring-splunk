@@ -548,9 +548,29 @@ class WorkflowMatrixTest(unittest.TestCase):
         TA from the tree would produce an add-on with no app.conf and no UI,
         and slim would not complain (UI-3)."""
         makefile = open(os.path.join(REPO, "Makefile")).read()
-        self.assertIn("slim package output/$(TA)", makefile)
-        self.assertIn("slim package $(APP)", makefile)
-        self.assertNotIn("slim package $(TA)", makefile)
+        # `-o <dir>` may come first: validate writes into output/validate.
+        package = r"slim package (?:-o \S+ )?"
+        self.assertRegex(makefile, package + r"output/\$\(TA\)")
+        self.assertRegex(makefile, package + r"\$\(APP\)")
+        self.assertNotRegex(makefile, package + r"\$\(TA\)")
+
+    def test_pull_requests_get_the_same_gates(self):
+        """pr.yml runs on every pull request and has no integration job, so it
+        sits outside WORKFLOWS -- but its AppInspect gate and its unit run must
+        be the same as the others', or a pull request passes what the release
+        then fails."""
+        workflow = self.workflow("pr.yml")
+        # PyYAML reads the `on:` key as the boolean True.
+        self.assertIn("pull_request", workflow[True])
+        makefile = open(os.path.join(REPO, "Makefile")).read()
+        local = re.search(r"^MAX_WARNING \?= (\d+)", makefile, re.M)
+        self.assertEqual(str(workflow["env"]["MAX_WARNING"]), local.group(1))
+        steps = workflow["jobs"]["unit"]["steps"]
+        unit = next(step for step in steps if "unittest discover" in str(step.get("run", "")))
+        self.assertEqual(unit.get("env", {}).get("REQUIRE_BUILT_TA"), "1")
+        package = " ".join(str(step.get("run", ""))
+                           for step in workflow["jobs"]["appinspect"]["steps"])
+        self.assertIn("output/nifi_TA_monitoring", package)
 
     def test_the_facade_packages_what_the_workflow_packages(self):
         """The same rule for `make package`, which reads it from delivery.conf,
