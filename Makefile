@@ -75,7 +75,8 @@ check: ## Every gate, in one pass, without stopping at the first failure
 # PRE_PACKAGE, packages both apps into dist/ from a clean tree and puts each
 # through the gate (delivery.conf). `validate` is the same gate for `check`,
 # on the working tree and without the clean-tree rule, so the edit loop is
-# gated too; its packages stay at the root and never reach a release.
+# gated too; its packages and reports go to output/validate/, ignored with the
+# rest of output/, and never reach a release.
 
 build: ## Generate the TA into output/ (the app needs no generation)
 	@./tests/build-ta.sh
@@ -83,17 +84,20 @@ build: ## Generate the TA into output/ (the app needs no generation)
 version-sync: ## Rewrite the TA's globalConfig and manifest from app.conf
 	@python3 $(TA)/gen_globalconfig.py
 
+VALIDATE_DIR := output/validate
+
 validate: build ## Package both apps and run slim validate + AppInspect precert, with CI's gate
 	@echo "==> packaging $$(./scripts/version.sh get)"
-	@$(DOCKER) sh -c 'slim package $(APP) && slim package output/$(TA)'
+	@mkdir -p $(VALIDATE_DIR)
+	@$(DOCKER) sh -c 'slim package -o $(VALIDATE_DIR) $(APP) && slim package -o $(VALIDATE_DIR) output/$(TA)'
 	@v=$$(./scripts/version.sh get); \
 	for app in $(APP) $(TA); do \
 	  echo "==> $$app"; \
-	  $(DOCKER) sh -c "slim validate $$app-$$v.tar.gz" || exit 1; \
-	  $(DOCKER) sh -c "splunk-appinspect inspect $$app-$$v.tar.gz \
-	      --output-file $$app-appinspect.json --mode precert >/dev/null" || exit 1; \
+	  $(DOCKER) sh -c "slim validate $(VALIDATE_DIR)/$$app-$$v.tar.gz" || exit 1; \
+	  $(DOCKER) sh -c "splunk-appinspect inspect $(VALIDATE_DIR)/$$app-$$v.tar.gz \
+	      --output-file $(VALIDATE_DIR)/$$app-appinspect.json --mode precert >/dev/null" || exit 1; \
 	  python3 -c "import json,sys; \
-s=json.load(open('$$app-appinspect.json'))['summary']; print('   ', s); \
+s=json.load(open('$(VALIDATE_DIR)/$$app-appinspect.json'))['summary']; print('   ', s); \
 sys.exit(1) if s['error'] or s['failure'] or s['warning'] > $(MAX_WARNING) else None" \
 	    || { echo "    FAILED the gate (max $(MAX_WARNING) warnings)"; exit 1; }; \
 	done
