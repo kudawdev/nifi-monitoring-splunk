@@ -111,7 +111,7 @@ Los dos flows usan los mismos ajustes:
 
 | Ajuste | Qué es |
 |---|---|
-| `instance_name` | El `host` con que se envían los eventos `nifi:api:*`: el `host` de la fila de este NiFi en la lookup `instance`. Vacío usa el hostname del nodo, que es lo correcto para un NiFi de un solo nodo. **En un cluster, pon el `host` del cluster**: la API se consulta desde un solo nodo, el primario, así que si queda vacío cada evento lleva el nombre del nodo que sea primario en ese momento, que cambia en cada failover y no coincide con la lookup. Los logs siempre llevan el nombre del nodo |
+| `instance_name` | El `host` con que se envían los eventos `nifi:api:*` y `nifi:reporting:*`: el `host` de la fila de este NiFi en la lookup `instance`. Vacío usa el hostname del nodo, que es lo correcto para un NiFi de un solo nodo. **En un cluster, pon el `host` del cluster**: la API se consulta desde un solo nodo, el primario, así que si queda vacío cada evento lleva el nombre del nodo que sea primario en ese momento, que cambia en cada failover y no coincide con la lookup. Los bulletins y las métricas de las reporting tasks tienen el mismo problema: llegan al nodo que elija Site-to-Site. Los logs siempre llevan el nombre del nodo |
 | `nifi_api_url` | La API REST de esta instancia, ej. `http://127.0.0.1:8080/nifi-api`, sin barra final. En cluster, una dirección en la que escuche el servidor web del nodo (`nifi.web.http.host`), que a menudo no es `127.0.0.1` |
 | `nifi_path` | Directorio de instalación de NiFi, para leer sus logs. Debe terminar en `/`, ej. `/opt/nifi/nifi-current/`: el flow le agrega `logs`. En cluster, la misma ruta en cada nodo |
 | `process_groups_list` | Ids de los grupos de procesos a monitorear, uno por línea |

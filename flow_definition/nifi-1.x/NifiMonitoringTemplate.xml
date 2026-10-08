@@ -6444,6 +6444,12 @@
             <name>sourcetype</name>
         </value>
     </entry>
+    <entry>
+        <key>splunk_host</key>
+        <value>
+            <name>splunk_host</name>
+        </value>
+    </entry>
 </descriptors>
 <executionNode>ALL</executionNode>
 <lossTolerant>false</lossTolerant>
@@ -6471,6 +6477,10 @@
     <entry>
         <key>sourcetype</key>
         <value>nifi:reporting:task</value>
+    </entry>
+    <entry>
+        <key>splunk_host</key>
+        <value>${instance_name}</value>
     </entry>
 </properties>
 <retryCount>0</retryCount>
@@ -6545,6 +6555,12 @@
             <name>sourcetype</name>
         </value>
     </entry>
+    <entry>
+        <key>splunk_host</key>
+        <value>
+            <name>splunk_host</name>
+        </value>
+    </entry>
 </descriptors>
 <executionNode>ALL</executionNode>
 <lossTolerant>false</lossTolerant>
@@ -6572,6 +6588,10 @@
     <entry>
         <key>sourcetype</key>
         <value>nifi:reporting:bulletin</value>
+    </entry>
+    <entry>
+        <key>splunk_host</key>
+        <value>${instance_name}</value>
     </entry>
 </properties>
 <retryCount>0</retryCount>

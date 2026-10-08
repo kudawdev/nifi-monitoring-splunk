@@ -706,7 +706,8 @@ class DashboardPanelTest(IntegrationTestCase):
             minimum=1, timeout=420)
         wait_for_events(
             self.splunk,
-            '| tstats count from datamodel=NIFI.Bulletins by host',
+            '| tstats count from datamodel=NIFI.Bulletins '
+            'where [| inputlookup instance | fields host] by host',
             minimum=1, timeout=420)
 
     def test_every_panel_this_profile_feeds_returns_rows(self):
@@ -1503,26 +1504,30 @@ class PushPathTest(IntegrationTestCase):
             "more than one node" % rows[0]["worst"],
         )
 
-    def test_the_api_events_name_the_instance_not_the_node(self):
+    def test_the_instance_wide_events_name_the_instance_not_the_node(self):
         """Decision C-1 on the push path. The flow used to send every event
         with host = the sending node's hostname; once the API sources were
         pinned to the primary, that named the cluster after whichever node
         won the election, which matches the instance lookup only by luck --
         the overview then reports the cluster Down and the node as a phantom
-        instance. instance_name gives the API events the lookup's host."""
+        instance. The reporting tasks' records arrive over Site-to-Site on
+        whichever node it picks, which split bulletins and throughput across
+        node names. instance_name gives both the lookup's host."""
         if not self.profile_cluster:
             self.skipTest("a single node's hostname is its instance name")
         wait_for_events(
             self.splunk,
-            'index=nifi sourcetype="nifi:api:*" | stats count by host',
+            'index=nifi (sourcetype="nifi:api:*" OR sourcetype="nifi:reporting:*") '
+            '| stats count by host',
             minimum=1, timeout=420,
         )
         sent = {r["host"] for r in search(
-            self.splunk, 'index=nifi sourcetype="nifi:api:*" | stats count by host')}
+            self.splunk, 'index=nifi (sourcetype="nifi:api:*" OR sourcetype="nifi:reporting:*") '
+                         '| stats count by host')}
         configured = {r["host"] for r in search(
             self.splunk, '| inputlookup instance | fields host')}
         self.assertEqual(sent, configured,
-                         "the API events carry host %s, the instance lookup "
+                         "the API and reporting events carry host %s, the instance lookup "
                          "configures %s" % (sorted(sent), sorted(configured)))
 
     def test_the_logs_still_come_from_every_node(self):

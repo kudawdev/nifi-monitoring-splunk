@@ -42,6 +42,7 @@
               "canonical-value-lookup-cache-size": "100",
               "sourcetype": "nifi:reporting:task",
               "source": "nifi_self_rest_api",
+              "splunk_host": "${instance_name}",
               "Stateful Variables Initial Value": null
             },
             "propertyDescriptors": {
@@ -72,6 +73,12 @@
               "source": {
                 "name": "source",
                 "displayName": "source",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "splunk_host": {
+                "name": "splunk_host",
+                "displayName": "splunk_host",
                 "identifiesControllerService": false,
                 "sensitive": false
               },
@@ -121,6 +128,7 @@
               "canonical-value-lookup-cache-size": "100",
               "sourcetype": "nifi:reporting:bulletin",
               "source": "nifi_self_rest_api",
+              "splunk_host": "${instance_name}",
               "Stateful Variables Initial Value": null
             },
             "propertyDescriptors": {
@@ -151,6 +159,12 @@
               "source": {
                 "name": "source",
                 "displayName": "source",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "splunk_host": {
+                "name": "splunk_host",
+                "displayName": "splunk_host",
                 "identifiesControllerService": false,
                 "sensitive": false
               },

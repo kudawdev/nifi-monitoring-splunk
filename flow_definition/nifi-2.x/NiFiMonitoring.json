@@ -42,6 +42,7 @@
               "canonical-value-lookup-cache-size": "100",
               "sourcetype": "nifi:reporting:task",
               "source": "nifi_self_rest_api",
+              "splunk_host": "#{instance_name}",
               "Stateful Variables Initial Value": null
             },
             "propertyDescriptors": {
@@ -72,6 +73,12 @@
               "source": {
                 "name": "source",
                 "displayName": "source",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "splunk_host": {
+                "name": "splunk_host",
+                "displayName": "splunk_host",
                 "identifiesControllerService": false,
                 "sensitive": false
               },
@@ -121,6 +128,7 @@
               "canonical-value-lookup-cache-size": "100",
               "sourcetype": "nifi:reporting:bulletin",
               "source": "nifi_self_rest_api",
+              "splunk_host": "#{instance_name}",
               "Stateful Variables Initial Value": null
             },
             "propertyDescriptors": {
@@ -151,6 +159,12 @@
               "source": {
                 "name": "source",
                 "displayName": "source",
+                "identifiesControllerService": false,
+                "sensitive": false
+              },
+              "splunk_host": {
+                "name": "splunk_host",
+                "displayName": "splunk_host",
                 "identifiesControllerService": false,
                 "sensitive": false
               },
@@ -6199,7 +6213,7 @@
       "parameters": [
         {
           "name": "instance_name",
-          "description": "The Splunk host for the nifi:api:* events: the host column of this NiFi's row in the instance lookup. Required on a cluster, where the API is polled from the primary node and the node's name changes on every failover. Empty uses the node's hostname, which is right for a single node. Logs always keep the node's name.",
+          "description": "The Splunk host for the nifi:api:* and nifi:reporting:* events: the host column of this NiFi's row in the instance lookup. Required on a cluster, where the API is polled from the primary node, which changes on every failover, and the reporting tasks' records arrive on whichever node Site-to-Site picks. Empty uses the node's hostname, which is right for a single node. Logs always keep the node's name.",
           "sensitive": false,
           "provided": false,
           "value": ""

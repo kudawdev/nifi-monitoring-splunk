@@ -284,9 +284,13 @@ class InstanceHostTest(unittest.TestCase):
 
     The API sources run on the primary node, so the node's own hostname names
     a cluster after whichever node won the election: the instance lookup's row
-    matches only by luck, and the overview reports the cluster Down. The API
-    labels carry splunk_host from instance_name; everything else -- the logs,
-    which really are per node -- falls back to the node's hostname.
+    matches only by luck, and the overview reports the cluster Down. The
+    reporting tasks' records are no better: they arrive over Site-to-Site on
+    whichever node it picks, so bulletins and throughput were split across
+    node names and the Bulletins view, which filters on the lookup's host,
+    lost them. The API and reporting labels carry splunk_host from
+    instance_name; everything else -- the logs, which really are per node --
+    falls back to the node's hostname.
 
     Checked on both flows: the 1.x one is distributed too, and a cluster
     running it has the same primary node.
@@ -298,19 +302,22 @@ class InstanceHostTest(unittest.TestCase):
     def labels(self, flow):
         return [p for p in processors(flow) if properties(p).get("sourcetype")]
 
-    def test_the_api_labels_carry_the_instance_name(self):
+    INSTANCE_WIDE = ("nifi:api:", "nifi:reporting:")
+
+    def test_the_instance_wide_labels_carry_the_instance_name(self):
         for line, (path, reference) in self.FLOWS.items():
             with open(path) as handle:
                 flow = json.load(handle)
             for processor in self.labels(flow):
                 props = properties(processor)
                 with self.subTest(flow=line, sourcetype=props["sourcetype"]):
-                    if props["sourcetype"].startswith("nifi:api:"):
+                    if props["sourcetype"].startswith(self.INSTANCE_WIDE):
                         self.assertEqual(props.get("splunk_host"), reference)
                     else:
                         self.assertNotIn("splunk_host", props,
-                                         "only the cluster-wide API events are "
-                                         "the instance's; logs are the node's")
+                                         "only the cluster-wide API and "
+                                         "reporting events are the instance's; "
+                                         "logs are the node's")
 
     def test_the_hec_call_falls_back_to_the_node_hostname(self):
         for line, (path, _) in self.FLOWS.items():
@@ -339,7 +346,7 @@ class InstanceHostTest(unittest.TestCase):
         else notices when one of the two is left behind."""
         template = open(os.path.join(FLOW_DIR, "nifi-1.x",
                                      "NifiMonitoringTemplate.xml")).read()
-        self.assertEqual(template.count("<value>${instance_name}</value>"), 4)
+        self.assertEqual(template.count("<value>${instance_name}</value>"), 6)
         self.assertIn("<key>instance_name</key>", template)
         self.assertIn("host=${splunk_host:replaceEmpty(${hostname(true)})", template)
 

@@ -106,11 +106,13 @@ long form of what follows.
 - An input with no **Host** sends its events under the input's name, as the
   form says. They carried splunkd's placeholder, `$decideOnStartup`, which
   matched no instance and so appeared on no dashboard.
-- On a cluster, the flow sends its API events under the instance's name
-  instead of the primary node's. It used to name the cluster after whichever
-  node won the election, which the instance lookup matched only by chance: the
-  overview reported the cluster Down and the node as an instance of its own.
-  Set the new `instance_name` setting on a cluster; a single NiFi can leave it
+- On a cluster, the flow sends its API events, bulletins and reporting-task
+  metrics under the instance's name instead of a node's. The API events were
+  named after whichever node won the election, and the bulletins and metrics
+  after whichever node Site-to-Site delivered them to, which the instance
+  lookup matched only by chance: the overview reported the cluster Down, the
+  node as an instance of its own, and the Bulletins view came back empty. Set
+  the new `instance_name` setting on a cluster; a single NiFi can leave it
   empty. Applies to the 1.x flow and template too.
 
 ### 🔧 Maintenance

@@ -108,7 +108,7 @@ The two flows take the same settings:
 
 | Setting | What it is |
 |---|---|
-| `instance_name` | The `host` the `nifi:api:*` events are sent with: the `host` of this NiFi's row in the `instance` lookup. Empty uses the node's hostname, which is right for a single NiFi. **On a cluster, set it to the cluster's `host`**: the API is polled from one node, the primary, so left empty each event carries whichever node is primary, which changes on every failover and does not match the lookup. Logs always carry the node's name |
+| `instance_name` | The `host` the `nifi:api:*` and `nifi:reporting:*` events are sent with: the `host` of this NiFi's row in the `instance` lookup. Empty uses the node's hostname, which is right for a single NiFi. **On a cluster, set it to the cluster's `host`**: the API is polled from one node, the primary, so left empty each event carries whichever node is primary, which changes on every failover and does not match the lookup. The reporting tasks' bulletins and metrics have the same problem: they arrive on whichever node Site-to-Site picks. Logs always carry the node's name |
 | `nifi_api_url` | This instance's REST API, e.g. `http://127.0.0.1:8080/nifi-api`, with no trailing slash. On a cluster, an address the node's web server listens on (`nifi.web.http.host`), which is often not `127.0.0.1` |
 | `nifi_path` | NiFi's install directory, used to tail its logs. It must end in `/`, e.g. `/opt/nifi/nifi-current/`: the flow appends `logs` to it. On a cluster, the same path on every node |
 | `process_groups_list` | Ids of the process groups to monitor, one per line |
