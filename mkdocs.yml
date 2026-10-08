@@ -46,8 +46,8 @@ theme:
   font:
     text: Roboto
     code: Roboto Mono
-  features:
-    - instant
+  # No navigation.instant: it stops the language switcher from keeping the
+  # reader on the same page when they change language.
 
 # Extras
 extra:
@@ -61,55 +61,82 @@ extra:
     - icon: fontawesome/brands/github
       link: https://github.com/kudawdev
   current_version: 2.0
-  alternate:
-    # Switch to English
-    - name: English
-      link: ""
-      lang: en
-    # Switch to Spanish
-    - name: Español
-      link: /nifi-monitoring-splunk/es/
-      lang: es
 
-extra_javascript:
-- assets/js/mermaid.min.js
-- assets/js/mermaid-init.js
 extra_css:
 - assets/css/theme.css
 
 # Extensions
 markdown_extensions:
   - admonition
-  - codehilite:
-      guess_lang: false
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  # Material renders mermaid fences itself, following the palette.
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
           class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_div_format
-  - pymdownx.tabbed
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
   - toc:
       permalink: true
       
+# Hooks
+hooks:
+  - tools/mkdocs_hooks.py
+
 # Plugins
 plugins:
   - search
+  # llms.txt + a Markdown copy of each page, for agents (https://llmstxt.org).
+  # English only: tools/mkdocs_hooks.py keeps it out of the Spanish pass.
+  - llmstxt:
+      markdown_description: >-
+        Nifi Monitoring is a pair of Splunk apps -- Nifi Monitoring (dashboards)
+        and Nifi Monitoring TA (the add-on that collects the data) -- that
+        centralize the operational visibility of Apache NiFi 1.16-1.28.1 and
+        2.0-2.11 in Splunk 9.4-10.x. Data arrives by pull (the TA polls NiFi's
+        REST API, recommended) or push (a NiFi flow sends to Splunk's HEC).
+      full_output: llms-full.txt
+      sections:
+        Start here:
+          - index.md: What the apps do and how data reaches Splunk
+          - compatibility.md: Supported versions, and choosing pull or push
+          - installation.md: Installing both apps
+        Configure 2.0:
+          - config-nifi-monitoring-2-0.md: Set up the pull strategy
+          - configuration-pull.md: Every field of the pull input
+          - config-nifi-monitoring-2-0-push.md: Set up the push strategy
+          - instance-lookup.md: The NiFi instance inventory
+          - upgrading.md: Upgrading from 1.x to 2.0.0
+        Reference:
+          - references.md: Sourcetypes, fields and data models
+          - overview.md: Tour of the dashboards
+        Optional:
+          - configuration-pull-1-2.md: Pull strategy on the legacy 1.2 apps
+          - configuration-push-1-2.md: Push strategy on the legacy 1.2 apps
+          - contributing.md: Building, testing and contributing
   - i18n:
-      default_language: en
+      docs_structure: suffix
       languages:
-        es: Spanish
-      nav_translations:
-        es:
-          Introduction: Introducción
-          Dashboards: Dashboards
-          Compatibility and collection strategy: Compatibilidad y estrategia de recolección
-          Configure Nifi Monitoring 2.0: Configurar Nifi Monitoring 2.0
-          "Pull strategy": Estrategia pull
-          "Push strategy": Estrategia push
-          "Pull input reference": Referencia del input pull
-          Install NIFI Monitoring: Instalar NIFI Monitoring
-          Instance Lookup: Lookup de Instancias
-          Configure Nifi Monitoring 1.2: Configurar Nifi Monitoring 1.2
-          Data Reference: Referencia de Datos
-          Upgrading to 2.0.0: Actualizar a 2.0.0
-          Contribute: Contribuir
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: es
+          name: Español
+          build: true
+          nav_translations:
+            Introduction: Introducción
+            Dashboards: Dashboards
+            Compatibility and collection strategy: Compatibilidad y estrategia de recolección
+            Configure Nifi Monitoring 2.0: Configurar Nifi Monitoring 2.0
+            "Pull strategy": Estrategia pull
+            "Push strategy": Estrategia push
+            "Pull input reference": Referencia del input pull
+            Install NIFI Monitoring: Instalar NIFI Monitoring
+            Instance Lookup: Lookup de Instancias
+            Configure Nifi Monitoring 1.2: Configurar Nifi Monitoring 1.2
+            Data Reference: Referencia de Datos
+            Upgrading to 2.0.0: Actualizar a 2.0.0
+            Contribute: Contribuir
