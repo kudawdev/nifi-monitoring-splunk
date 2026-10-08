@@ -35,8 +35,8 @@ Without a build they skip, with a message saying to run it. `REQUIRE_BUILT_TA=1`
 turns those skips into failures; CI sets it, because a green run where the
 generated half of the add-on was never looked at is worse than a red one.
 
-These run in CI (the `unittest` job of `dev.yml`, `testing.yml` and
-`main.yml`).
+These run in CI on every pull request (the `unit` job of `pr.yml`) and
+before a release (`main.yml`).
 
 ## Integration environment
 

@@ -1,8 +1,8 @@
 name: Pull request checks
 
 # The gates a pull request has to pass before review: the cheap ones, on
-# every push to it. The integration scenarios stay in dev.yml, by hand --
-# they bring NiFi and Splunk up in containers and take far longer.
+# every push to it. The integration scenarios are integration.yml, by hand
+# -- they bring NiFi and Splunk up in containers and take far longer.
 #
 # No `paths` filter on purpose: these are meant to be required checks, and a
 # required check that a filter skipped stays pending and blocks the merge.
@@ -11,6 +11,8 @@ name: Pull request checks
 on:
   pull_request:
   workflow_dispatch:
+  # main.yml runs these same gates before a release.
+  workflow_call:
 
 permissions:
   contents: read
@@ -21,7 +23,14 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Same gate as dev.yml, testing.yml and main.yml; see dev.yml for why 13.
+  # Measured 2026-09-21, precert, per app: nifi_monitoring 5, nifi_TA_monitoring
+  # 12. The gate is per app, so it has to clear the worse one, plus one warning
+  # of headroom. The TA's twelve are framework code, not ours: ucc-gen's own
+  # entry_page.js (check_for_splunk_js and its header/footer variant),
+  # splunklib and solnlib (check_for_supported_tls), and two informational
+  # UCC checks. Errors, failures and future failures stay gated at zero. The
+  # Makefile and delivery.conf carry the same number; a unit test fails if
+  # they drift.
   MAX_WARNING: 13
 
 jobs:

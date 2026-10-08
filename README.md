@@ -89,20 +89,21 @@ though not every scenario against both. Full detail in
 
 ## Workflows
 
-All four are manual (`workflow_dispatch`); none of them runs on push.
+### pr.yml
+Runs on every pull request: version gate, lint, unit tests against the built
+add-on, a strict docs build and AppInspect for both apps.
 
-### dev.yml
-AppInspect plus the unit tests.
-
-### testing.yml
-AppInspect plus the unit tests.
+### integration.yml
+Manual. The integration scenarios, one runner each: `pull_request` (four),
+`release` (all ten) or the profiles you name, read from `tests/matrix.yml`.
 
 ### main.yml
-Version gate, AppInspect, unit tests, the integration matrix (one runner per
-scenario) and a pre-release with both packages, tagged from `app.conf`.
+Manual. The release gate: the pull request checks plus all ten integration
+scenarios. It publishes nothing; the release is `make release`, which tags
+`v<version>` on `main` and attaches both packages.
 
 ### docs.yml
-Builds the mkdocs site and publishes it.
+Manual. Builds the mkdocs site and publishes it.
 
 
 ## Splunkbase Apps

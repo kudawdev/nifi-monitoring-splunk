@@ -123,4 +123,9 @@ long form of what follows.
 - A test harness with ten scenarios — every supported NiFi version and
   architecture against both collection strategies — plus 372 unit tests.
 - Delivery runs through `make`; `tests/README.md` has the rest.
+- Every pull request is checked automatically: lint, unit tests, a strict
+  docs build and AppInspect. The integration scenarios run by hand, all ten
+  before a release.
+- Releases are tagged `v<version>` from this one on (`v2.0.0`); up to
+  `1.2.3` they carried no `v`.
 

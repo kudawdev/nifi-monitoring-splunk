@@ -56,8 +56,9 @@ scenarios.
 
 A pull request does not need the whole matrix. Run the unit tests, plus the
 one scenario closest to what you changed — `./run.sh --list` says what each
-one covers. CI runs by hand, not on every pull request: the dev and testing
-workflows run four scenarios, and the release workflow all ten.
+one covers. Every pull request runs the lint, the unit tests, a strict docs
+build and AppInspect automatically; the integration scenarios run by hand,
+four of them or all ten before a release.
 
 There is more detail, including the known rough edges of the environment, in
 [`tests/README.md`](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/tests/README.md).

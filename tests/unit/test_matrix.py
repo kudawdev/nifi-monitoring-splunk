@@ -480,12 +480,6 @@ class WorkflowMatrixTest(unittest.TestCase):
     """The workflows repeat the profile lists, so they can drift from
     matrix.yml. This keeps them honest."""
 
-    WORKFLOWS = {
-        "dev.yml": "pull_request",
-        "testing.yml": "pull_request",
-        "main.yml": "release",
-    }
-
     @classmethod
     def setUpClass(cls):
         cls.data = matrix.load()
@@ -500,25 +494,34 @@ class WorkflowMatrixTest(unittest.TestCase):
             self.skipTest("PyYAML not installed")
         return yaml.safe_load(open(os.path.join(self.workflow_dir, name)))
 
-    def test_integration_matrix_matches_matrix_yml(self):
-        for name, stage in self.WORKFLOWS.items():
-            with self.subTest(workflow=name):
-                jobs = self.workflow(name)["jobs"]
-                self.assertIn("integration", jobs, "%s has no integration job" % name)
-                declared = jobs["integration"]["strategy"]["matrix"]["profile"]
-                self.assertEqual(declared, self.data["ci"][stage])
+    def test_the_integration_workflow_reads_matrix_yml(self):
+        """No copy of a profile list to drift: the plan job resolves the
+        selection from matrix.yml, and the scenarios fan out from its output."""
+        jobs = self.workflow("integration.yml")["jobs"]
+        plan = " ".join(str(step.get("run", "")) for step in jobs["plan"]["steps"])
+        self.assertIn("matrix.load()", plan)
+        self.assertEqual(jobs["integration"]["strategy"]["matrix"]["profile"],
+                         "${{ fromJSON(needs.plan.outputs.profiles) }}")
 
-    def test_release_does_not_publish_without_integration(self):
+    def test_the_release_gate_is_the_pr_gates_plus_every_scenario(self):
+        """main.yml runs before `make release`: the same checks as a pull
+        request, and all ten scenarios rather than four."""
         jobs = self.workflow("main.yml")["jobs"]
-        self.assertIn("integration", jobs["publish"]["needs"])
+        self.assertEqual(jobs["checks"]["uses"], "./.github/workflows/pr.yml")
+        self.assertEqual(jobs["integration"]["uses"], "./.github/workflows/integration.yml")
+        self.assertEqual(jobs["integration"]["with"]["profiles"], "release")
+        self.assertIn("workflow_call", self.workflow("pr.yml")[True])
+        self.assertIn("workflow_call", self.workflow("integration.yml")[True])
 
-    def test_unit_tests_run_in_every_workflow(self):
-        for name in self.WORKFLOWS:
+    def test_no_workflow_publishes_a_release(self):
+        """`make release` is the one way to ship: it tags v<version> on main
+        and attaches dist/'s packages. A workflow that published too would
+        make a second release, under a second tag."""
+        for name in os.listdir(self.workflow_dir):
             with self.subTest(workflow=name):
-                steps = self.workflow(name)["jobs"]["unittest"]["steps"]
-                commands = " ".join(str(step.get("run", "")) for step in steps)
-                self.assertIn("unittest discover", commands)
-                self.assertNotIn("TODO", commands)
+                text = open(os.path.join(self.workflow_dir, name)).read()
+                self.assertNotIn("action-gh-release", text)
+                self.assertNotIn("gh release create", text)
 
     def test_the_makefile_gate_matches_the_workflows(self):
         """`make validate` exists so a person runs what CI runs.
@@ -531,11 +534,9 @@ class WorkflowMatrixTest(unittest.TestCase):
         makefile = open(os.path.join(REPO, "Makefile")).read()
         local = re.search(r"^MAX_WARNING \?= (\d+)", makefile, re.M)
         self.assertIsNotNone(local, "the Makefile declares no MAX_WARNING")
-        for name in self.WORKFLOWS:
-            with self.subTest(workflow=name):
-                self.assertEqual(
-                    str(self.workflow(name)["env"]["MAX_WARNING"]),
-                    local.group(1))
+        # pr.yml holds CI's copy; main.yml reuses pr.yml rather than repeat it.
+        self.assertEqual(str(self.workflow("pr.yml")["env"]["MAX_WARNING"]),
+                         local.group(1))
         # `make package` gates the release artifacts with delivery.conf's value,
         # so it is the third copy of the same number.
         conf = open(os.path.join(REPO, "delivery.conf")).read()

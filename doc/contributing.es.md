@@ -58,8 +58,10 @@ corre solo los escenarios.
 
 Un pull request no necesita la matriz completa. Corre las pruebas unitarias
 más el escenario más cercano a lo que cambiaste — `./run.sh --list` dice qué
-cubre cada uno. CI se lanza a mano, no en cada pull request: los workflows de
-dev y testing corren cuatro escenarios, y el de release los diez.
+cubre cada uno. Cada pull request corre automáticamente el lint, las pruebas
+unitarias, un build estricto de la documentación y AppInspect; los escenarios
+de integración se lanzan a mano, cuatro de ellos o los diez antes de un
+release.
 
 Hay más detalle, incluidas las asperezas conocidas del entorno, en
 [`tests/README.md`](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/tests/README.md).
