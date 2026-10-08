@@ -159,6 +159,10 @@ Si un cluster de NiFi está completo.
 Un NiFi standalone no tiene nada que mostrar aquí. La TA detecta el
 cluster por sí sola; no hay nada que habilitar.
 
+Los datos por nodo los produce solo la TA, así que esta vista queda vacía
+con la estrategia push, que consulta la API del cluster en conjunto, y lo
+mismo pasa con la alerta *Cluster node disconnected*.
+
 ## Alerts
 
 Las alertas que trae la app, si cada una está habilitada, y cuáles se
@@ -184,7 +188,7 @@ acciones —correo, webhook—, porque ninguna viene configurada:
 | Sustained high heap | el heap se mantiene sobre el umbral de heap de la instancia durante varias muestras seguidas |
 | ERROR bulletin spike | una instancia genera más boletines ERROR que su umbral de boletines |
 | Backpressure | una conexión alcanza el umbral de backpressure, o NiFi predice que lo hará pronto (necesita *Flow metrics*) |
-| Cluster node disconnected | un miembro del cluster no está conectado |
+| Cluster node disconnected | un miembro del cluster no está conectado (solo pull) |
 | Versioned flow sync failure | un process group versionado no puede sincronizarse con su registry |
 | TA HTTP errors | la TA no puede iniciar sesión en NiFi, es rechazada o recibe un error del servidor |
 

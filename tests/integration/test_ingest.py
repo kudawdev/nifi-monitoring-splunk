@@ -677,8 +677,10 @@ class DashboardPanelTest(IntegrationTestCase):
     def may_be_empty(self, view, ds_id):
         """The data sources this profile has nothing for, and why."""
         pull = self.profile_collection == "pull"
-        if view == "nifi_cluster" or ds_id == "ds_input_host" and view == "nifi_cluster":
-            return not self.profile_cluster          # a standalone NiFi has no cluster
+        if view == "nifi_cluster":
+            # A standalone NiFi has no cluster, and the per-node data comes
+            # from the TA only: the push flow polls the cluster-wide API.
+            return not self.profile_cluster or not pull
         if ds_id in ("ds_deprecations", "ds_fired", "ds_ta_errors", "ds_ta_time"):
             return True                              # empty on a healthy, clean NiFi
         if view == "nifi_components" and ds_id in ("ds_connections", "ds_conn_table"):
