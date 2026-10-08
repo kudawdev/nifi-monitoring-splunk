@@ -48,6 +48,12 @@ GROUP_NAME = "harness-workload"
 # Throwaway containers with self-signed certificates for names that only
 # resolve inside the compose network.
 _UNVERIFIED = ssl._create_unverified_context()
+STALE_REVISION = "is not the most up-to-date revision"
+
+
+class StaleRevision(Exception):
+    """NiFi refused a PUT whose revision another node has moved past."""
+
 
 STD = "org.apache.nifi.processors.standard."
 ATTR = "org.apache.nifi.processors.attributes."
@@ -112,13 +118,35 @@ class NiFi(object):
                     raw = response.read().decode()
                 return json.loads(raw) if raw else None
             except urllib.error.HTTPError as error:
+                message = error.read().decode()
+                # A stale revision cannot succeed by resending the same body:
+                # the caller has to read the component again.
+                if error.code == 409 and STALE_REVISION in message:
+                    raise StaleRevision(message)
                 # A cluster answers 409 (node connecting) or 500 (replication)
                 # while a node joins; nothing else is worth retrying.
                 if error.code in (409, 500, 503) and attempt < attempts - 1:
                     time.sleep(5)
                     continue
                 raise SystemExit("%s %s -> HTTP %s: %s" % (
-                    method, path, error.code, error.read().decode()[:300]))
+                    method, path, error.code, message[:300]))
+
+    def update(self, processor, path, body_from):
+        """PUT a body built from the processor's current revision.
+
+        On a cluster the revision read from one node can be behind the one
+        another node holds while a change replicates, and NiFi answers 409
+        "is not the most up-to-date revision". Re-reading is the only retry
+        that can succeed.
+        """
+        for attempt in range(10):
+            current = self.call("/processors/%s" % processor["id"])
+            try:
+                return self.call(path, "PUT", body_from(current))
+            except StaleRevision as error:
+                if attempt == 9:
+                    raise SystemExit("PUT %s -> HTTP 409: %s" % (path, str(error)[:300]))
+                time.sleep(3)
 
     def processor(self, group, name, kind, properties=None, x=0, y=0, period="1 sec",
                   terminate=None, run_duration=0):
@@ -136,8 +164,8 @@ class NiFi(object):
             current = self.call("/processors/%s" % created["id"])
             relationships = [r["name"] for r in current["component"]["relationships"]]
             names = relationships if terminate == "all" else [r for r in relationships if r in terminate]
-            created = self.call("/processors/%s" % created["id"], "PUT", {
-                "revision": current["revision"],
+            created = self.update(created, "/processors/%s" % created["id"], lambda fresh: {
+                "revision": fresh["revision"],
                 "component": {"id": created["id"], "config": {"autoTerminatedRelationships": names}},
             })
         return created
@@ -171,15 +199,14 @@ class NiFi(object):
             names = names if isinstance(names, tuple) else (names,)
             key = next(keys[n.lower()] for n in names if n.lower() in keys)
             properties[key] = value
-        return self.call("/processors/%s" % processor["id"], "PUT", {
-            "revision": current["revision"],
+        return self.update(processor, "/processors/%s" % processor["id"], lambda fresh: {
+            "revision": fresh["revision"],
             "component": {"id": processor["id"], "config": {"properties": properties}},
         })
 
     def set_state(self, processor, state):
-        current = self.call("/processors/%s" % processor["id"])
-        return self.call("/processors/%s/run-status" % processor["id"], "PUT", {
-            "revision": current["revision"], "state": state})
+        return self.update(processor, "/processors/%s/run-status" % processor["id"], lambda fresh: {
+            "revision": fresh["revision"], "state": state})
 
 
 def reuse(nifi, root, gid):
