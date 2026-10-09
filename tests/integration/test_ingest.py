@@ -694,28 +694,47 @@ class DashboardPanelTest(IntegrationTestCase):
     def wait_for_the_data_behind_the_panels(self):
         """The panels read the API, the workload's status history and its
         bulletins. Waiting on a panel query is not a wait: most of them
-        return a row whatever happened."""
+        return a row whatever happened.
+
+        Returns what Splunk holds of the status history when the wait for it
+        ran out, or "" when it did not: a note for a failing panel to say."""
         wait_for_events(
             self.splunk,
             'index=nifi sourcetype="nifi:api:system_diagnostics" '
             '[| inputlookup instance | fields host] | stats count by host',
             minimum=1, timeout=420)
-        # Processors, not just any component: the Components panels read
-        # processor history, and on the push path a process group's can land
-        # first, which let the wait pass and those panels come back empty.
-        wait_for_events(
+        # What the Components panels filter on, all of it: the instance's
+        # host, processors, and a taskMillis to sum. Waiting for any row of
+        # Component_Status, and then for any processor's, both passed on the
+        # push path while those panels came back empty.
+        host = self.tokens()["host"]
+        history = wait_for_events(
             self.splunk,
             '| tstats count from datamodel=NIFI.Component_Status '
-            'where Component_Status.component_kind="processor" by host',
+            'where host="%s" Component_Status.component_kind="processor" '
+            'Component_Status.taskMillis=* by host' % host,
             minimum=1, timeout=420)
         wait_for_events(
             self.splunk,
             '| tstats count from datamodel=NIFI.Bulletins '
             'where [| inputlookup instance | fields host] by host',
             minimum=1, timeout=420)
+        if history:
+            return ""
+        by_kind = search(
+            self.splunk,
+            '| tstats count from datamodel=NIFI.Component_Status '
+            'by host Component_Status.component_kind')
+        with_millis = search(
+            self.splunk,
+            '| tstats count from datamodel=NIFI.Component_Status '
+            'where Component_Status.taskMillis=* by host Component_Status.component_kind')
+        return ("\nno processor history with taskMillis for host=%s after 420s."
+                "\nComponent_Status by host and kind: %s"
+                "\n...of which with taskMillis: %s" % (host, by_kind, with_millis))
 
     def test_every_panel_this_profile_feeds_returns_rows(self):
-        self.wait_for_the_data_behind_the_panels()
+        note = self.wait_for_the_data_behind_the_panels()
         tokens = self.tokens()
         for view, definition in self.views().items():
             for ds_id in definition["dataSources"]:
@@ -723,7 +742,8 @@ class DashboardPanelTest(IntegrationTestCase):
                 with self.subTest(view=view, ds=ds_id):
                     rows = search(self.splunk, query, earliest=earliest)
                     if not self.may_be_empty(view, ds_id):
-                        self.assertTrue(rows, "%s.%s returned nothing:\n%s" % (view, ds_id, query[:300]))
+                        self.assertTrue(rows, "%s.%s returned nothing:\n%s%s"
+                                        % (view, ds_id, query[:300], note))
 
     def test_the_fleet_has_a_row_per_instance_with_its_numbers(self):
         self.wait_for_the_data_behind_the_panels()
