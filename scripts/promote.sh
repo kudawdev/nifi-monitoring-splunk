@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kudaw-delivery: v1.8.0
+# kudaw-delivery: v1.10.0
 # Promote code between environment branches: develop -> testing -> main.
 #
 # Usage:
@@ -67,6 +67,19 @@ if ! git rev-parse -q --verify "refs/remotes/origin/$FROM" >/dev/null; then
     exit 1
 fi
 
+# The source branch is promoted as origin has it, so a local copy that is ahead would be
+# a state nobody else can see. Checked BEFORE "nothing to promote": with nothing new on
+# origin that exit used to fire first and drop the local commits without a word, and with
+# something new the merge took the local ref and published commits origin/$FROM never had.
+# It used to apply to staging only; `main` promotes from develop just the same.
+if git rev-parse -q --verify "refs/heads/$FROM" >/dev/null; then
+    unpushed="$(git rev-list --count "origin/$FROM..$FROM")"
+    if [[ "$unpushed" != "0" ]]; then
+        echo "Error: $FROM has $unpushed unpushed commit(s). Push them first." >&2
+        exit 1
+    fi
+fi
+
 # Nothing to promote is not a failure, but it is not a promotion either.
 if [[ -n "$(git rev-parse -q --verify "refs/remotes/origin/$TO" || true)" ]]; then
     pending="$(git rev-list --count "origin/$TO..origin/$FROM")"
@@ -77,24 +90,16 @@ if [[ -n "$(git rev-parse -q --verify "refs/remotes/origin/$TO" || true)" ]]; th
     echo "Promoting $pending commit(s) from $FROM to $TO."
 fi
 
-# For staging, local develop is the thing being promoted — it must be pushed,
-# or testing would get a state nobody else can see.
-if [[ "$TARGET" == "staging" ]]; then
-    unpushed="$(git rev-list --count "origin/develop..develop")"
-    if [[ "$unpushed" != "0" ]]; then
-        echo "Error: develop has $unpushed unpushed commit(s). Push them first." >&2
-        exit 1
-    fi
-fi
-
 # --- promote ------------------------------------------------------------------
 
 echo "Checking out $TO..."
 git checkout "$TO"
 git pull --ff-only origin "$TO"
 
-echo "Merging $FROM into $TO..."
-git merge --no-ff "$FROM" -m "chore: promote $FROM to $TO"
+# origin/$FROM, not the local ref: it is what the count above measured, and a local
+# testing that was never pulled would otherwise promote a stale state.
+echo "Merging origin/$FROM into $TO..."
+git merge --no-ff "origin/$FROM" -m "chore: promote $FROM to $TO"
 
 echo "Pushing $TO..."
 git push origin "$TO"

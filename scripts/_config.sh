@@ -1,4 +1,4 @@
-# kudaw-delivery: v1.8.0
+# kudaw-delivery: v1.10.0
 # Shared bootstrap for the delivery scripts: locate the repo, load `delivery.conf`,
 # load the manifest flavour it names.
 #
@@ -14,6 +14,9 @@ if [[ ! -f "$CONF" ]]; then
     echo "       configured; see resources/delivery/delivery.conf.example in tech-cicd." >&2
     exit 2
 fi
+# TAG_PREFIX is read from delivery.conf and nowhere else: one inherited from the caller's
+# shell would silently rename every tag this run creates.
+unset TAG_PREFIX
 # shellcheck source=/dev/null
 source "$CONF"
 
@@ -78,7 +81,10 @@ else
         fi
     done
     MANIFEST_REL="$MANIFEST"
-    TAG_PREFIX="v"
+    # `v` unless delivery.conf says otherwise — and an EMPTY value is an answer, not a
+    # missing one: TAG_PREFIX="" is how a repo whose tags are bare SemVer (`0.2.0`) keeps
+    # them. Hence `-` and not `:-` in the expansion.
+    TAG_PREFIX="${TAG_PREFIX-v}"
 fi
 
 if [[ -n "$MANIFEST_REL" ]]; then

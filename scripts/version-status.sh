@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kudaw-delivery: v1.8.0
+# kudaw-delivery: v1.10.0
 # Drift report for a Splunk app — informational, never blocks.
 #
 # Three coordinates that should agree and drift apart quietly:
@@ -57,8 +57,8 @@ fi
 LATEST="$(gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || true)"
 printf '  release     %s\n' "${LATEST:-none}"
 
-if gh release view "v${VERSION}" >/dev/null 2>&1; then
-    ASSETS="$(gh release view "v${VERSION}" --json assets -q '.assets[].name' 2>/dev/null | paste -sd' ' - || true)"
+if gh release view "${TAG_PREFIX-v}${VERSION}" >/dev/null 2>&1; then
+    ASSETS="$(gh release view "${TAG_PREFIX-v}${VERSION}" --json assets -q '.assets[].name' 2>/dev/null | paste -sd' ' - || true)"
     printf '  v%s        published, attached: %s\n' "$VERSION" "${ASSETS:-NONE — RELEASE_ASSETS not set?}"
 else
     printf '  v%s        unpublished\n' "$VERSION"

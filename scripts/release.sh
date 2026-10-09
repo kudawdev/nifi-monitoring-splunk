@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# kudaw-delivery: v1.8.0
+# kudaw-delivery: v1.10.0
 # Tag a released version and publish its GitHub Release.
 #
 # Usage:
 #   scripts/release.sh <version>
 #
-# Run this AFTER `promote.sh prod` has put the code on main. The tag is created
+# Run this AFTER `promote.sh prod` (or `main`) has put the code on main. The tag is created
 # on origin/main explicitly rather than on HEAD, so it always points at the
 # production commit no matter which branch you happen to be on — tagging HEAD
 # from develop produces a tag that names a commit which never shipped.
@@ -28,16 +28,17 @@ if [[ -z "$VERSION" ]]; then
 fi
 VERSION="${VERSION#v}"
 
-# The tag prefix comes from the config: `v` for a single-artifact repo, and per package in
-# a monorepo, where one `v0.3.1` could mean any of seven things. A package configured with
-# `-` ships without a tag at all — its registry is the record — and there is nothing here
-# for this command to do.
-if [[ "${TAG_PREFIX:-v}" == "-" ]]; then
+# The tag prefix comes from the config: `v` by default, TAG_PREFIX in delivery.conf for a
+# single-artifact repo (empty for bare `0.2.0` tags), and per package in a monorepo, where
+# one `v0.3.1` could mean any of seven things. A package configured with `-` ships without
+# a tag at all — its registry is the record — and there is nothing here for this command
+# to do. `-v` and not `:-v`: an empty prefix is a configured one.
+if [[ "${TAG_PREFIX-v}" == "-" ]]; then
     echo "Package '$PKG_NAME' ships without a git tag (registry is the record)."
     echo "Nothing to release here — 'make publish' and 'make verify' are its delivery."
     exit 0
 fi
-TAG="${TAG_PREFIX:-v}${VERSION}"
+TAG="${TAG_PREFIX-v}${VERSION}"
 
 # --- preconditions ------------------------------------------------------------
 
@@ -57,11 +58,59 @@ fi
 
 # The version being tagged has to be the version that is actually on main.
 # Catches the common ordering mistake: releasing before promoting.
-MANIFEST="$(bash "$PROJECT_ROOT/scripts/version.sh" manifest)"
-if ! git show "origin/main:$MANIFEST" 2>/dev/null | grep -qF "\"$VERSION\""; then
-    echo "Error: $MANIFEST on origin/main does not carry version $VERSION." >&2
-    echo "       Promote to main first (make promote-prod), then release." >&2
+#
+# Read with the flavour's own reader, over origin/main's copy of the manifest. A grep for
+# `"X"` assumed every manifest quotes its version, and app.conf does not — so every Splunk
+# app was refused, promoted or not. It is also exact now: the quoted grep matched the
+# version of any dependency that happened to share the number.
+case "$PROFILE" in
+    servicio) PROMOTE_TARGET="promote-prod" ;;
+    *)        PROMOTE_TARGET="promote-main" ;;
+esac
+MAIN_MANIFEST="$(mktemp -t release-manifest-XXXXXX)"
+NOTES_FILE="$(mktemp -t release-notes-XXXXXX.md)"
+trap 'rm -f "$MAIN_MANIFEST" "$NOTES_FILE"' EXIT
+main_version=""
+if git show "origin/main:$MANIFEST_REL" > "$MAIN_MANIFEST" 2>/dev/null; then
+    main_version="$(MANIFEST="$MAIN_MANIFEST" read_version 2>/dev/null || true)"
+fi
+if [[ "$main_version" != "$VERSION" ]]; then
+    echo "Error: $MANIFEST_REL on origin/main carries version '${main_version:-<none>}', not $VERSION." >&2
+    echo "       Promote to main first (make $PROMOTE_TARGET), then release." >&2
     exit 1
+fi
+
+# --- the artifact ---------------------------------------------------------------
+#
+# For a profile whose deliverable IS the release — a Splunk app, a plugin, anything a
+# human downloads from the Releases page — notes without the artifact are a release in
+# name only. RELEASE_ASSETS declares what to attach; `${VERSION}` expands, and a glob is
+# allowed. Attached in the SAME call that creates the release, so the release never exists
+# without it: a two-step upload leaves a window where the page is live and empty, and
+# people find it exactly then.
+#
+# Resolved HERE, before the tag, like every other precondition. After the push a missing
+# artifact left a published tag with no Release, and the only way out was deleting a tag
+# from origin — the one thing this script says never to do. Same for a missing gh: when the
+# artifact is the deliverable, a tag without it is not a partial release, it is a wrong one.
+ASSETS=()
+if [[ -n "${RELEASE_ASSETS:-}" ]]; then
+    for pattern in $RELEASE_ASSETS; do
+        expanded="${pattern//\$\{VERSION\}/$VERSION}"
+        mapfile -t matches < <(compgen -G "$expanded" || true)
+        if (( ${#matches[@]} == 0 )); then
+            echo "Error: RELEASE_ASSETS declares '$expanded' and nothing matches it." >&2
+            echo "       Build the artifact first; a release whose deliverable is the" >&2
+            echo "       artifact must not be published empty. Nothing was tagged." >&2
+            exit 1
+        fi
+        ASSETS+=("${matches[@]}")
+    done
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "Error: gh not found, and RELEASE_ASSETS says the release carries the artifact." >&2
+        echo "       Install gh first; a tag without its artifact is not a release. Nothing was tagged." >&2
+        exit 1
+    fi
 fi
 
 # --- tag ----------------------------------------------------------------------
@@ -78,9 +127,6 @@ if ! command -v gh >/dev/null 2>&1; then
     exit 0
 fi
 
-NOTES_FILE="$(mktemp -t release-notes-XXXXXX.md)"
-trap 'rm -f "$NOTES_FILE"' EXIT
-
 # The CHANGELOG entry is the source, not a re-classification of the commits. Two
 # generators of the same truth eventually disagree, and then nobody knows which to
 # believe. `changelog.sh add` is what produced that entry, from release-notes.sh, so the
@@ -94,31 +140,9 @@ else
     bash "$PROJECT_ROOT/scripts/release-notes.sh" "$VERSION" > "$NOTES_FILE"
 fi
 
-# --- the artifact ---------------------------------------------------------------
-#
-# For a profile whose deliverable IS the release — a Splunk app, a plugin, anything a
-# human downloads from the Releases page — notes without the artifact are a release in
-# name only. RELEASE_ASSETS declares what to attach; `${VERSION}` expands, and a glob is
-# allowed. Attached in the SAME call that creates the release, so the release never exists
-# without it: a two-step upload leaves a window where the page is live and empty, and
-# people find it exactly then.
-ASSETS=()
-if [[ -n "${RELEASE_ASSETS:-}" ]]; then
-    for pattern in $RELEASE_ASSETS; do
-        expanded="${pattern//\$\{VERSION\}/$VERSION}"
-        mapfile -t matches < <(compgen -G "$expanded" || true)
-        if (( ${#matches[@]} == 0 )); then
-            echo "Error: RELEASE_ASSETS declares '$expanded' and nothing matches it." >&2
-            echo "       Build the artifact first; a release whose deliverable is the" >&2
-            echo "       artifact must not be published empty. The tag is already pushed," >&2
-            echo "       so build and re-run, or delete the tag." >&2
-            exit 1
-        fi
-        ASSETS+=("${matches[@]}")
-    done
+if ((${#ASSETS[@]})); then
     echo "Attaching: ${ASSETS[*]}"
 fi
-
 echo "Creating GitHub Release..."
 gh release create "$TAG" --title "$TAG" --notes-file "$NOTES_FILE" ${ASSETS[@]+"${ASSETS[@]}"}
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kudaw-delivery: v1.8.0
+# kudaw-delivery: v1.10.0
 # Build the versioned artifacts of a Splunk app: dist/<app>-<version>.tar.gz, one per app
 # the repo ships (see _app.sh for APP_DIRS).
 #

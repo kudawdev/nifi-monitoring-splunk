@@ -9,10 +9,7 @@ Arranca en 2.0.0: las releases anteriores viven en los
 
 ## 2.0.0 — 2026-10-09 — NiFi 2.x support
 
-Written by hand. The generator classifies by Conventional Commits and this
-repository does not use them, so every commit landed under "Other" — sixty
-subjects is not release notes anyone wants to read. `doc/upgrading.md` is the
-long form of what follows.
+Upgrading from 1.x? Read the [upgrade guide](https://kudawdev.github.io/nifi-monitoring-splunk/upgrading/) first.
 
 ### ⚠️ Breaking Changes
 
@@ -34,7 +31,7 @@ long form of what follows.
 - **The app looks in one index, not every index.** The `index_nifi` macro was
   `index=*`. It is now `index=nifi`, and the app ships that index. If your
   NiFi data is elsewhere, every dashboard goes empty until you override the
-  macro — Internal Monitoring reports where the data actually is.
+  macro — **Configuration > Collection Health** shows where the data actually is.
 - **TLS certificates are verified.** Every request the add-on made used to
   accept any certificate. Over HTTPS that let anyone intercepting the
   connection read the credentials and the bearer token, and NiFi 2.x serves

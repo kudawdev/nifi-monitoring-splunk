@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kudaw-delivery: v1.8.0
+# kudaw-delivery: v1.10.0
 # Everything that touches the project's version number, in one place.
 #
 # Usage:

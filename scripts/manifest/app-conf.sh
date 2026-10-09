@@ -1,4 +1,4 @@
-# kudaw-delivery: v1.8.0
+# kudaw-delivery: v1.10.0
 # Manifest flavour: default/app.conf version — Splunk apps and TAs.
 #
 # A flavour defines exactly two functions over $MANIFEST. Everything else in the facade
