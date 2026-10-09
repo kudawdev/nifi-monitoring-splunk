@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kudaw-delivery: v1.8.0
+# kudaw-delivery: v1.10.0
 # Confirm the artifacts for this version exist and are what they claim to be — every app
 # the repo ships, since a release attaches them together.
 #
@@ -63,14 +63,14 @@ for i in "${!APP_NAMES[@]}"; do
     fi
 done
 
-if command -v gh >/dev/null 2>&1 && gh release view "v${VERSION}" >/dev/null 2>&1; then
+if command -v gh >/dev/null 2>&1 && gh release view "${TAG_PREFIX-v}${VERSION}" >/dev/null 2>&1; then
     echo
-    attached="$(gh release view "v${VERSION}" --json assets -q '.assets[].name' 2>/dev/null || true)"
+    attached="$(gh release view "${TAG_PREFIX-v}${VERSION}" --json assets -q '.assets[].name' 2>/dev/null || true)"
     for name in "${APP_NAMES[@]}"; do
         if grep -qxF "${name}-${VERSION}.tar.gz" <<< "$attached"; then
-            ok "GitHub Release v$VERSION carries ${name}-${VERSION}.tar.gz"
+            ok "GitHub Release ${TAG_PREFIX-v}$VERSION carries ${name}-${VERSION}.tar.gz"
         else
-            bad "GitHub Release v$VERSION exists without ${name}-${VERSION}.tar.gz attached"
+            bad "GitHub Release ${TAG_PREFIX-v}$VERSION exists without ${name}-${VERSION}.tar.gz attached"
         fi
     done
 fi
@@ -80,4 +80,4 @@ if (( failures )); then
     echo "$failures problem(s). Do not promote until they are resolved."
     exit 1
 fi
-echo "OK — the v$VERSION artifacts are publishable."
+echo "OK — the ${TAG_PREFIX-v}$VERSION artifacts are publishable."

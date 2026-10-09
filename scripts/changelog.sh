@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kudaw-delivery: v1.8.0
+# kudaw-delivery: v1.10.0
 # The CHANGELOG.md: the versioned history of releases, and the source the GitHub Release
 # notes are published from.
 #
@@ -57,7 +57,7 @@ usage() {
 
 # The date of a release is the date its tag was created; an unreleased version is today.
 entry_date() {
-    local tag="v$1" d=""
+    local tag="${TAG_PREFIX-v}$1" d=""
     d="$(git log -1 --format=%as "$tag" 2>/dev/null || true)"
     [[ -z "$d" ]] && d="$(date +%F)"
     printf '%s\n' "$d"

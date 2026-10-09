@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# kudaw-delivery: v1.8.0
+# kudaw-delivery: v1.10.0
 # Level 1 of the contract's validation: does this repo expose the surface its profile
 # requires?
 #

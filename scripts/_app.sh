@@ -1,4 +1,4 @@
-# kudaw-delivery: v1.8.0
+# kudaw-delivery: v1.10.0
 # Shared bits of the app-splunk artifact scripts: which apps the repo ships, what each one
 # builds into, and the gate each has to pass.
 #

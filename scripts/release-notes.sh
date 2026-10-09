@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
-# kudaw-delivery: v1.8.0
+# kudaw-delivery: v1.10.0
 # Build categorised release notes from the Conventional Commits in a range.
 #
 # Usage:
-#   scripts/release-notes.sh <version>     Notes for v<version>
+#   scripts/release-notes.sh <version>     Notes for <prefix><version>
+#
+# The tag prefix is the one delivery.conf configures (`v` by default), so the tag this
+# looks for is the one release.sh creates. It used to be `v` hardcoded, which made a repo
+# with bare tags — or a monorepo package with its own prefix — never find its own tag.
 #
 # The notes go to stdout, ready for `gh release create --notes-file`.
 #
-# If the tag v<version> exists, the range is <previous tag>..v<version>. If it
+# If the tag <prefix><version> exists, the range is <previous tag>..<that tag>. If it
 # does not exist yet (preview, before tagging), the range is <last tag>..HEAD.
 #
 # This repo promotes by branch merges, not Pull Requests, so gh's
@@ -25,7 +29,10 @@
 
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# No NEEDS_MANIFEST: the notes are about commits, not a manifest. Sourced for the tag
+# prefix, which a monorepo only resolves when PKG= names the package.
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/_config.sh"
 cd "$PROJECT_ROOT"
 
 VERSION="${1:-}"
@@ -34,7 +41,7 @@ if [[ -z "$VERSION" ]]; then
     exit 2
 fi
 VERSION="${VERSION#v}"
-TAG="v${VERSION}"
+TAG="${TAG_PREFIX-v}${VERSION}"
 
 # --- resolve the range --------------------------------------------------------
 

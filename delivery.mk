@@ -1,4 +1,4 @@
-# kudaw-delivery: v1.8.0
+# kudaw-delivery: v1.10.0
 #
 # The delivery process, identical in every Kudaw repo. Included by the repo's Makefile,
 # which adds only what genuinely varies: the quality-gate stages of its stack.
