@@ -28,4 +28,24 @@ disponibles:
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/ta_objects.png)
 
+## Dónde instalar, en un despliegue distribuido
+
+En una sola instancia de Splunk, instala las tres apps ahí y omite esta
+sección. En un despliegue distribuido, cada pieza va donde su configuración
+tiene efecto:
+
+| Dónde | Qué | Por qué |
+|---|---|---|
+| Search head | Nifi Monitoring, Nifi Monitoring TA, Lookup File Editor | Los dashboards, alertas y lookups, y los campos de búsqueda de la TA. |
+| Donde corren los inputs pull | Nifi Monitoring TA | Los inputs viven en la TA, y los sourcetypes de la API se parsean ahí (`INDEXED_EXTRACTIONS = json`), no en los indexers. Esa instancia necesita llegar a la API REST de NiFi. |
+| Indexers | El índice `nifi`; Nifi Monitoring TA si un Universal Forwarder envía los logs de NiFi | El índice está en el `default/indexes.conf` de la app, que el search head no propaga: despliégalo también en los indexers. Los sourcetypes de logs cortan líneas y leen el timestamp donde se parsean por primera vez: los indexers, o un heavy forwarder intermedio. |
+| Hosts de NiFi (opcional) | Un Universal Forwarder con el mismo paquete de Nifi Monitoring TA | Solo para los archivos de log de NiFi — ver [Configurar el Universal Forwarder](compatibility.es.md#configurar-el-universal-forwarder). |
+
+Corre los inputs pull en un heavy forwarder o en un search head independiente.
+No en un search head cluster: cada miembro correría todos los inputs e
+indexaría los datos de cada NiFi más de una vez.
+
+En **Splunk Cloud**, verifica que el índice `nifi` exista
+(**Settings > Indexes**) y créalo si no está.
+
 Siguiente: [Lookup de Instancias](instance-lookup.es.md).

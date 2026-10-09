@@ -26,4 +26,24 @@ After installing the TA, its parsing and indexing objects are in place:
 
 ![image](/nifi-monitoring-splunk/assets/images/splunk/ta_objects.png)
 
+## Where to install, on a distributed deployment
+
+On a single Splunk instance, install all three apps there and skip this
+section. On a distributed deployment, each piece goes where its
+configuration takes effect:
+
+| Where | What | Why |
+|---|---|---|
+| Search head | Nifi Monitoring, Nifi Monitoring TA, Lookup File Editor | The dashboards, alerts and lookups, and the TA's search-time fields. |
+| Where the pull inputs run | Nifi Monitoring TA | The inputs live in the TA, and the API sourcetypes are parsed there (`INDEXED_EXTRACTIONS = json`), not on the indexers. That instance needs to reach NiFi's REST API. |
+| Indexers | The `nifi` index; Nifi Monitoring TA if a Universal Forwarder sends NiFi's logs | The index is in the app's `default/indexes.conf`, which the search head does not pass on: deploy it to the indexers too. The log sourcetypes break lines and read timestamps where they are first parsed — the indexers, or a heavy forwarder in between. |
+| NiFi hosts (optional) | A Universal Forwarder with the same Nifi Monitoring TA package | Only for NiFi's log files — see [Setting up the Universal Forwarder](compatibility.md#setting-up-the-universal-forwarder). |
+
+Run the pull inputs on a heavy forwarder or a standalone search head. Not on
+a search head cluster: every member would run every input and index each
+NiFi's data more than once.
+
+On **Splunk Cloud**, check that the `nifi` index exists
+(**Settings > Indexes**) and create it if it does not.
+
 Next: [Instance Lookup](instance-lookup.md).
