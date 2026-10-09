@@ -1,0 +1,1644 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Nifi Monitoring Splunk Documentation">
+      
+      
+        <meta name="author" content="Küdaw">
+      
+      
+        <link rel="canonical" href="https://kudawdev.github.io/nifi-monitoring-splunk/overview/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../compatibility/">
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../es/overview/" hreflang="es">
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Dashboards - Nifi Monitoring Splunk</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/css/theme.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#dashboards" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Nifi Monitoring Splunk" class="md-header__button md-logo" aria-label="Nifi Monitoring Splunk" data-md-component="logo">
+      
+  <img src="../assets/images/nifi.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nifi Monitoring Splunk
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Dashboards
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../es/overview/" hreflang="es" class="md-select__link">
+              Español
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kudawdev/nifi-monitoring-splunk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    NIFI Monitoring Splunk
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Nifi Monitoring Splunk" class="md-nav__button md-logo" aria-label="Nifi Monitoring Splunk" data-md-component="logo">
+      
+  <img src="../assets/images/nifi.png" alt="logo">
+
+    </a>
+    Nifi Monitoring Splunk
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kudawdev/nifi-monitoring-splunk" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    NIFI Monitoring Splunk
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Components
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bulletins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bulletins
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Logs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cluster
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#alerts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alerts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#nifi-instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NiFi Instances
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#collection-health" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Collection Health
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compatibility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compatibility and collection strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install NIFI Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configure Nifi Monitoring 1.2
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configure Nifi Monitoring 1.2
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration-pull-1-2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pull strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration-push-1-2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Push strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configure Nifi Monitoring 2.0
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configure Nifi Monitoring 2.0
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config-nifi-monitoring-2-0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pull strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration-pull/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pull input reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config-nifi-monitoring-2-0-push/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Push strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../instance-lookup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instance Lookup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading to 2.0.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    About Küdaw
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Components
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bulletins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bulletins
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Logs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cluster
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#alerts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alerts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#nifi-instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NiFi Instances
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#collection-health" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Collection Health
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="dashboards">Dashboards<a class="headerlink" href="#dashboards" title="Permanent link">&para;</a></h1>
+<p>Eight views, from the whole fleet down to a single connection. Each one
+answers one question:</p>
+<table>
+<thead>
+<tr>
+<th>View</th>
+<th>The question it answers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="#overview">Overview</a></td>
+<td>Is the fleet healthy right now?</td>
+</tr>
+<tr>
+<td><a href="#instance">Instance</a></td>
+<td>What is happening on this instance?</td>
+</tr>
+<tr>
+<td><a href="#components">Components</a></td>
+<td>Which processor, group or connection is the bottleneck?</td>
+</tr>
+<tr>
+<td><a href="#bulletins">Bulletins</a></td>
+<td>What errors is NiFi reporting?</td>
+</tr>
+<tr>
+<td><a href="#logs">Logs</a></td>
+<td>What do NiFi's own log files say?</td>
+</tr>
+<tr>
+<td><a href="#cluster">Cluster</a></td>
+<td>Is the cluster whole?</td>
+</tr>
+<tr>
+<td><a href="#alerts">Alerts</a></td>
+<td>What can the app alert on, and what fired?</td>
+</tr>
+<tr>
+<td><a href="#collection-health">Collection Health</a></td>
+<td>Is data collection working?</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Overview</strong> says which instance needs attention, <strong>Instance</strong> says what is
+wrong with it, and <strong>Components</strong> says which processor or connection is the
+cause. Every drilldown keeps the instance and the time range you were
+looking at.</p>
+<p>They work the same whichever way the data arrives — the TA polling NiFi
+(pull) or the flow inside NiFi sending to the HEC (push). A panel that
+needs a source you have not enabled says which one in its description.</p>
+<p>In Splunk, the app's menu follows the same order, with <strong>NiFi Instances</strong>
+and <strong>Collection Health</strong> under <strong>Configuration</strong>, and <strong>Search</strong> at the
+end.</p>
+<p>Every colour comes from a threshold, and every threshold can be set for
+the whole app or for one instance — see <a href="../references/#thresholds">Thresholds</a>.</p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>The landing page: is the fleet healthy right now? Six figures, then one row
+per instance that is in the <a href="../instance-lookup/">inventory</a> or has sent data,
+worst first.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/view_overview.png" /></p>
+<table>
+<thead>
+<tr>
+<th>Indicator</th>
+<th>What it tells you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Healthy instances</strong></td>
+<td>Healthy instances out of all of them, heard from or not.</td>
+</tr>
+<tr>
+<td><strong>ERROR bulletins · 15 min</strong></td>
+<td>ERROR bulletins across the fleet in the last 15 minutes; red from the first one.</td>
+</tr>
+<tr>
+<td><strong>Worst heap</strong></td>
+<td>The highest heap use of any instance, and which one. Coloured by that instance's own heap threshold.</td>
+</tr>
+<tr>
+<td><strong>Worst repository</strong></td>
+<td>The fullest FlowFile, content or provenance repository of any instance, and which one. Coloured by that instance's repository threshold.</td>
+</tr>
+<tr>
+<td><strong>FlowFiles queued</strong></td>
+<td>Everything waiting in a queue, across every instance.</td>
+</tr>
+<tr>
+<td><strong>Invalid components</strong></td>
+<td>Processors and services NiFi will not start; amber from the first one.</td>
+</tr>
+<tr>
+<td><strong>Instances</strong></td>
+<td>One row per instance: health and its reason, cluster, NiFi version, when the last data arrived, component counts (running, stopped, invalid, disabled), queue, heap, worst repository and recent ERROR bulletins. Click a row to open it in <strong>Instance</strong>.</td>
+</tr>
+<tr>
+<td><strong>Bulletins by level</strong></td>
+<td>Bulletins in 10-minute buckets, over the selected range.</td>
+</tr>
+<tr>
+<td><strong>FlowFiles queued by instance</strong></td>
+<td>Queue over time for the four busiest instances; the rest fold into OTHER.</td>
+</tr>
+</tbody>
+</table>
+<p>The health of each instance is one of <em>Critical</em>, <em>Degraded</em>, <em>Stale</em> (no
+data for longer than its polling interval allows), <em>No data</em> or <em>Healthy</em>,
+and the reason column says which threshold decided it. An instance listed
+in the inventory that has never sent anything still gets its row; one that
+sends data but is not listed gets its row too, with cluster "—".</p>
+<h2 id="instance">Instance<a class="headerlink" href="#instance" title="Permanent link">&para;</a></h2>
+<p>What is happening on one instance. It opens on the worst one of the
+Overview list, and the selector at the top switches to another.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/view_instance.png" /></p>
+<table>
+<thead>
+<tr>
+<th>Indicator</th>
+<th>What it tells you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Status</strong></td>
+<td>Health and its reason, NiFi and Java versions, uptime and when the last data arrived.</td>
+</tr>
+<tr>
+<td><strong>Active threads</strong>, <strong>FlowFiles queued</strong>, <strong>Bytes queued</strong></td>
+<td>What the instance is doing right now.</td>
+</tr>
+<tr>
+<td><strong>Components</strong></td>
+<td>Running · stopped · invalid · disabled.</td>
+</tr>
+<tr>
+<td><strong>Versioned process groups</strong></td>
+<td>Up to date · locally modified · stale · failing to sync with their registry.</td>
+</tr>
+<tr>
+<td><strong>ERROR bulletins · 15 min</strong></td>
+<td>This instance's recent errors.</td>
+</tr>
+<tr>
+<td><strong>Heap used</strong></td>
+<td>% of max heap over time, with this instance's threshold as a dashed line.</td>
+</tr>
+<tr>
+<td><strong>JVM threads</strong></td>
+<td>Total and daemon threads.</td>
+</tr>
+<tr>
+<td><strong>Load average</strong></td>
+<td>1-minute load against the available cores (dashed).</td>
+</tr>
+<tr>
+<td><strong>GC time per collector</strong></td>
+<td>Milliseconds spent in each garbage collector per 5 minutes.</td>
+</tr>
+<tr>
+<td><strong>Repositories</strong></td>
+<td>One row per repository — content and provenance can be several — with its latest use.</td>
+</tr>
+<tr>
+<td><strong>Repository usage</strong></td>
+<td>% used over time, with this instance's threshold dashed.</td>
+</tr>
+<tr>
+<td><strong>Data in, out and processed</strong></td>
+<td>MB per 5 minutes received, sent and written by the whole flow.</td>
+</tr>
+<tr>
+<td><strong>FlowFiles received and sent</strong></td>
+<td>FlowFiles per 5 minutes from and to outside NiFi.</td>
+</tr>
+<tr>
+<td><strong>Recent bulletins</strong></td>
+<td>The latest ten; a click opens <strong>Bulletins</strong> filtered to this instance.</td>
+</tr>
+</tbody>
+</table>
+<p>The two throughput charts need <em>Flow metrics</em> enabled on the TA input on
+the pull path; on the push path they come from the Reporting Task.</p>
+<h2 id="components">Components<a class="headerlink" href="#components" title="Permanent link">&para;</a></h2>
+<p>Which processor, process group or connection is the bottleneck. The
+selectors pick the instance, processors or process groups, the metric and
+how it is aggregated.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/view_components.png" /></p>
+<table>
+<thead>
+<tr>
+<th>Indicator</th>
+<th>What it tells you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Connections over backpressure threshold</strong></td>
+<td>Connections whose object count or size is at or over this instance's backpressure threshold.</td>
+</tr>
+<tr>
+<td><strong>Reaching backpressure soon</strong></td>
+<td>Connections NiFi itself predicts will reach backpressure within the hour.</td>
+</tr>
+<tr>
+<td><strong>Components with history</strong></td>
+<td>How many components have their status history collected.</td>
+</tr>
+<tr>
+<td><strong>Top 10 by the selected metric</strong></td>
+<td>The ten heaviest components by task time, FlowFiles in and out, bytes read and written, and so on, each with a trend line. Click one to plot it below.</td>
+</tr>
+<tr>
+<td><strong>Busiest connections</strong></td>
+<td>How full each connection is, by object count and by size, and NiFi's estimate of the time left before backpressure.</td>
+</tr>
+<tr>
+<td><strong>Selected component</strong></td>
+<td>The chosen metric per 5 minutes for the component clicked above.</td>
+</tr>
+</tbody>
+</table>
+<p>The components listed are the ones whose status history is collected: the
+processor and process group ids set on the TA input
+(<a href="../configuration-pull/#4-status-history">Status history</a>), or in the push
+flow's <code>processors_list</code> and <code>process_groups_list</code>. Connections need <em>Flow
+metrics</em> on the TA input.</p>
+<h2 id="bulletins">Bulletins<a class="headerlink" href="#bulletins" title="Permanent link">&para;</a></h2>
+<p>The errors and warnings NiFi components raise, from either collection
+path. Filter by instance, level, category or component.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/view_bulletins.png" /></p>
+<table>
+<thead>
+<tr>
+<th>Indicator</th>
+<th>What it tells you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Bulletins</strong>, <strong>ERROR</strong>, <strong>WARNING</strong></td>
+<td>How many in the selected range, and of which level.</td>
+</tr>
+<tr>
+<td><strong>Components affected</strong></td>
+<td>How many distinct components raised them.</td>
+</tr>
+<tr>
+<td><strong>Bulletins over time</strong></td>
+<td>Hourly, by level.</td>
+</tr>
+<tr>
+<td><strong>Components with most bulletins</strong></td>
+<td>Where to look first.</td>
+</tr>
+<tr>
+<td><strong>Bulletin details</strong></td>
+<td>Each message whole, with its instance, level, category, component and group.</td>
+</tr>
+</tbody>
+</table>
+<p>The process group comes as a name on the push path and as an id on the
+pull path, which is all NiFi's bulletin board provides.</p>
+<h2 id="logs">Logs<a class="headerlink" href="#logs" title="Permanent link">&para;</a></h2>
+<p>NiFi's own log files, shipped by a Universal Forwarder (any of them) or by
+the push flow (application, bootstrap and user logs only — Deprecations and
+API requests need the forwarder). Filter by instance and severity, and
+search the events.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/view_logs.png" /></p>
+<table>
+<thead>
+<tr>
+<th>Indicator</th>
+<th>What it tells you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Events by level</strong></td>
+<td>Events by level across NiFi's logs, all but the request log.</td>
+</tr>
+<tr>
+<td><strong>Events</strong></td>
+<td>The <code>nifi-app.log</code> events, newest first, matching the search box.</td>
+</tr>
+<tr>
+<td><strong>Deprecated usage · last 7 days</strong></td>
+<td>What an instance uses that a later NiFi removes, from <code>nifi-deprecation.log</code> — the list to clear before moving to NiFi 2.x.</td>
+</tr>
+<tr>
+<td><strong>Requests by status class</strong></td>
+<td><code>nifi-request.log</code> in 5-minute buckets, by 2xx, 3xx, 4xx and 5xx.</td>
+</tr>
+<tr>
+<td><strong>Top failing requests</strong></td>
+<td>The 4xx and 5xx requests that fail most.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="cluster">Cluster<a class="headerlink" href="#cluster" title="Permanent link">&para;</a></h2>
+<p>Whether a NiFi cluster is whole.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/view_cluster.png" /></p>
+<table>
+<thead>
+<tr>
+<th>Indicator</th>
+<th>What it tells you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Connected nodes</strong></td>
+<td>Nodes connected out of the total.</td>
+</tr>
+<tr>
+<td><strong>Primary node</strong>, <strong>Cluster coordinator</strong></td>
+<td>Which node holds each role.</td>
+</tr>
+<tr>
+<td><strong>Nodes</strong></td>
+<td>One row per node: status, roles, last heartbeat, active threads, queue and heap.</td>
+</tr>
+<tr>
+<td><strong>Heap used by node</strong></td>
+<td>Heap per node — the aggregate hides the node that is running out.</td>
+</tr>
+<tr>
+<td><strong>FlowFiles queued by node</strong></td>
+<td>Queue per node.</td>
+</tr>
+</tbody>
+</table>
+<p>A standalone NiFi has nothing to show here. The TA detects a cluster by
+itself; there is nothing to enable.</p>
+<p>The per-node data comes from the TA only, so this view stays empty on the
+push strategy, which polls the cluster-wide API, and so does the <em>Cluster
+node disconnected</em> alert.</p>
+<h2 id="alerts">Alerts<a class="headerlink" href="#alerts" title="Permanent link">&para;</a></h2>
+<p>The alerts the app ships, whether each is enabled, and which ones fired in
+the selected range.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/view_alerts.png" /></p>
+<table>
+<thead>
+<tr>
+<th>Indicator</th>
+<th>What it tells you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Alerts enabled</strong></td>
+<td>How many of the shipped alerts are on.</td>
+</tr>
+<tr>
+<td><strong>Fired in range</strong></td>
+<td>How many times any of them fired; red from the first one.</td>
+</tr>
+<tr>
+<td><strong>Alerts shipped with the app</strong></td>
+<td>Each alert, whether it is enabled, its condition and its schedule.</td>
+</tr>
+<tr>
+<td><strong>Fired</strong></td>
+<td>Each firing: when, which alert, and its severity.</td>
+</tr>
+</tbody>
+</table>
+<p>They ship <strong>disabled</strong>. Enable the ones you want in <em>Settings › Searches,
+reports, and alerts</em> (app <em>nifi_monitoring</em>) and add the actions there —
+email, webhook — since none come configured:</p>
+<table>
+<thead>
+<tr>
+<th>Alert</th>
+<th>Fires when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Instance without data</td>
+<td>an instance in the inventory sends nothing for longer than its polling interval allows</td>
+</tr>
+<tr>
+<td>Repository filling up</td>
+<td>a repository reaches the instance's repository threshold</td>
+</tr>
+<tr>
+<td>Sustained high heap</td>
+<td>heap stays over the instance's heap threshold for several samples in a row</td>
+</tr>
+<tr>
+<td>ERROR bulletin spike</td>
+<td>an instance raises more ERROR bulletins than its bulletin threshold</td>
+</tr>
+<tr>
+<td>Backpressure</td>
+<td>a connection reaches the backpressure threshold, or NiFi predicts it will soon (needs <em>Flow metrics</em>)</td>
+</tr>
+<tr>
+<td>Cluster node disconnected</td>
+<td>a cluster member is not connected (pull only)</td>
+</tr>
+<tr>
+<td>Versioned flow sync failure</td>
+<td>a versioned process group cannot sync with its registry</td>
+</tr>
+<tr>
+<td>TA HTTP errors</td>
+<td>the TA cannot log in to NiFi, is refused, or gets a server error</td>
+</tr>
+</tbody>
+</table>
+<p>Every alert uses the same thresholds as the panels; see
+<a href="../references/#thresholds">Thresholds</a>.</p>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<h3 id="nifi-instances">NiFi Instances<a class="headerlink" href="#nifi-instances" title="Permanent link">&para;</a></h3>
+<p>Opens the <a href="../instance-lookup/">Instance Lookup</a>: one row per monitored
+instance or cluster, with its cluster name and, optionally, thresholds of
+its own.</p>
+<h3 id="collection-health">Collection Health<a class="headerlink" href="#collection-health" title="Permanent link">&para;</a></h3>
+<p>Whether data collection is working — check here first when a panel is
+empty.</p>
+<p><img alt="image" src="/nifi-monitoring-splunk/assets/images/splunk/view_collection_health.png" /></p>
+<table>
+<thead>
+<tr>
+<th>Indicator</th>
+<th>What it tells you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Events the app can see</strong></td>
+<td>Events reachable through the <code>index_nifi</code> macro; zero means the macro points at the wrong index.</td>
+</tr>
+<tr>
+<td><strong>Instances behind</strong></td>
+<td>Instances that are <em>Stale</em> or have <em>No data</em>.</td>
+</tr>
+<tr>
+<td><strong>TA HTTP errors</strong></td>
+<td>Requests the TA could not complete.</td>
+</tr>
+<tr>
+<td><strong>Last data per instance and source</strong></td>
+<td>When each instance last sent each kind of data: on time, late or missing against its polling interval. A blank cell is a source that is not enabled for that instance, not an error.</td>
+</tr>
+<tr>
+<td><strong>TA HTTP errors by status code</strong></td>
+<td>A login failure means wrong credentials, 403 missing permissions, 404 a wrong component id, 5xx a problem on NiFi's side.</td>
+</tr>
+<tr>
+<td><strong>Where NiFi data is</strong></td>
+<td>Which index actually holds the NiFi data: if it is not the one the macro points at, change the macro (see <a href="../upgrading/">Upgrading</a>).</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2021&ndash;2026 Küdaw &middot; Developed and maintained by <a href="/nifi-monitoring-splunk/about/">Küdaw</a>, specialists in data and AI
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.kudaw.com/" target="_blank" rel="noopener" title="www.kudaw.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M277.8 8.6c-12.3-11.4-31.3-11.4-43.5 0l-224 208c-9.6 9-12.8 22.9-8 35.1S18.8 272 32 272h16v176c0 35.3 28.7 64 64 64h288c35.3 0 64-28.7 64-64V272h16c13.2 0 25-8.1 29.8-20.3s1.6-26.2-8-35.1zM240 320h32c26.5 0 48 21.5 48 48v96H192v-96c0-26.5 21.5-48 48-48"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/company/kudaw-latam" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://hub.docker.com/r/kudaw" target="_blank" rel="noopener" title="hub.docker.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M349.9 236.3h-66.1v-59.4h66.1zm0-204.3h-66.1v60.7h66.1zm78.2 144.8H362v59.4h66.1zm-156.3-72.1h-66.1v60.1h66.1zm78.1 0h-66.1v60.1h66.1zm276.8 100c-14.4-9.7-47.6-13.2-73.1-8.4-3.3-24-16.7-44.9-41.1-63.7l-14-9.3-9.3 14c-18.4 27.8-23.4 73.6-3.7 103.8-8.7 4.7-25.8 11.1-48.4 10.7H2.4c-8.7 50.8 5.8 116.8 44 162.1 37.1 43.9 92.7 66.2 165.4 66.2 157.4 0 273.9-72.5 328.4-204.2 21.4.4 67.6.1 91.3-45.2 1.5-2.5 6.6-13.2 8.5-17.1zm-511.1-27.9h-66v59.4h66.1v-59.4zm78.1 0h-66.1v59.4h66.1zm78.1 0h-66.1v59.4h66.1zm-78.1-72.1h-66.1v60.1h66.1z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/kudawdev" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

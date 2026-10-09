@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/"/>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/about/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/about/"/>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/about/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/"/>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/compatibility/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0-push/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0-push/"/>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/config-nifi-monitoring-2-0-push/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0/"/>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/config-nifi-monitoring-2-0/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/configuration-pull-1-2/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/configuration-pull-1-2/"/>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/configuration-pull-1-2/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/configuration-pull/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/configuration-pull/"/>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/configuration-pull/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/configuration-push-1-2/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/configuration-push-1-2/"/>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/configuration-push-1-2/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/contributing/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/contributing/"/>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/contributing/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/installation/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/installation/"/>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/installation/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/instance-lookup/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/instance-lookup/"/>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/instance-lookup/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/overview/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/overview/"/>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/overview/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/references/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/references/"/>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/references/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/upgrading/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/upgrading/"/>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/upgrading/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/es/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/es/about/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/about/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/about/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/es/compatibility/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/compatibility/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/es/config-nifi-monitoring-2-0-push/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/config-nifi-monitoring-2-0-push/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0-push/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/es/config-nifi-monitoring-2-0/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/config-nifi-monitoring-2-0/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/es/configuration-pull-1-2/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/configuration-pull-1-2/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/configuration-pull-1-2/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/es/configuration-pull/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/configuration-pull/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/configuration-pull/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/es/configuration-push-1-2/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/configuration-push-1-2/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/configuration-push-1-2/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/es/contributing/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/contributing/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/contributing/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/es/installation/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/installation/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/installation/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/es/instance-lookup/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/instance-lookup/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/instance-lookup/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/es/overview/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/overview/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/overview/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/es/references/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/references/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/references/"/>
+    </url>
+    <url>
+        <loc>https://kudawdev.github.io/nifi-monitoring-splunk/es/upgrading/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="es" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/upgrading/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://kudawdev.github.io/nifi-monitoring-splunk/upgrading/"/>
+    </url>
+</urlset>

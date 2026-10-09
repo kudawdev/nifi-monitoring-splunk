@@ -1,0 +1,1434 @@
+
+<!doctype html>
+<html lang="es" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Nifi Monitoring Splunk Documentation">
+      
+      
+        <meta name="author" content="Küdaw">
+      
+      
+        <link rel="canonical" href="https://kudawdev.github.io/nifi-monitoring-splunk/es/upgrading/">
+      
+      
+        <link rel="prev" href="../references/">
+      
+      
+        <link rel="next" href="../contributing/">
+      
+      
+        
+          <link rel="alternate" href="../../upgrading/" hreflang="en">
+        
+          <link rel="alternate" href="./" hreflang="es">
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Actualizar a 2.0.0 - Nifi Monitoring Splunk</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/css/theme.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#actualizar-a-200" class="md-skip">
+          Saltar a contenido
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Cabecera">
+    <a href="../" title="Nifi Monitoring Splunk" class="md-header__button md-logo" aria-label="Nifi Monitoring Splunk" data-md-component="logo">
+      
+  <img src="../../assets/images/nifi.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nifi Monitoring Splunk
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Actualizar a 2.0.0
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Seleccionar idioma">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="../../upgrading/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="es" class="md-select__link">
+              Español
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Búsqueda" placeholder="Búsqueda" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Buscar">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Limpiar" aria-label="Limpiar" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Inicializando búsqueda
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kudawdev/nifi-monitoring-splunk" title="Ir al repositorio" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    NIFI Monitoring Splunk
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navegación" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../" title="Nifi Monitoring Splunk" class="md-nav__button md-logo" aria-label="Nifi Monitoring Splunk" data-md-component="logo">
+      
+  <img src="../../assets/images/nifi.png" alt="logo">
+
+    </a>
+    Nifi Monitoring Splunk
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kudawdev/nifi-monitoring-splunk" title="Ir al repositorio" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    NIFI Monitoring Splunk
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introducción
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compatibility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compatibilidad y estrategia de recolección
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Instalar NIFI Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configurar Nifi Monitoring 1.2
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configurar Nifi Monitoring 1.2
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration-pull-1-2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Estrategia pull
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration-push-1-2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Estrategia push
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configurar Nifi Monitoring 2.0
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configurar Nifi Monitoring 2.0
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config-nifi-monitoring-2-0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Estrategia pull
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration-pull/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Referencia del input pull
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config-nifi-monitoring-2-0-push/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Estrategia push
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../instance-lookup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lookup de Instancias
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Referencia de Datos
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Actualizar a 2.0.0
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Actualizar a 2.0.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Tabla de contenidos">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Tabla de contenidos
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#cambios-que-rompen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cambios que rompen
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cambios que rompen">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#la-app-busca-en-un-indice-no-en-todos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        La app busca en un índice, no en todos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#se-verifican-los-certificados-tls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Se verifican los certificados TLS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nifiapisite_to_site-deja-de-recolectarse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        nifi:api:site_to_site deja de recolectarse
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#la-aceleracion-del-datamodel-viene-apagada-como-activarla" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        La aceleración del datamodel viene apagada -- cómo activarla
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#las-contrasenas-se-guardan-por-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Las contraseñas se guardan por input
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1x-deja-archivos-que-200-no-usa" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.x deja archivos que 2.0.0 no usa
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#el-flow-definition-se-divide-por-version-de-nifi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        El flow definition se divide por versión de NiFi
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#se-reconstruyeron-los-dashboards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Se reconstruyeron los dashboards
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#que-hacer-en-orden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Qué hacer, en orden
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#novedades-de-este-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Novedades de este release
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribuir
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../about/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acerca de Küdaw
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Tabla de contenidos">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Tabla de contenidos
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#cambios-que-rompen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cambios que rompen
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cambios que rompen">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#la-app-busca-en-un-indice-no-en-todos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        La app busca en un índice, no en todos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#se-verifican-los-certificados-tls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Se verifican los certificados TLS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nifiapisite_to_site-deja-de-recolectarse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        nifi:api:site_to_site deja de recolectarse
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#la-aceleracion-del-datamodel-viene-apagada-como-activarla" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        La aceleración del datamodel viene apagada -- cómo activarla
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#las-contrasenas-se-guardan-por-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Las contraseñas se guardan por input
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1x-deja-archivos-que-200-no-usa" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.x deja archivos que 2.0.0 no usa
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#el-flow-definition-se-divide-por-version-de-nifi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        El flow definition se divide por versión de NiFi
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#se-reconstruyeron-los-dashboards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Se reconstruyeron los dashboards
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#que-hacer-en-orden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Qué hacer, en orden
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#novedades-de-este-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Novedades de este release
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="actualizar-a-200">Actualizar a 2.0.0<a class="headerlink" href="#actualizar-a-200" title="Permanent link">&para;</a></h1>
+<p>La 2.0.0 agrega soporte de NiFi 2.x. Es un release mayor y cambia defaults de
+los que depende una instalación existente. Lee esto antes de actualizar.</p>
+<p>La pantalla de configuración del TA también se reconstruyó desde cero: 1.x
+tenía un formulario único escrito a mano, 2.0.0 lo genera UCC con tabs
+agrupadas (Endpoints, TLS, Advanced). La página <strong>Inputs</strong> en <strong>Apps &gt; NiFi
+TA Monitoring</strong> no se parece en nada a la que conocías -- ver
+<a href="../config-nifi-monitoring-2-0/#1-crear-el-input-de-la-ta">Estrategia pull</a>
+para ver cómo es ahora. Los inputs existentes siguen funcionando tal cual;
+el formulario nuevo solo aparece cuando abres uno.</p>
+<h2 id="cambios-que-rompen">Cambios que rompen<a class="headerlink" href="#cambios-que-rompen" title="Permanent link">&para;</a></h2>
+<h3 id="la-app-busca-en-un-indice-no-en-todos">La app busca en un índice, no en todos<a class="headerlink" href="#la-app-busca-en-un-indice-no-en-todos" title="Permanent link">&para;</a></h3>
+<p>El macro <code>index_nifi</code> era <code>index=*</code>, lo que hacía que cada panel y la
+aceleración del datamodel escanearan todos los índices de eventos de la
+instancia. Ahora apunta a <code>index=nifi</code>, y la app trae ese índice. En un despliegue
+distribuido el índice tiene que existir también en los indexers: la app se
+instala en el search head, así que despliega su <code>indexes.conf</code> también en
+ellos.</p>
+<p><strong>Si tus datos de NiFi están en otro lado, todos los dashboards van a quedar
+vacíos.</strong> No adivines dónde: abre <strong>Configuration &gt; Collection Health</strong>, que informa
+cuántos eventos ve el macro y en qué índices hay datos de NiFi realmente.
+Después sobrescribe el macro en <code>local/macros.conf</code>:</p>
+<div class="highlight"><pre><span></span><code>[index_nifi]
+definition = index=tu_indice
+</code></pre></div>
+<h3 id="se-verifican-los-certificados-tls">Se verifican los certificados TLS<a class="headerlink" href="#se-verifican-los-certificados-tls" title="Permanent link">&para;</a></h3>
+<p>Cada request del TA aceptaba cualquier certificado que presentara NiFi. Sobre
+HTTPS eso permite que cualquiera capaz de interceptar la conexión lea el
+usuario, la contraseña y el bearer token — y NiFi 2.x sirve HTTPS por
+defecto.</p>
+<p>La verificación queda activada, incluso para inputs guardados antes de que la
+opción existiera. <strong>Un input que apunte a un NiFi con certificado autofirmado
+va a dejar de conectar.</strong> El error dice qué hacer; tienes dos opciones:</p>
+<ul>
+<li>apuntar <strong>CA bundle path</strong> a un bundle que valide el certificado, o</li>
+<li>destildar <strong>Verify the TLS certificate</strong>, aceptando una conexión sin verificar.</li>
+</ul>
+<h3 id="nifiapisite_to_site-deja-de-recolectarse"><code>nifi:api:site_to_site</code> deja de recolectarse<a class="headerlink" href="#nifiapisite_to_site-deja-de-recolectarse" title="Permanent link">&para;</a></h3>
+<p>Se consultaba en cada ciclo y ningún dashboard, objeto del datamodel ni
+búsqueda guardada lo leía nunca. Si construiste algo sobre ese sourcetype,
+deja de recibir eventos nuevos; los datos ya indexados no se ven afectados.
+Si <code>inputs.conf</code> todavía tiene el ajuste viejo, el input avisa en cada poll --
+bórralo para silenciar el log.</p>
+<p>El formulario nuevo no tiene campo para esto, y guardar un input desde ahí no
+borra los campos viejos que el formulario no conoce -- volver a guardar la
+contraseña (<a href="#las-contrasenas-se-guardan-por-input">más abajo</a>) no limpia
+este. Borra la línea <code>endpoint_site_to_site</code> a mano de cada stanza
+<code>[nifi://...]</code> en <code>local/inputs.conf</code>, dentro de <code>nifi_TA_monitoring</code>.</p>
+<h3 id="la-aceleracion-del-datamodel-viene-apagada-como-activarla">La aceleración del datamodel viene apagada -- cómo activarla<a class="headerlink" href="#la-aceleracion-del-datamodel-viene-apagada-como-activarla" title="Permanent link">&para;</a></h3>
+<p>Splunkbase no acepta una app que distribuya un datamodel acelerado, así que
+el modelo NIFI se entrega con <code>acceleration = false</code>. Los dashboards siguen
+devolviendo los números correctos, porque <code>tstats ... from datamodel=NIFI.*</code>
+cae en una búsqueda cruda, pero se vuelven más lentos a medida que crece el
+índice.</p>
+<p>Activar la aceleración es lo que más mejora la latencia de los paneles:</p>
+<ol>
+<li>Ve a <strong>Settings &gt; Data models</strong>.</li>
+<li>Elige <strong>NIFI</strong> y después <strong>Edit &gt; Edit Acceleration</strong>.</li>
+<li>Marca <strong>Accelerate</strong> y elige un rango de summary. La app trae
+   <code>acceleration.earliest_time = -7d</code>, que es el rango con el que se
+   diseñaron los paneles.</li>
+</ol>
+<p>El costo es un summary tsidx por bucket dentro de ese rango. Acorta el rango
+si el almacenamiento te importa más que la historia.</p>
+<h3 id="las-contrasenas-se-guardan-por-input">Las contraseñas se guardan por input<a class="headerlink" href="#las-contrasenas-se-guardan-por-input" title="Permanent link">&para;</a></h3>
+<p>El add-on 1.x guardaba cada contraseña de NiFi bajo el <strong>usuario</strong> de NiFi,
+así que dos inputs con el mismo usuario compartían una contraseña. La
+pantalla de configuración ahora la guarda por <strong>input</strong>, cifrada, al guardar
+el input.</p>
+<p>Un input que viene de 1.x sigue funcionando con la contraseña que guardó
+1.x, y deja un aviso en el log que lo dice. Ábrelo en la página <strong>Inputs</strong>,
+escribe la contraseña y guárdalo: desde ahí tiene la suya.</p>
+<h3 id="1x-deja-archivos-que-200-no-usa">1.x deja archivos que 2.0.0 no usa<a class="headerlink" href="#1x-deja-archivos-que-200-no-usa" title="Permanent link">&para;</a></h3>
+<p>Instalar 2.0.0 sobre un add-on 1.x solo sobrescribe los archivos que trae el
+paquete nuevo -- no borra los que traía el viejo y que 2.0.0 ya no necesita.
+Vale la pena borrar dos a mano de <code>nifi_TA_monitoring/bin/</code>:</p>
+<ul>
+<li><code>.env</code> -- el token de la API de NiFi que 1.x cacheaba ahí, casi en texto
+  plano. 2.0.0 cachea ese mismo tipo de token en <code>storage/passwords</code> y nunca
+  vuelve a leer este archivo.</li>
+<li><code>dotenv/</code> -- la librería que 1.x usaba para leerlo.</li>
+</ul>
+<p>Ninguno de los dos rompe nada si se dejan, pero son una credencial vieja y
+código muerto ocupando espacio sin ningún motivo.</p>
+<h3 id="el-flow-definition-se-divide-por-version-de-nifi">El flow definition se divide por versión de NiFi<a class="headerlink" href="#el-flow-definition-se-divide-por-version-de-nifi" title="Permanent link">&para;</a></h3>
+<p><code>flow_definition/</code> ahora tiene <code>nifi-1.x/</code> y <code>nifi-2.x/</code>. Si usas la
+estrategia push, importa el que corresponde a tu NiFi. Ver
+<a href="../compatibility/">Compatibilidad</a>.</p>
+<p>El template XML se movió a <code>nifi-1.x/</code>. NiFi 2.x eliminó el soporte de
+templates.</p>
+<h3 id="se-reconstruyeron-los-dashboards">Se reconstruyeron los dashboards<a class="headerlink" href="#se-reconstruyeron-los-dashboards" title="Permanent link">&para;</a></h3>
+<p>Las vistas ahora son Dashboard Studio, y varias cambiaron de nombre o se
+unieron. Los marcadores a los nombres viejos dejan de funcionar:</p>
+<table>
+<thead>
+<tr>
+<th>1.x</th>
+<th>2.0.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>home</code>, <code>nifi_overview</code></td>
+<td><code>nifi_overview</code> (la página de inicio)</td>
+</tr>
+<tr>
+<td><code>nifi_instances_detail</code></td>
+<td><code>nifi_instance</code></td>
+</tr>
+<tr>
+<td><code>nifi_status_history</code></td>
+<td><code>nifi_components</code></td>
+</tr>
+<tr>
+<td><code>nifi_bulletin</code></td>
+<td><code>nifi_bulletins</code></td>
+</tr>
+<tr>
+<td><code>nifi_internal_monitoring</code></td>
+<td><code>nifi_collection_health</code> y <code>nifi_cluster</code></td>
+</tr>
+</tbody>
+</table>
+<p><em>Status Indicator - Custom Visualization</em> ya no se usa; desinstálala si nada
+más la necesita.</p>
+<p>Las búsquedas propias que leen el datamodel <code>NIFI</code> pueden necesitar un
+cambio: <code>Reporting_Bulletin</code> y <code>Reporting_Task</code> ahora son hijos de
+<code>Bulletins</code> y <code>Throughput</code>, y los datasets <code>Status_History</code> pasaron a ser
+<code>Component_Status</code>. Un hijo no es una raíz, así que
+<code>| tstats ... from datamodel=NIFI.Reporting_Bulletin</code> ahora falla con <em>Invalid
+or unaccelerable root object</em>. Consulta el padre, y nombra el hijo si
+necesitas solo ese camino:</p>
+<div class="highlight"><pre><span></span><code>| tstats count from datamodel=NIFI.Bulletins where nodename=Bulletins.Reporting_Bulletin
+</code></pre></div>
+<p>Ver la <a href="../references/#datamodel">Referencia de Datos</a>.</p>
+<p>La TA escribe el historial de estado como <code>nifi:api:processors_status</code> y
+<code>nifi:api:process_groups_status</code>, un evento por snapshot. Las búsquedas
+sobre <code>nifi:api:*_history</code> siguen funcionando solo para el camino push.</p>
+<h2 id="que-hacer-en-orden">Qué hacer, en orden<a class="headerlink" href="#que-hacer-en-orden" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Averigua dónde están tus datos, en la versión actual.</strong> Ve a
+   <strong>NiFi Monitoring &gt; Configuration &gt; Internal Monitoring</strong>, o corre:</li>
+</ol>
+<div class="highlight"><pre><span></span><code>| tstats count where index=* sourcetype=nifi:* by index
+</code></pre></div>
+<p>Anota el índice. Lo necesitas en el paso 3.</p>
+<ol>
+<li>
+<p><strong>Instala los dos paquetes como actualización, primero la TA.</strong> Para cada
+   app -- <strong>Nifi Monitoring TA</strong>, después <strong>Nifi Monitoring</strong> -- ve a
+   <strong>Apps &gt; Manage Apps &gt; Install app from file</strong>, elige el <code>.tar.gz</code> nuevo,
+   y marca <strong>Upgrade app. Checking this will overwrite the existing version
+   of this app.</strong> Las dos tienen que quedar en el mismo número de versión.
+   Después reinicia Splunk (<strong>Settings &gt; Server controls &gt; Restart
+   Splunk</strong>): la TA agrega endpoints REST (<code>restmap.conf</code>, <code>web.conf</code>), que
+   solo toman efecto después de reiniciar.</p>
+</li>
+<li>
+<p><strong>Si el índice del paso 1 no es <code>nifi</code>, sobrescribe el macro.</strong> Edita
+   <code>local/macros.conf</code> dentro de <code>nifi_monitoring</code> (o usa
+   <strong>Settings &gt; Advanced search &gt; Search macros</strong>):</p>
+</li>
+</ol>
+<div class="highlight"><pre><span></span><code>[index_nifi]
+definition = index=tu_indice
+</code></pre></div>
+<ol>
+<li>
+<p><strong>Arregla el TLS en cada input que apunte a un NiFi con HTTPS.</strong> Ve a
+   <strong>Apps &gt; NiFi TA Monitoring &gt; Inputs</strong>, abre el input, expande <strong>TLS</strong>, y
+   apunta <strong>CA bundle path</strong> a un bundle que valide el certificado de NiFi, o
+   destilda <strong>Verify the TLS certificate</strong>. Guarda.</p>
+</li>
+<li>
+<p><strong>Borra <code>endpoint_site_to_site</code> de <code>local/inputs.conf</code>.</strong> El formulario no
+   tiene campo para esto y guardar un input no lo borra (ver
+   <a href="#nifiapisite_to_site-deja-de-recolectarse">arriba</a>) -- abre
+   <code>nifi_TA_monitoring/local/inputs.conf</code> en el filesystem del search head y
+   quita la línea de cada stanza <code>[nifi://...]</code> a mano.</p>
+</li>
+<li>
+<p><strong>Vuelve a guardar la contraseña en cada input que autentica.</strong> Ábrelo,
+   sobrescribe el campo de contraseña -- se muestra como una máscara,
+   escribir encima es lo que realmente la mueve -- y guarda. Busca
+   <code>index=_internal nifi_TA_monitoring "1.x add-on"</code> para ver qué inputs
+   todavía dicen
+   <code>Input &lt;name&gt; is using the credential the 1.x add-on stored...</code>: esos son
+   los que faltan.</p>
+</li>
+<li>
+<p><strong>Solo si usas la estrategia push.</strong> Reimporta
+   <a href="https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/flow_definition/nifi-2.x/NiFiMonitoring.json"><code>flow_definition/nifi-2.x/NiFiMonitoring.json</code></a>
+   (o <code>nifi-1.x/</code> si este NiFi se queda en 1.x) como un process group nuevo,
+   y pasa lo que el flow viejo guardaba en variables al Parameter Context
+   nuevo. Ver <a href="../config-nifi-monitoring-2-0-push/">Estrategia push</a>.</p>
+</li>
+<li>
+<p><strong>(Opcional) Limpia.</strong> Una vez que todos los inputs de arriba estén
+   corriendo, borra <code>nifi_TA_monitoring/bin/.env</code> y
+   <code>nifi_TA_monitoring/bin/dotenv/</code> -- 2.0.0 no usa ninguno de los dos.</p>
+</li>
+</ol>
+<h2 id="novedades-de-este-release">Novedades de este release<a class="headerlink" href="#novedades-de-este-release" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Soporte de NiFi 2.x</strong>, desde un solo input. El TA detecta la versión y se
+  adapta.</li>
+<li><strong>Métricas de flujo</strong> desde <code>/flow/metrics/json</code>, apagadas por defecto — un
+  NiFi ocioso emite unas 60 muestras por poll y <code>ALL_COMPONENTS</code> escala eso
+  con el flujo, así que revisa el volumen antes de habilitarlo.</li>
+<li><strong>Bulletins sin reporting task</strong>, consultando el bulletin board.</li>
+<li><strong><code>nifi:log:deprecation</code></strong>, que registra los componentes deprecados que la
+  instancia sigue usando. Habilítalo antes de planificar la migración a NiFi
+  2.x.</li>
+<li><strong><code>nifi:log:request</code></strong>, el log de acceso HTTP de NiFi.</li>
+<li>Un <strong>panel de inventario</strong> con la versión de NiFi y de Java de cada
+  instancia.</li>
+<li><strong>Ocho alertas</strong>, deshabilitadas al instalar: instancia sin datos,
+  repositorio llenándose, heap alto sostenido, pico de boletines ERROR,
+  backpressure, nodo de cluster desconectado, fallo de sincronización de un
+  flujo versionado y errores HTTP de la TA. Leen los mismos macros
+  <code>nifi_threshold_*</code> que los paneles.</li>
+<li><strong>Una sola definición de salud</strong> por instancia (<code>nifi_health</code>), que conoce
+  el intervalo de polling de cada input: una instancia consultada cada cinco
+  minutos ya no aparece caída.</li>
+<li><strong>Vista Components</strong>: qué procesador, grupo o conexión es el cuello de
+  botella, con la predicción de backpressure que calcula NiFi.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2021&ndash;2026 Küdaw &middot; Desarrollado y mantenido por <a href="/nifi-monitoring-splunk/es/about/">Küdaw</a>, especialistas en datos e IA
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.kudaw.com/" target="_blank" rel="noopener" title="www.kudaw.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M277.8 8.6c-12.3-11.4-31.3-11.4-43.5 0l-224 208c-9.6 9-12.8 22.9-8 35.1S18.8 272 32 272h16v176c0 35.3 28.7 64 64 64h288c35.3 0 64-28.7 64-64V272h16c13.2 0 25-8.1 29.8-20.3s1.6-26.2-8-35.1zM240 320h32c26.5 0 48 21.5 48 48v96H192v-96c0-26.5 21.5-48 48-48"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/company/kudaw-latam" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://hub.docker.com/r/kudaw" target="_blank" rel="noopener" title="hub.docker.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M349.9 236.3h-66.1v-59.4h66.1zm0-204.3h-66.1v60.7h66.1zm78.2 144.8H362v59.4h66.1zm-156.3-72.1h-66.1v60.1h66.1zm78.1 0h-66.1v60.1h66.1zm276.8 100c-14.4-9.7-47.6-13.2-73.1-8.4-3.3-24-16.7-44.9-41.1-63.7l-14-9.3-9.3 14c-18.4 27.8-23.4 73.6-3.7 103.8-8.7 4.7-25.8 11.1-48.4 10.7H2.4c-8.7 50.8 5.8 116.8 44 162.1 37.1 43.9 92.7 66.2 165.4 66.2 157.4 0 273.9-72.5 328.4-204.2 21.4.4 67.6.1 91.3-45.2 1.5-2.5 6.6-13.2 8.5-17.1zm-511.1-27.9h-66v59.4h66.1v-59.4zm78.1 0h-66.1v59.4h66.1zm78.1 0h-66.1v59.4h66.1zm-78.1-72.1h-66.1v60.1h66.1z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/kudawdev" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copiado al portapapeles", "clipboard.copy": "Copiar al portapapeles", "search.result.more.one": "1 m\u00e1s en esta p\u00e1gina", "search.result.more.other": "# m\u00e1s en esta p\u00e1gina", "search.result.none": "No se encontraron documentos", "search.result.one": "1 documento encontrado", "search.result.other": "# documentos encontrados", "search.result.placeholder": "Teclee para comenzar b\u00fasqueda", "search.result.term.missing": "Falta", "select.version": "Seleccionar versi\u00f3n"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

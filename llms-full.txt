@@ -1,0 +1,1297 @@
+# Nifi Monitoring Splunk
+
+> Nifi Monitoring Splunk Documentation
+
+Nifi Monitoring is a pair of Splunk apps -- Nifi Monitoring (dashboards) and Nifi Monitoring TA (the add-on that collects the data) -- that centralize the operational visibility of Apache NiFi 1.16-1.28.1 and 2.0-2.11 in Splunk 9.4-10.x. Data arrives by pull (the TA polls NiFi's REST API, recommended) or push (a NiFi flow sends to Splunk's HEC). Developed and maintained, as open source (MIT), by Küdaw (https://www.kudaw.com), a data and AI consultancy and Splunk partner.
+
+# Start here
+
+# Introduction
+
+**Nifi Monitoring** centralizes, in Splunk, the operational visibility of your Apache NiFi instances — a single one, several independent ones, or a cluster. In one place you get:
+
+- **Flow status**: running, stopped or invalid processors, and queued data.
+- **System diagnostics**: heap, threads and repository disk usage, per node.
+- **Bulletins**: the errors and warnings NiFi generates, traceable back to the component that raised them.
+- **NiFi's logs** (optional, via a Universal Forwarder): app, bootstrap, user, request and deprecation logs, searchable without a terminal on every host.
+- **Flow metrics** (optional): throughput and per-component detail.
+- **Cluster visibility**: each node's role and heap, without opening every node separately.
+
+Data arrives one of two ways: Splunk polling NiFi's API (**pull**, the recommended one), or NiFi sending straight to Splunk's HEC (**push**, for when Splunk cannot reach NiFi). See [Compatibility and collection strategy](https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/index.md) to pick the one you need.
+
+It ships as two apps:
+
+- **Nifi Monitoring** — the dashboards (this guide).
+- **Nifi Monitoring TA** — the add-on that gets NiFi's data into Splunk.
+
+Eight views take you from the whole fleet down to a single connection — see every one, with what each indicator means, in [Dashboards](https://kudawdev.github.io/nifi-monitoring-splunk/overview/index.md).
+
+## Dependencies
+
+- [Lookup File Editor](https://splunkbase.splunk.com/app/1724/), to edit the instance inventory.
+
+Next: [Compatibility and collection strategy](https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/index.md) — the first decision to make before installing anything.
+
+## Support
+
+Free and open source — [contribute or file issues on GitHub](https://github.com/kudawdev/nifi-monitoring-splunk), or write splunk.app@kudaw.com for an evaluation.
+
+# Compatibility and collection strategy
+
+This page answers two independent questions:
+
+1. **Which NiFi and Splunk versions does this app support?** — [Version compatibility](#version-compatibility).
+1. **How should data get from NiFi into Splunk?** — [Choosing a collection strategy](#choosing-a-collection-strategy): pull or push, and which one your deployment requires.
+
+The collection strategy is independent of the NiFi version: decide it using the requirements below, not the version table above.
+
+## Version compatibility
+
+|                           | Supported                 | Tested in CI                  |
+| ------------------------- | ------------------------- | ----------------------------- |
+| Apache NiFi               | 1.16 – 1.28.1, 2.0 – 2.11 | 1.23.2, 1.28.1, 2.0.0, 2.11.0 |
+| Splunk Enterprise / Cloud | 9.4 – 10.x                | 9.4, 10.4                     |
+
+- **NiFi 1.x reached end of life on 2024-12-08** (last release: 1.28.1). It still works with these apps, but new NiFi security fixes are published, from here on, only for the 2.x line.
+- **The minimum supported Splunk is 9.4.** The dashboards are Dashboard Studio and use features — sparklines in tables, an input that picks its first result, a click that sets a token — verified on 9.4 and 10.4 and not on anything older.
+- **The minimum supported version is NiFi 1.16**, because the `/flow/metrics/json` endpoint does not exist before it. Older 1.x instances still work, just without that flow-metrics endpoint; that combination is not covered by CI.
+
+## Topology: standalone, multiple instances, or cluster
+
+| Topology                      | Supported | What you configure                                                     |
+| ----------------------------- | --------- | ---------------------------------------------------------------------- |
+| One instance                  | yes       | One input.                                                             |
+| Several independent instances | yes       | One input per instance, one row per instance in the `instance` lookup. |
+| A NiFi cluster                | yes       | **One input**, pointed at any node.                                    |
+
+A cluster counts as **one instance** to this app, not several: point the input at any node, and NiFi answers cluster-wide on its behalf. The add-on detects the cluster on its own and collects per-node data too — there is nothing to enable.
+
+Events keep the `host` value you configured (the cluster's name) and add a `node` field naming the cluster member each event describes. The **Cluster** view breaks this down by member, role and per-node heap — the aggregate view alone would hide which node is actually running out of resources.
+
+Two things exist only on a cluster:
+
+- **Bulletins carry the node that raised them.** Framework bulletins (categories such as *Clustering* or *Primary Node*) describe the cluster itself rather than a component, so they have no source name.
+- **On the push strategy, only the primary node polls the API.** A cluster does not send one copy of the same data per node. Log tailing still runs on every node, because log files are per node, not cluster-wide. The 2.x flow does this by itself; the 1.x flow runs everything on every node, and its API sources have to be set to *Primary node* by hand — see [Push strategy (2.0)](https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0-push/#3-configure-the-flows-settings).
+
+## Choosing a collection strategy
+
+Two mutually exclusive ways get NiFi's data into Splunk:
+
+- **Pull**: Splunk's TA calls NiFi's REST API on an interval and writes what it gets back. Nothing runs inside NiFi.
+- **Push**: a flow running inside NiFi calls NiFi's own API and sends the result to Splunk's HTTP Event Collector (HEC). Nothing on Splunk's side has to reach NiFi.
+
+**Pick exactly one per NiFi instance — running both on the same instance duplicates every event.**
+
+### Architecture
+
+What runs where in each one, and what each component talks to:
+
+#### Pull
+
+```
+%%{init: {"flowchart": {"curve": "step"}} }%%
+flowchart LR
+    subgraph nifi_host["NiFi host (customer's)"]
+        nifi[["NiFi ×N<br/>REST API · instance or cluster"]]:::externo
+        uf["Universal Forwarder<br/>(optional)"]:::propio
+    end
+
+    subgraph splunk["Splunk"]
+        ta["Nifi Monitoring TA"]:::propio
+        idx[("index nifi")]:::dato
+        logs[("NiFi logs<br/>nifi:log:*")]:::dato
+        lookup[("Instance Lookup<br/>KV store")]:::dato
+        dm["Datamodel NIFI"]:::propio
+        dash["Nifi Monitoring<br/>dashboards"]:::propio
+    end
+
+    nifi_host ~~~ splunk
+
+    nifi -->|"polled by the TA: periodic GET, one input per instance · HTTP 8080 / HTTPS 8443"| ta
+    ta -->|"writes events"| idx
+    uf -.->|"optional · S2S TCP 9997"| logs
+    idx --> dm
+    dash -->|"query"| dm
+    dash -->|"query"| lookup
+
+    classDef propio fill:#FFFFFF,stroke:#1A1A1A,color:#1A1A1A
+    classDef externo fill:#E0E0E0,stroke:#808080,color:#1A1A1A,stroke-dasharray:3
+    classDef dato fill:#F5F5F5,stroke:#1A1A1A,color:#1A1A1A
+```
+
+Solid line = data path · dashed line = optional/asynchronous · grey with dashed border = external component (the customer's) · light grey = storage.
+
+#### Push
+
+```
+%%{init: {"flowchart": {"curve": "step"}} }%%
+flowchart LR
+    subgraph nifi_host["NiFi host (customer's)"]
+        flow[["NiFi flow ×N<br/>NiFiMonitoring process group"]]:::propio
+    end
+
+    subgraph splunk["Splunk"]
+        hec["HTTP Event Collector"]:::propio
+        idx[("index nifi")]:::dato
+        lookup[("Instance Lookup<br/>KV store")]:::dato
+        dm["Datamodel NIFI"]:::propio
+        dash["Nifi Monitoring<br/>dashboards"]:::propio
+    end
+
+    nifi_host ~~~ splunk
+
+    flow -->|"POST events · HEC HTTP 8088 / HTTPS"| hec
+    hec -->|"writes events"| idx
+    idx --> dm
+    dash -->|"query"| dm
+    dash -->|"query"| lookup
+
+    classDef propio fill:#FFFFFF,stroke:#1A1A1A,color:#1A1A1A
+    classDef externo fill:#E0E0E0,stroke:#808080,color:#1A1A1A,stroke-dasharray:3
+    classDef dato fill:#F5F5F5,stroke:#1A1A1A,color:#1A1A1A
+```
+
+Solid line = data path · grey with dashed border = external component (the customer's) · light grey = storage. Unlike pull, nothing on Splunk's side initiates a connection to NiFi — the flow pushes.
+
+### Which one to use
+
+**Use pull, unless both of the following are true:**
+
+1. Splunk genuinely cannot reach NiFi's API — NiFi sits in a DMZ, or on a network that only allows outbound connections from it.
+1. Your NiFi has **no authentication enabled at all**. Push calls NiFi's own API without sending any credentials. If NiFi requires a login (single-user, LDAP, or anything else), that call fails with 401, and no setting fixes it — the flow was never built to authenticate.
+
+If either of those does not hold for your environment, use pull: it is the default choice, it works whether or not NiFi has authentication enabled, and it requires installing nothing inside NiFi.
+
+|                               | Pull                       | Push                                                                                                                 |
+| ----------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Network direction required    | Splunk → NiFi              | NiFi → Splunk                                                                                                        |
+| NiFi authentication supported | None, single-user, or LDAP | **None only**                                                                                                        |
+| What you install inside NiFi  | Nothing                    | A process group (37 processors), 3 reporting tasks, 2 Site-to-Site input ports; one flow file per NiFi major version |
+
+### Feature comparison
+
+|                                                                                                                                                | Pull                                | Push                                                                                       |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------ |
+| Flow status, diagnostics, status history                                                                                                       | yes                                 | yes                                                                                        |
+| Flow metrics (`/flow/metrics`)                                                                                                                 | yes                                 | no                                                                                         |
+| [Custom endpoints](https://kudawdev.github.io/nifi-monitoring-splunk/configuration-pull/#custom-endpoints) (any other REST path)               | yes                                 | no                                                                                         |
+| Endpoints chosen by NiFi version                                                                                                               | yes                                 | no                                                                                         |
+| Per-node cluster data ([Cluster](https://kudawdev.github.io/nifi-monitoring-splunk/overview/#cluster) view, *Cluster node disconnected* alert) | yes                                 | no                                                                                         |
+| Individual bulletins                                                                                                                           | yes, by polling                     | yes, without loss                                                                          |
+| `bulletinGroupName` / `bulletinGroupPath`                                                                                                      | no                                  | yes                                                                                        |
+| NiFi log files                                                                                                                                 | via Universal Forwarder (see below) | app, bootstrap and user via the flow; request and deprecation only via Universal Forwarder |
+
+Bulletins are the one place push is genuinely better: a reporting task pushes each bulletin as it happens, while polling reads a board that only holds a short window — an interval longer than that window loses events. The input logs a warning when a poll comes back full, which is the sign that this is happening.
+
+## Collecting NiFi's log files
+
+Independent of pull vs push: both strategies *can* collect NiFi's log files, but the recommendation is neither of them. **Use a Universal Forwarder on the NiFi host.** The TA ships the monitor inputs for this already, disabled by default — enable the ones you need and correct the path.
+
+A forwarder handles log rotation and keeps its own checkpoint, and if Splunk becomes unreachable it queues on disk instead of applying backpressure to the same flow NiFi uses for real work.
+
+`TailFile` inside the flow ships only `nifi-app.log`, `nifi-bootstrap.log` and `nifi-user.log`: the request and deprecation logs, which the **Logs** view reads, need the forwarder. It remains supported for when a forwarder is not an option — NiFi running in a container you cannot add a sidecar to, for example.
+
+The TA defines five log sourcetypes. Enable `nifi:log:deprecation` before moving to NiFi 2.x: it records which deprecated components the instance is still using.
+
+### Setting up the Universal Forwarder
+
+1. **Install a Universal Forwarder on the NiFi host.** Standard Splunk install — see [Splunk's own Universal Forwarder documentation](https://docs.splunk.com/Documentation/Forwarder) if you have not done this before.
+
+1. **Install `nifi_TA_monitoring` on that same forwarder** — the same package you installed on the indexer/search head, not a different one. Copy it into the forwarder's `$SPLUNK_HOME/etc/apps/`, or push it through a deployment server if you manage the forwarder that way.
+
+1. **Enable the log monitors you need and confirm the path.** Do not edit the TA's `default/inputs.conf` — put the changes in `$SPLUNK_HOME/etc/apps/nifi_TA_monitoring/local/inputs.conf` instead (create the file if it does not exist yet), and set `disabled = false` for each monitor you want, for example:
+
+   ```
+   [monitor:///opt/nifi/nifi-current/logs/nifi-app*.log]
+   disabled = false
+   sourcetype = nifi:log:app
+   index = nifi
+
+   [monitor:///opt/nifi/nifi-current/logs/nifi-deprecation*.log]
+   disabled = false
+   sourcetype = nifi:log:deprecation
+   index = nifi
+
+   [monitor:///opt/nifi/nifi-current/logs/nifi-user*.log]
+   disabled = false
+   sourcetype = nifi:log:user
+   index = nifi
+
+   [monitor:///opt/nifi/nifi-current/logs/nifi-bootstrap*.log]
+   disabled = false
+   sourcetype = nifi:log:bootstrap
+   index = nifi
+
+   [monitor:///opt/nifi/nifi-current/logs/nifi-request*.log]
+   disabled = false
+   sourcetype = nifi:log:request
+   index = nifi
+   ```
+
+   These are the five sourcetypes the TA defines. Comment out or delete the stanza for any you don't need.
+
+   The path above matches the official NiFi container image. A package install keeps its logs wherever `NIFI_HOME` points instead — check `nifi.properties` (`org.apache.nifi.bootstrap.ConfigurableLogging`) or just look for `nifi-app.log` on disk, and correct the `monitor://` path for every stanza you enable if it differs.
+
+1. **Point the forwarder at the indexer.** In `$SPLUNK_HOME/etc/system/local/outputs.conf`:
+
+   ```
+   [tcpout]
+   defaultGroup = default-autolb-group
+
+   [tcpout:default-autolb-group]
+   server = <indexer-host>:9997
+   ```
+
+   The indexer also needs receiving enabled on 9997 — **Settings > Forwarding and receiving > Configure receiving > New Receiving Port** if it is not already.
+
+1. **Restart the forwarder**: `$SPLUNK_HOME/bin/splunk restart`.
+
+1. **Verify from the indexer or search head**:
+
+   ```
+   index=* sourcetype=nifi:log:* | stats count by sourcetype
+   ```
+
+   A sourcetype with zero events either has nothing to log yet (`nifi:log:deprecation` on a quiet instance, for example) or still has the wrong path — check step 3 again before assuming the forwarder itself is broken.
+
+# Install NIFI Monitoring
+
+Both apps are required: **Nifi Monitoring TA** parses and indexes NiFi's data; **Nifi Monitoring** (the dashboards) depends on it, regardless of [collection strategy](https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/#choosing-a-collection-strategy). Three apps are needed in total, all from the Splunk application manager (**Apps > Manage Apps > Install app from file**):
+
+1. **Nifi Monitoring TA** — parses and indexes NiFi's data. Install this first: the dashboards have nothing to read without it. `nifi_TA_monitoring-<version>.tar.gz`, from [Splunkbase](https://splunkbase.splunk.com/app/6124) or a [GitHub release](https://github.com/kudawdev/nifi-monitoring-splunk/releases).
+1. **Nifi Monitoring** — the dashboards, views, and lookups. `nifi_monitoring-<version>.tar.gz`, from [Splunkbase](https://splunkbase.splunk.com/app/6125) or the same GitHub releases page.
+1. **[Lookup File Editor](https://splunkbase.splunk.com/app/1724/)** — required by the Instance Lookup screen. Since 2.0.0 the dashboards are Dashboard Studio and need no other visualization app; *Status Indicator* can be removed if nothing else uses it.
+
+After installing the TA, its parsing and indexing objects are in place:
+
+## Where to install, on a distributed deployment
+
+On a single Splunk instance, install all three apps there and skip this section. On a distributed deployment, each piece goes where its configuration takes effect:
+
+| Where                     | What                                                                            | Why                                                                                                                                                                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Search head               | Nifi Monitoring, Nifi Monitoring TA, Lookup File Editor                         | The dashboards, alerts and lookups, and the TA's search-time fields.                                                                                                                                                                                      |
+| Where the pull inputs run | Nifi Monitoring TA                                                              | The inputs live in the TA, and the API sourcetypes are parsed there (`INDEXED_EXTRACTIONS = json`), not on the indexers. That instance needs to reach NiFi's REST API.                                                                                    |
+| Indexers                  | The `nifi` index; Nifi Monitoring TA if a Universal Forwarder sends NiFi's logs | The index is in the app's `default/indexes.conf`, which the search head does not pass on: deploy it to the indexers too. The log sourcetypes break lines and read timestamps where they are first parsed — the indexers, or a heavy forwarder in between. |
+| NiFi hosts (optional)     | A Universal Forwarder with the same Nifi Monitoring TA package                  | Only for NiFi's log files — see [Setting up the Universal Forwarder](https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/#setting-up-the-universal-forwarder).                                                                                |
+
+Run the pull inputs on a heavy forwarder or a standalone search head. Not on a search head cluster: every member would run every input and index each NiFi's data more than once.
+
+On **Splunk Cloud**, check that the `nifi` index exists (**Settings > Indexes**) and create it if it does not.
+
+Next: [Instance Lookup](https://kudawdev.github.io/nifi-monitoring-splunk/instance-lookup/index.md).
+# Configure 2.0
+
+# Installation and Configuration v2.0.0
+
+Step-by-step setup on the Splunk side, from the apps already installed to working dashboards. This page assumes the **pull** strategy (the TA polling NiFi's REST API) — the default and recommended one. For **push**, see [Push strategy (2.0)](https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0-push/index.md) instead.
+
+Not sure which strategy you need? See [Choosing a collection strategy](https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/#choosing-a-collection-strategy) before you start — it also draws the architecture of both.
+
+**Requirement**: all three apps installed — see [Install NIFI Monitoring](https://kudawdev.github.io/nifi-monitoring-splunk/installation/index.md).
+
+## 1. Create the TA input
+
+Go to **Apps > NiFi TA Monitoring > Inputs**.
+
+Click **Create New Input**. One input covers a whole NiFi instance, or a whole cluster pointed at any node — see [Topology](https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/#topology-standalone-multiple-instances-or-cluster). Create one per instance you monitor.
+
+Fill in, at minimum:
+
+- **NiFi instance name** — a unique name, used as the `host` value on every event from this input.
+- **NiFi API URL** — e.g. `https://<address>:<port>/nifi-api/`.
+- **Authentication** — `None`, or `Username and password` if NiFi has basic authentication enabled. Use **Test connection** to check the credentials before saving.
+- **TLS** (collapsed section, only matters over HTTPS) — leave **Verify the TLS certificate** on unless NiFi's certificate cannot be trusted through a CA bundle. If it's self-signed, get it and point **CA bundle path** at it — see [Getting a certificate for the CA bundle](https://kudawdev.github.io/nifi-monitoring-splunk/configuration-pull/#getting-a-certificate-for-the-ca-bundle).
+
+Then, under **Advanced**, set:
+
+- **Index** — `nifi`, not the default. The app ships a dedicated `nifi` index (`nifi_monitoring/default/indexes.conf`), and every dashboard reads through the `index_nifi` macro, which points at `index=nifi` by default. Leaving this field at its default value breaks every panel.
+- **Host field value** — leave it empty for a single NiFi, and the instance name above is used. **On a cluster, set it to the cluster's name**, the same `host` as its row in the [instance lookup](https://kudawdev.github.io/nifi-monitoring-splunk/instance-lookup/index.md); the add-on names each node in a separate field.
+
+Leave every other section (Endpoints, Status History, Flow metrics, Custom endpoints) at its default for a first setup — see [Pull input reference](https://kudawdev.github.io/nifi-monitoring-splunk/configuration-pull/index.md) for what each one does.
+
+Click **Add** to create the input. It now shows up as a row under **Inputs**:
+
+Repeat for every NiFi instance you want to monitor.
+
+## 2. Configure the Instance Lookup
+
+Same for any version — see [Instance Lookup](https://kudawdev.github.io/nifi-monitoring-splunk/instance-lookup/index.md).
+
+Then open the **Nifi Monitoring** app, which lands on the **Overview**, and check that the configuration worked: each instance has a row with its NiFi version and a last data time of seconds or a minute ago, not *No data*. If one stays empty, **Configuration > Collection Health** says which source is missing.
+
+## 3. (Optional) Collect NiFi's log files
+
+Everything above gets you flow status, diagnostics, and bulletins. NiFi's own text log files (`nifi-app.log` and friends) are a separate, optional step: install a Universal Forwarder on the NiFi host and point it at your indexer. Full procedure: [Setting up the Universal Forwarder](https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/#setting-up-the-universal-forwarder).
+
+## 4. (Optional) Accelerate the datamodel
+
+Dashboards work without this — `tstats` falls back to a raw search when the datamodel isn't accelerated. Turning acceleration on is the single biggest thing you can do for panel latency, at the cost of a summary index:
+
+1. **Settings > Data models > NIFI > Edit > Edit Acceleration**.
+1. Check **Accelerate**, and pick a summary range. `-7d` is what the panels were designed around.
+
+## Next
+
+- Fields not covered here (custom endpoints, flow metrics): [Pull input reference](https://kudawdev.github.io/nifi-monitoring-splunk/configuration-pull/index.md). Log sourcetypes: [Setting up the Universal Forwarder](https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/#setting-up-the-universal-forwarder). The other strategy: [Push strategy (2.0)](https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0-push/index.md).
+- Sourcetype and field reference: [Data Reference](https://kudawdev.github.io/nifi-monitoring-splunk/references/index.md).
+
+# Pull input reference
+
+Every field of the TA's input form, one section per group in the order the form shows them, plus the custom endpoints. For a first setup you need only a few of them — [Pull strategy (2.0)](https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0/index.md) walks through those; come here for the rest.
+
+The TA polls NiFi's REST API on an interval and writes what it gets back. **Nothing gets configured inside NiFi for this strategy** — no processors, no parameter context or variables, no controller services, no reporting tasks. NiFi stays exactly as it is; everything below happens on the Splunk side. Not sure this is the strategy you need? See [Choosing a collection strategy](https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/#choosing-a-collection-strategy).
+
+*This strategy is what NiFi instances with at least basic authentication must use.*
+
+Requires **Nifi Monitoring TA** already installed (see [Install NIFI Monitoring](https://kudawdev.github.io/nifi-monitoring-splunk/installation/index.md)).
+
+Go to **Apps > NiFi TA Monitoring > Inputs** and click **Create New Input**. One input covers a whole NiFi instance (or a whole cluster, pointed at any node — see [Compatibility](https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/#topology-standalone-multiple-instances-or-cluster)); create one per instance you want to monitor.
+
+**Steps 1 through 3 are enough for a basic setup.** Steps 4 through 8 are collapsed in the form itself — optional, come back to them only if you need that specific feature.
+
+Splunk's generic screen also works, but avoid it
+
+*Settings > Data inputs > NiFi* writes the same `inputs.conf` and runs the same validation on save, but has neither the grouped form nor the Test connection from step 2, and it stores the password in clear text in `inputs.conf` instead of in Splunk's password storage.
+
+## 1. NiFi instance
+
+- **NiFi instance name**: a unique name for this input. Used as the `host` value stamped on every event unless you set one explicitly under *Advanced*.
+- **NiFi API URL**: the instance's REST API, e.g. `https://<address>:<port>/nifi-api/`.
+
+## 2. Authentication
+
+- **Authentication**: `None`, or `Username and password` when NiFi has basic authentication enabled. `Username and password` performs `POST /access/token` and sends the JWT it gets back on every following request.
+- **Username** / **Password**: required unless Authentication is `None`.
+- **Test connection**: next to the credentials, performs the same two calls the input performs -- the login and `GET /system-diagnostics` -- with the values currently on screen, and says what came back, without saving anything.
+
+## 3. Endpoints
+
+Three checkboxes, all on by default:
+
+- **Flow status** — `GET /flow/status`. The summary counters every dashboard panel is built on.
+- **System diagnostics** — `GET /system-diagnostics`. Heap, threads, repository usage and the NiFi and Java versions the views show. Turning it off leaves those columns empty. The add-on still reads the NiFi version now and then to choose its endpoints, without indexing it.
+- **Bulletin board** — `GET /flow/bulletin-board`. Individual bulletins, polled with a cursor so nothing is counted twice. The board only keeps a short window, so an interval longer than that window can miss bulletins.
+
+## 4. Status history
+
+Collapsed by default. Two fields, each comma- or newline-separated and empty by default (collecting nothing until filled in):
+
+- **Processor IDs**: UUIDs of the processors to collect status history for.
+- **Process group IDs**: UUIDs of the process groups to collect status history for.
+
+## 5. Flow metrics
+
+Collapsed by default, and off by default even once expanded:
+
+- **Collect flow metrics** — `GET /flow/metrics/json`. Requires NiFi 1.16 or later. An idle NiFi emits around 60 samples per poll, and the `All components` strategy below scales that with the size of the flow, so review the volume before turning it on.
+- **Registries**: comma-separated registry names to collect, e.g. `NIFI,JVM`. Empty collects all of them. The known names are `NIFI`, `JVM`, `BULLETIN`, `CONNECTION` and `CLUSTER`, plus `VERSION_INFO`, which is only requested from NiFi 2.x; any other name is refused at save.
+- **Strategy**: `All process groups` or `All components`. `All components` emits one sample per component, which is what multiplies the volume.
+- **Sample filter**: a regular expression matched against the metric name. Empty keeps every sample.
+
+## 6. Custom endpoints
+
+Collapsed by default. Covers any NiFi REST path that is not on the fixed list under *Endpoints* — see [Custom endpoints](#custom-endpoints) below.
+
+## 7. TLS
+
+Collapsed by default:
+
+- **Verify the TLS certificate**: on by default. Leave it on unless NiFi uses a certificate that cannot be trusted through a CA bundle. Turning it off lets anyone able to intercept the connection read the credentials and the token.
+- **CA bundle path**: only shown while *Verify the TLS certificate* is on. A path such as `/opt/splunk/etc/apps/nifi_TA_monitoring/local/nifi-ca.pem`. Empty uses the system trust store.
+
+### Getting a certificate for the CA bundle
+
+Skip this if NiFi's certificate is already signed by a CA the operating system trusts -- leave *CA bundle path* empty and go to [Advanced](#8-advanced).
+
+Otherwise, export the certificate NiFi presents and hand it to Splunk as its own CA, which is what a private CA setup looks like in practice:
+
+1. Get the certificate from NiFi itself, from any machine that can reach it (replace `<nifi-host>` and `<port>` with the values from step 1):
+
+   ```
+   openssl s_client -connect <nifi-host>:<port> -servername <nifi-host> \
+     </dev/null 2>/dev/null | openssl x509 > nifi-ca.pem
+   ```
+
+1. Copy it onto the Splunk server, into the TA's `local` directory, owned by the user Splunk runs as (commonly `splunk`):
+
+   ```
+   sudo install -o splunk -g splunk -m 0644 nifi-ca.pem \
+     /opt/splunk/etc/apps/nifi_TA_monitoring/local/nifi-ca.pem
+   ```
+
+   `install` creates any missing directory with the right owner in one step. Creating that directory yourself first -- a plain `mkdir`, or anything run as `root` -- leaves it owned by `root`, and Splunk, which runs as its own user, then cannot write anything else into it either, including this input's own credentials: saving the input fails with `Data could not be written ... passwords.conf: Permission denied`.
+
+1. Set **CA bundle path** to that same path, `/opt/splunk/etc/apps/nifi_TA_monitoring/local/nifi-ca.pem`.
+
+## 8. Advanced
+
+Collapsed by default:
+
+- **Interval**: seconds between polls, `60` by default. Every enabled endpoint, including the custom ones, is collected on this interval.
+- **Index**: the destination index. A dedicated index is recommended, for example `nifi`. If it does not exist, create it first.
+- **Host field value**: stamped on every event from this input. Empty uses the NiFi instance name above. **On a cluster, set this to the cluster, not a node** — the add-on names the node in a separate field. This is also the value that must match a row in the [instance lookup](https://kudawdev.github.io/nifi-monitoring-splunk/instance-lookup/index.md).
+
+Besides these eight groups, **Configuration > Logging** (outside the input) sets how much the add-on writes to `splunkd.log` — `INFO` by default, `WARNING` if you only care about problems.
+
+## Custom endpoints
+
+Optional — only if you need to poll a NiFi REST endpoint that is not on the fixed list from step 3. Use the **Custom endpoints** section: one line per endpoint, as `name,path` (e.g. `queue_stats,/flow/connections/1234-5678-90ab-cdef/status`). The name takes only letters, digits, `_`, `.` and `-`; the path starts with `/`, is relative to the NiFi API URL configured above — not a full URL — and has no whitespace. Anything else is refused at save.
+
+You name the endpoint; the add-on gives it the sourcetype. `queue_stats` is indexed as `nifi:api:custom:queue_stats`, so everything you declare is searchable as `nifi:api:custom:*` and nothing you declare can land in a sourcetype the add-on itself writes. Splunk indexes the raw response; if you need field extraction for it, add your own `props.conf` stanza for that sourcetype.
+
+Four things worth knowing before you rely on one:
+
+- **A name, not a sourcetype.** `nifi:api:flow_status` and anything else outside `nifi:api:custom:` is refused at save time: a custom endpoint writing into a shipped sourcetype would mix its response into the data the dashboards read, and nothing downstream could tell the two apart. Writing the full `nifi:api:custom:queue_stats` is accepted and means the same as `queue_stats`.
+- **`{id}` placeholders are not supported.** Unlike the Status History fields above, a custom path is requested literally. Write the UUID out. The input refuses to save a path containing `{` or `}` rather than letting it fail at poll time.
+- **A failed request indexes nothing.** If NiFi answers 4xx or 5xx, the add-on logs it to `splunkd.log` and writes no event, so an empty sourcetype means the endpoint is not working — the error body is never indexed as if it were data.
+- **Editing `inputs.conf` by hand needs a trailing backslash.** The textarea takes one endpoint per line, but a `.conf` file ends a value at the first unescaped newline. When you write the stanza yourself — a deployment server, for instance — continue each line with `\`:
+
+```
+custom_endpoints = queue_stats,/flow/connections/1234-5678-90ab-cdef/status\
+cluster,/controller/cluster
+```
+
+Indenting the continuation instead is silently ignored: Splunk keeps the first endpoint and drops the rest. `splunk btool inputs list` shows what actually took effect.
+
+After completing the form, click **Add** and the input is created.
+
+Repeat this once for every NiFi instance you want to monitor.
+
+Once an input is running, also configure the [Instance Lookup](https://kudawdev.github.io/nifi-monitoring-splunk/instance-lookup/index.md).
+
+# Push strategy: Direct Sending (2.0)
+
+A flow running inside NiFi calls NiFi's own API and sends the result straight to Splunk's HTTP Event Collector (HEC) — nothing on Splunk's side has to reach NiFi. Not sure this is the strategy you need? See [Choosing a collection strategy](https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/#choosing-a-collection-strategy), which also draws the architecture of both.
+
+Requires both apps already installed (see [Install NIFI Monitoring](https://kudawdev.github.io/nifi-monitoring-splunk/installation/index.md)): **Nifi Monitoring TA** parses the events this flow sends, even though you configure no input inside it for this strategy.
+
+The flow comes in two files, one per **NiFi** line, because NiFi 2.0 removed the variables the 1.x flow is configured with. The steps are the same for both; where they differ, pick the tab of the NiFi you monitor. For version 1.2 of the apps, see [Push strategy (1.2)](https://kudawdev.github.io/nifi-monitoring-splunk/configuration-push-1-2/index.md).
+
+## 1. Configure the HTTP Event Collector (HEC) in Splunk
+
+An HTTP Event Collector (HEC) receives events from NiFi over HTTP or HTTPS.
+
+From the Splunk menu, go to **Settings > Data Inputs > HTTP Event Collector** and add a new one:
+
+- Name the data input.
+- Set the sourcetype to **Automatic**.
+- Set *App Context* to **NIFI Monitoring**.
+- Select the index — use a dedicated one, and create it first if it does not exist.
+
+Finishing this creates a **Token Value**, needed later to configure NiFi's flow.
+
+Match the HEC's TLS setting, don't turn it off
+
+Splunk ships every new HEC token with **Enable SSL** on. The flow's `InvokeHTTP` processors send plain HTTP, so unless one side changes, the mismatch fails as a TCP-level "Connection reset" -- not a clear certificate or authentication error.
+
+Keep the HEC on HTTPS and configure NiFi for it instead: set `splunk_hec` (below) to `https://<host>:8088`, and give the `Send2Splunk-HEC` processor (an `InvokeHTTP`) under **SendHEC** an SSL Context Service that trusts Splunk's certificate: a **StandardSSLContextService** with only **Truststore Filename**, **Truststore Password** and **Truststore Type** filled in.
+
+Turning **Enable SSL** off under **Settings > Data Inputs > HTTP Event Collector > Global Settings** is an instance-wide change: it affects every HEC token on this Splunk instance, not only this one, and sends every event and every token in plain text. Only consider it in an isolated test environment you control, never on a shared or production Splunk instance.
+
+## 2. Import the Flow Definition into NiFi
+
+Import [`flow_definition/nifi-2.x/NiFiMonitoring.json`](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/flow_definition/nifi-2.x/NiFiMonitoring.json) — not the 1.x one: it loads into a 2.x instance without an error, but several processors come up invalid or fail silently once started.
+
+Drag a *process group* box onto the canvas. In the **Create Process Group** dialog, name it and click the small icon next to *Name* to upload the flow file:
+
+Once a file is selected, *Parameter Context* is replaced by a note that parameters will come from the uploaded flow, and the filename shows under *File to upload*:
+
+Click **Add**. The process group is created with every processor that needs a still-empty parameter showing invalid — expected until you set them in the next step:
+
+Import [`flow_definition/nifi-1.x/NiFiMonitoring.json`](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/flow_definition/nifi-1.x/NiFiMonitoring.json).
+
+Drag a *process group* box onto the canvas, select the import icon in the pop-up, and choose the file.
+
+Either way, the process group contains:
+
+- Monitoring - API
+- Monitoring - Logs
+- Monitoring - ReportingTask
+- SendHEC
+
+## 3. Configure the flow's settings
+
+The two flows take the same settings:
+
+| Setting               | What it is                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `instance_name`       | The `host` the `nifi:api:*` and `nifi:reporting:*` events are sent with: the `host` of this NiFi's row in the `instance` lookup. Empty uses the node's hostname, which is right for a single NiFi. **On a cluster, set it to the cluster's `host`**: the API is polled from one node, the primary, so left empty each event carries whichever node is primary, which changes on every failover and does not match the lookup. The reporting tasks' bulletins and metrics have the same problem: they arrive on whichever node Site-to-Site picks. Logs always carry the node's name |
+| `nifi_api_url`        | This instance's REST API, e.g. `http://127.0.0.1:8080/nifi-api`, with no trailing slash. On a cluster, an address the node's web server listens on (`nifi.web.http.host`), which is often not `127.0.0.1`                                                                                                                                                                                                                                                                                                                                                                           |
+| `nifi_path`           | NiFi's install directory, used to tail its logs. It must end in `/`, e.g. `/opt/nifi/nifi-current/`: the flow appends `logs` to it. On a cluster, the same path on every node                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `process_groups_list` | Ids of the process groups to monitor, one per line                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `processors_list`     | Ids of the processors to monitor, one per line                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `splunk_hec`          | The Splunk server with the HEC input, e.g. `http://<host>:8088`, with no trailing slash                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `splunk_hec_token`    | The token from [step 1](#1-configure-the-http-event-collector-hec-in-splunk)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+
+Where you set them is what differs:
+
+Importing the 2.x flow creates a parameter context named **NiFi Monitoring** and attaches it to the process group. Open it with right-click on the process group > *Parameters*, or from the top-right menu > *Parameter Contexts*. `splunk_hec_token` is a **sensitive** parameter, so NiFi never writes it into an exported flow.
+
+`processors_list` and `process_groups_list` ship empty on purpose, and until they have values the two `GenerateFlowFile` processors stay invalid. That's intended: NiFi refusing to start a processor with an empty required property beats starting one pointed at another installation's component ids.
+
+Right-click on the NiFiMonitoring box > *Variables*.
+
+On a cluster, make the API sources primary-only
+
+The 2.x flow polls the API from the primary node by itself; the 1.x flow runs every processor on every node, so each node polls the cluster-wide API and sends its own copy: N nodes mean N times the `nifi:api:*` events and N times the licence. Open **Monitoring - API** and set *Execution* to **Primary node** on `GetHTTP-flow_status`, `GetHTTP-system_diagnostics` and the `GenerateFlowFile` inside each `GetHTTP-*_history` group — only those sources, since a processor fed by a connection would strand what is queued on the other nodes. Leave the logs branch on all nodes.
+
+If NiFi serves HTTPS
+
+Use the pull strategy instead. A NiFi serving HTTPS always requires its users to authenticate, and this flow calls NiFi's API without credentials, so every call is refused — see [Choosing a collection strategy](https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/#choosing-a-collection-strategy).
+
+## 4. Configure the NiFi components
+
+From the menu > **Controller Settings**, add the **JsonRecordSetWriter** controller service — it parses the reporting tasks' output for indexing in Splunk — and enable it. Then add three reporting tasks: **MonitorDiskUsage**, **SiteToSiteBulletinReportingTask** and **SiteToSiteMetricsReportingTask**.
+
+The service goes in the **Management Controller Services** tab. It comes in **Disabled** — enable it:
+
+The reporting tasks go in the **Reporting Tasks** tab of the same window:
+
+The service goes in the **Reporting Task Controller Services** tab: click **(+)**, filter for it, select it and add it.
+
+Enable it: click the lightning bolt icon (ϟ) and confirm.
+
+The reporting tasks go in the **Reporting Task** tab of the same window:
+
+Configure each reporting task the same way on both lines:
+
+- **MonitorDiskUsage**: reports when a filesystem crosses the usage threshold you set.
+
+  - Threshold: e.g. `80%`
+  - Directory Location: the filesystem to watch, e.g. `/`
+  - Directory Display Name: a label for it, e.g. `NifiFileSystem`
+
+- **SiteToSiteBulletinReportingTask**: sends every bulletin as it happens.
+
+  - Destination URL: `http://${hostname(true)}:8080/nifi`
+  - Input Port Name: `bulletin_report`
+  - Instance URL: same as Destination URL
+  - Transport Protocol: `HTTP`
+  - Record Writer: `JsonRecordSetWriter`
+
+- **SiteToSiteMetricsReportingTask**: sends flow and JVM metrics.
+
+  - Destination URL: `http://${hostname(true)}:8080/nifi`
+  - Input Port Name: `reporting_task`
+  - Instance URL: same as Destination URL
+  - Transport Protocol: `HTTP`
+  - Record Writer: `JsonRecordSetWriter`
+  - Output Format: `Record Format`
+
+Then start each one (**►**):
+
+## 5. Start the flow
+
+Right-click the process group and select **Start**. Every component inside comes up running, with no invalid ones left:
+
+Data now flows to Splunk. For it to appear in the app's panels, also configure the [Instance Lookup](https://kudawdev.github.io/nifi-monitoring-splunk/instance-lookup/index.md).
+
+# Instance Lookup
+
+Configure this regardless of app version or collection strategy. The inventory gives each instance its cluster and, optionally, thresholds of its own, and it is what makes an instance that has never sent data show as *No data* instead of missing. Without it, instances that send data still show up, with cluster "—" and the app-wide thresholds.
+
+Requires [NIFI Monitoring installed](https://kudawdev.github.io/nifi-monitoring-splunk/installation/index.md).
+
+Open the **Nifi Monitoring** app (not the TA). In the app menu, go to **Configuration > NiFi Instances**. This opens the lookup editor on the `instance` lookup:
+
+To find the exact host values to enter, run (last 60 minutes):
+
+```
+index=* sourcetype=nifi* | dedup host | table host
+```
+
+No results in that search?
+
+The NiFi processes have to already be sending data for this search to return anything:
+
+1. Push strategy: start the NiFi flow — see [Start the flow](https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0-push/#5-start-the-flow).
+1. Pull strategy: the configured data inputs must be enabled.
+
+Add one row per host, with the cluster it belongs to. The Overview picks a new row up on its next refresh.
+
+The other columns are optional thresholds for that instance alone — leave them empty to use the app-wide default:
+
+| Column                                      | Default | Meaning                                                    |
+| ------------------------------------------- | ------- | ---------------------------------------------------------- |
+| `heap_threshold`, `heap_threshold_critical` | 85, 95  | % of max heap for degraded, critical                       |
+| `repo_threshold`, `repo_threshold_critical` | 80, 90  | % of a repository's volume for degraded, critical          |
+| `backpressure_threshold`                    | 80      | % of a connection's limit                                  |
+| `bulletin_threshold`                        | 5       | ERROR bulletins in 15 minutes that fire the bulletin alert |
+
+A NiFi whose content repository sits at 85% by design, for example, gets `repo_threshold` 92 and stops showing as degraded, while the rest keep the default. The defaults themselves are macros; see [Thresholds](https://kudawdev.github.io/nifi-monitoring-splunk/references/#thresholds).
+
+The [Overview](https://kudawdev.github.io/nifi-monitoring-splunk/overview/#overview) then lists every row — an instance that has not sent anything yet shows as *No data* rather than missing.
+
+Next: pick your version and collection strategy in the sidebar, under **Configure Nifi Monitoring 1.2** or **Configure Nifi Monitoring 2.0**.
+
+# Upgrading to 2.0.0
+
+2.0.0 adds NiFi 2.x support. It is a major release and it changes defaults that an existing installation depends on. Read this before upgrading.
+
+The TA's configuration screen is also rebuilt from scratch: 1.x had a single hand-written form, 2.0.0 is generated by UCC with grouped tabs (Endpoints, TLS, Advanced). The **Inputs** page in **Apps > NiFi TA Monitoring** looks nothing like it used to -- see [Pull strategy](https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0/#1-create-the-ta-input) for what it looks like now. Existing inputs still work as-is; you only see the new form when you open one.
+
+## Breaking changes
+
+### The app looks in one index, not every index
+
+The `index_nifi` macro was `index=*`, which made every panel and the datamodel acceleration scan every event index on the instance. It now points at `index=nifi`, and the app ships that index. On a distributed deployment the index has to exist on the indexers too: the app is installed on the search head, so deploy its `indexes.conf` to them as well.
+
+**If your NiFi data is somewhere else, every dashboard will be empty.** Do not guess where: open **Configuration > Collection Health**, which reports how many events the macro can see and which indexes actually hold NiFi data. Then override the macro in `local/macros.conf`:
+
+```
+[index_nifi]
+definition = index=your_index
+```
+
+### TLS certificates are verified
+
+Every request the TA made used to accept any certificate presented by NiFi. Over HTTPS that lets anyone able to intercept the connection read the username, the password and the bearer token — and NiFi 2.x serves HTTPS by default.
+
+Verification is now on, including for inputs saved before the option existed. **An input pointing at a NiFi with a self-signed certificate will stop connecting.** The error says what to do; you have two options:
+
+- point **CA bundle path** at a bundle that trusts the certificate, or
+- clear **Verify the TLS certificate**, accepting an unverified connection.
+
+### `nifi:api:site_to_site` is no longer collected
+
+It was polled on every cycle and no dashboard, datamodel object or saved search ever read it. If you built something on that sourcetype, it stops receiving new events; already-indexed data is unaffected. If `inputs.conf` still has the old setting, the input logs a warning about it on every poll -- delete the setting to quiet the log.
+
+The new form has no field for it, and saving an input from it does not remove old fields the form does not know about -- resaving the password ([below](#passwords-are-stored-per-input)) will not clear this one. Delete the `endpoint_site_to_site` line by hand from each `[nifi://...]` stanza in `local/inputs.conf` under `nifi_TA_monitoring`.
+
+### Datamodel acceleration ships off -- turn it on
+
+Splunkbase does not accept an app that distributes an accelerated datamodel, so the NIFI model ships with `acceleration = false`. The dashboards still return the right numbers, because `tstats ... from datamodel=NIFI.*` falls back to a raw search, but they get slower as the index grows.
+
+Turning acceleration on is the single biggest thing you can do for panel latency:
+
+1. Go to **Settings > Data models**.
+1. Select **NIFI**, then **Edit > Edit Acceleration**.
+1. Tick **Accelerate** and pick a summary range. The app ships `acceleration.earliest_time = -7d`, which is the range the panels were designed around.
+
+The cost is one tsidx summary per bucket in that range. Shorten the range if storage matters more to you than history.
+
+### Passwords are stored per input
+
+The 1.x add-on stored each NiFi password under the NiFi **username**, so two inputs with the same user shared one password. The configuration screen now stores it per **input**, encrypted, when the input is saved.
+
+An input carried over from 1.x keeps working with the password 1.x stored, and logs a warning saying so. Open it on the **Inputs** page, type the password and save it: from then on it has its own.
+
+### 1.x leaves files behind that 2.0.0 does not use
+
+Installing 2.0.0 over an existing 1.x add-on only overwrites the files the new package ships -- it does not delete ones the old package shipped that 2.0.0 no longer needs. Two are worth removing by hand from `nifi_TA_monitoring/bin/`:
+
+- `.env` -- the NiFi API token 1.x cached here, close to plaintext. 2.0.0 caches the same kind of token in `storage/passwords` instead and never reads this file.
+- `dotenv/` -- the library 1.x used to read that file.
+
+Neither breaks anything left in place, but they are a stale credential and dead code sitting on disk for no reason.
+
+### The flow definition is split by NiFi version
+
+`flow_definition/` now holds `nifi-1.x/` and `nifi-2.x/`. If you use the push strategy, import the one matching your NiFi. See [Compatibility](https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/index.md).
+
+The XML template moved to `nifi-1.x/`. NiFi 2.x removed template support.
+
+### The dashboards were rebuilt
+
+The views are Dashboard Studio now, and several were renamed or merged. Bookmarks to the old names stop working:
+
+| 1.x                        | 2.0.0                                       |
+| -------------------------- | ------------------------------------------- |
+| `home`, `nifi_overview`    | `nifi_overview` (the landing page)          |
+| `nifi_instances_detail`    | `nifi_instance`                             |
+| `nifi_status_history`      | `nifi_components`                           |
+| `nifi_bulletin`            | `nifi_bulletins`                            |
+| `nifi_internal_monitoring` | `nifi_collection_health` and `nifi_cluster` |
+
+*Status Indicator - Custom Visualization* is no longer used; remove it if nothing else needs it.
+
+Searches of your own that read the `NIFI` datamodel may need a change: `Reporting_Bulletin` and `Reporting_Task` are now children of `Bulletins` and `Throughput`, and the `Status_History` datasets became `Component_Status`. A child is not a root, so `| tstats ... from datamodel=NIFI.Reporting_Bulletin` now fails with *Invalid or unaccelerable root object*. Query the parent, and name the child if you need only that path:
+
+```
+| tstats count from datamodel=NIFI.Bulletins where nodename=Bulletins.Reporting_Bulletin
+```
+
+See the [Data Reference](https://kudawdev.github.io/nifi-monitoring-splunk/references/#datamodel).
+
+The TA writes the status history as `nifi:api:processors_status` and `nifi:api:process_groups_status`, one event per snapshot. Searches on `nifi:api:*_history` keep working for the push path only.
+
+## What to do, in order
+
+1. **Find out where your data lives, on the current version.** Go to **NiFi Monitoring > Configuration > Internal Monitoring**, or run:
+
+```
+| tstats count where index=* sourcetype=nifi:* by index
+```
+
+Write down the index. You will need it in step 3.
+
+1. **Install both packages as an upgrade, TA first.** For each app -- **Nifi Monitoring TA**, then **Nifi Monitoring** -- go to **Apps > Manage Apps > Install app from file**, pick the new `.tar.gz`, and tick **Upgrade app. Checking this will overwrite the existing version of this app.** They must land on the same version number. Then restart Splunk (**Settings > Server controls > Restart Splunk**): the TA adds REST endpoints (`restmap.conf`, `web.conf`), which only take effect after a restart.
+1. **If the index from step 1 is not `nifi`, override the macro.** Edit `local/macros.conf` under `nifi_monitoring` (or use **Settings > Advanced search > Search macros**):
+
+```
+[index_nifi]
+definition = index=your_index
+```
+
+1. **Fix TLS on every input that targets an HTTPS NiFi.** Go to **Apps > NiFi TA Monitoring > Inputs**, open the input, expand **TLS**, and either set **CA bundle path** to a bundle that trusts NiFi's certificate, or clear **Verify the TLS certificate**. Save.
+1. **Delete `endpoint_site_to_site` from `local/inputs.conf`.** The form has no field for it and saving an input does not remove it (see [above](#nifiapisite_to_site-is-no-longer-collected)) -- open `nifi_TA_monitoring/local/inputs.conf` on the search head's filesystem and remove the line from every `[nifi://...]` stanza by hand.
+1. **Re-save the password on every input that authenticates.** Open it, overwrite the password field -- it shows as a mask, typing over it is what actually moves it -- and save. Search `index=_internal nifi_TA_monitoring "1.x add-on"` for which inputs still say `Input <name> is using the credential the 1.x add-on stored...`: those are the ones still pending.
+1. **Push strategy only.** Re-import [`flow_definition/nifi-2.x/NiFiMonitoring.json`](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/flow_definition/nifi-2.x/NiFiMonitoring.json) (or `nifi-1.x/` if this NiFi stays on 1.x) as a new process group, and move what the old flow kept in variables into the new Parameter Context. See [Push strategy](https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0-push/index.md).
+1. **(Optional) Clean up.** Once every input above is running, delete `nifi_TA_monitoring/bin/.env` and `nifi_TA_monitoring/bin/dotenv/` -- 2.0.0 does not use either.
+
+## New in this release
+
+- **NiFi 2.x support**, from one input. The TA detects the version and adapts.
+- **Flow metrics** from `/flow/metrics/json`, off by default — an idle NiFi emits around 60 samples per poll and `ALL_COMPONENTS` scales that with the flow, so review the volume before enabling it.
+- **Bulletins without a reporting task**, by polling the bulletin board.
+- **`nifi:log:deprecation`**, which records the deprecated components an instance still uses. Enable it before planning a move to NiFi 2.x.
+- **`nifi:log:request`**, NiFi's HTTP access log.
+- An **inventory panel** showing each instance's NiFi version and Java version.
+- **Eight alerts**, shipped disabled: instance without data, repository filling up, sustained high heap, ERROR bulletin spike, backpressure, cluster node disconnected, versioned flow sync failure and TA HTTP errors. They read the same `nifi_threshold_*` macros as the panels.
+- **One definition of health** per instance (`nifi_health`), which knows each input's polling interval: an instance polled every five minutes is no longer reported down.
+- **Components view**: which processor, group or connection is the bottleneck, with NiFi's own backpressure prediction.
+# Reference
+
+# Sourcetypes
+
+The different sourcetypes used by the application provide a corresponding type of information. Most come from the TA's modular input polling the NiFi REST API (the **pull** path); on the **push** path the flow inside NiFi sends the same `nifi:api:*` sourcetypes to Splunk's HEC, plus `nifi:reporting:task` and `nifi:reporting:bulletin` from NiFi's own reporting tasks — see [Compatibility and collection strategy](https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/#choosing-a-collection-strategy).
+
+### Logs
+
+Read from NiFi's log files by a Universal Forwarder, with the monitors the TA ships disabled. The push flow also sends the app, bootstrap and user logs, but not the request or deprecation logs.
+
+- **nifi:log:app** / **nifi:log:bootstrap**
+
+The record of NiFi's own activity — file uploads, execution times, bulletins raised by components — from `nifi-app.log` and `nifi-bootstrap.log`.
+
+- **nifi:log:user**
+
+The record of web activity where users interact with NiFi and the actions they carry out (`nifi-user.log`).
+
+- **nifi:log:request**
+
+NiFi's request log (`nifi-request.log`), in the same NCSA combined format as Splunk's own `access_combined`. As with the other logs, each event's time is the one written in the line — here, the request time.
+
+- **nifi:log:deprecation**
+
+Names the deprecated components an instance still uses (`nifi-deprecation.log`); the input for migration reporting when moving between NiFi versions.
+
+### REST API (pull)
+
+- **nifi:api:flow_status**
+
+Basic information on the status and processing of the NiFi instance, from `/flow/status`.
+
+- **nifi:api:system_diagnostics**
+
+System resources in use and available, from `/system-diagnostics`. On a cluster this is the aggregate across all nodes.
+
+- **nifi:api:node_diagnostics**
+
+Per-node system diagnostics on a cluster, one event per member, from `/system-diagnostics?nodewise=true`.
+
+- **nifi:api:cluster_nodes**
+
+One event per cluster member from `/controller/cluster`: status, roles (Primary Node / Cluster Coordinator), heartbeat and the node's own queue and thread counts. Only populated on a cluster.
+
+- **nifi:api:process_groups_status**
+
+Status history of the monitored process groups, from `/flow/process-groups/{id}/status/history`: one flat event per snapshot (one a minute, by default), stamped with the snapshot's own time, with the group's id and name and each metric as a field. The input resumes from the newest snapshot it wrote, so a snapshot is indexed once; a group configured for the first time brings only its latest hour.
+
+- **nifi:api:processors_status**
+
+The same for the monitored processors, from `/flow/processors/{id}/status/history`.
+
+- **nifi:api:process_groups_history**, **nifi:api:processors_history**
+
+The nested status history as the push flow sends it: the whole response in one event. The TA no longer writes these; the `Component_Status` dataset reads both shapes.
+
+- **nifi:api:flow_metrics**
+
+Prometheus-style metric samples, from `/flow/metrics/json`. Requires NiFi 1.16 or later and is off by default for volume reasons.
+
+- **nifi:api:bulletin_board**
+
+Bulletins — errors and warnings raised by components — from `/flow/bulletin-board`, mapped onto the same field names as `nifi:reporting:bulletin` so both sources feed the same dashboards.
+
+- **nifi:api:version_info**
+
+A record of the polled instance's NiFi, Java and operating system versions and build, written whenever `/system-diagnostics` is polled. The TA itself reads the version from `/system-diagnostics` to choose its endpoints.
+
+- **nifi:api:custom:*<name>***
+
+The raw response of each [custom endpoint](https://kudawdev.github.io/nifi-monitoring-splunk/configuration-pull/#custom-endpoints) an input declares, one sourcetype per endpoint name — `queue_stats` is indexed as `nifi:api:custom:queue_stats`. The app ships no field extraction and no panel for them: add your own `props.conf` stanza if you need fields. A request that fails indexes nothing. Pull only.
+
+### Reporting tasks (push)
+
+- **nifi:reporting:task**
+
+Internal reports of status and metrics at a more detailed level than flow status, sent by NiFi's `SiteToSiteMetricsReportingTask`.
+
+- **nifi:reporting:bulletin**
+
+Internal bulletins where errors during operation are specified, sent by NiFi's `SiteToSiteBulletinReportingTask`.
+
+## Datamodel
+
+The `NIFI` datamodel groups the sourcetypes by concept, so a panel does not need to know which collection path an event came by:
+
+| Dataset                                                                                                                 | What it holds                                                                                                                                                                             | Fed by                                                          |
+| ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `Bulletins`                                                                                                             | Every bulletin; children `Bulletin_Board` (pull) and `Reporting_Bulletin` (push)                                                                                                          | `nifi:api:bulletin_board`, `nifi:reporting:bulletin`            |
+| `Throughput`                                                                                                            | Data in, out and written by the whole flow, as `bytes_in`, `bytes_out`, `bytes_written`, `flowfiles_in`, `flowfiles_out`; children `Reporting_Task` (push) and `Flow_Metrics_Root` (pull) | `nifi:reporting:task`, the root group's `nifi:api:flow_metrics` |
+| `Component_Status`                                                                                                      | One row per component status snapshot, as `component_label`, `component_kind` and the metrics in the `nifi_status_metrics` lookup; children `Processors` and `Process_Groups`             | `nifi:api:*_status`, and the push flow's `nifi:api:*_history`   |
+| `Flow_Status`, `System_Diagnostics`, `Node_Diagnostics`, `Cluster_Nodes`, `Flow_Metrics`, `Version_Info`, `Request_Log` | One sourcetype each                                                                                                                                                                       | as named                                                        |
+| `Logs`                                                                                                                  | The app, bootstrap, user and deprecation logs, with `level`                                                                                                                               | `nifi:log:*` except `nifi:log:request`                          |
+
+## Thresholds
+
+Every view and every alert reads the same thresholds, at two levels:
+
+1. **Per instance**, in the instance's row of the inventory (*Configuration > NiFi Instances*). An empty column means the macro applies.
+1. **For every instance**, in the macros. Override them in `local/macros.conf` of `nifi_monitoring`.
+
+| Inventory column                             | Macro                                                  | Default | Meaning                                                              |
+| -------------------------------------------- | ------------------------------------------------------ | ------- | -------------------------------------------------------------------- |
+| `heap_threshold` / `heap_threshold_critical` | `nifi_threshold_heap` / `nifi_threshold_heap_critical` | 85 / 95 | % of max heap that makes an instance degraded / critical             |
+| `repo_threshold` / `repo_threshold_critical` | `nifi_threshold_repo` / `nifi_threshold_repo_critical` | 80 / 90 | % of a repository's volume                                           |
+| `backpressure_threshold`                     | `nifi_threshold_backpressure`                          | 80      | % of a connection's object or size limit                             |
+| `bulletin_threshold`                         | `nifi_threshold_bulletins`                             | 5       | ERROR bulletins in `nifi_recent_window` that fire the bulletin alert |
+
+These apply to every instance and have no inventory column:
+
+| Macro                               | Default | Meaning                                                                                                                      |
+| ----------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `nifi_threshold_bulletins_degraded` | 1       | ERROR bulletins in `nifi_recent_window` that make an instance degraded; raise it for a NiFi whose flows log errors routinely |
+| `nifi_recent_window`                | `-15m`  | What "now" means for health and bulletin counts                                                                              |
+| `nifi_backpressure_horizon`         | 3600    | Seconds ahead NiFi's backpressure prediction counts as imminent                                                              |
+| `nifi_heap_sustained_samples`       | 3       | Consecutive samples over the heap threshold the sustained-heap alert waits for                                               |
+| `nifi_stale_factor`                 | 3       | Polling intervals without data that make an instance stale                                                                   |
+| `nifi_default_interval`             | 60      | Seconds between polls, when the input's own interval cannot be read                                                          |
+
+`nifi_fleet` builds one row per instance with the thresholds that apply to it, and `nifi_health` turns that row into `ok`, `degraded`, `critical`, `stale` or `no_data` with a reason. The heap and repository numbers on the Overview are coloured by the threshold of the instance they belong to.
+
+# Dashboards
+
+Eight views, from the whole fleet down to a single connection. Each one answers one question:
+
+| View                                    | The question it answers                                 |
+| --------------------------------------- | ------------------------------------------------------- |
+| [Overview](#overview)                   | Is the fleet healthy right now?                         |
+| [Instance](#instance)                   | What is happening on this instance?                     |
+| [Components](#components)               | Which processor, group or connection is the bottleneck? |
+| [Bulletins](#bulletins)                 | What errors is NiFi reporting?                          |
+| [Logs](#logs)                           | What do NiFi's own log files say?                       |
+| [Cluster](#cluster)                     | Is the cluster whole?                                   |
+| [Alerts](#alerts)                       | What can the app alert on, and what fired?              |
+| [Collection Health](#collection-health) | Is data collection working?                             |
+
+**Overview** says which instance needs attention, **Instance** says what is wrong with it, and **Components** says which processor or connection is the cause. Every drilldown keeps the instance and the time range you were looking at.
+
+They work the same whichever way the data arrives — the TA polling NiFi (pull) or the flow inside NiFi sending to the HEC (push). A panel that needs a source you have not enabled says which one in its description.
+
+In Splunk, the app's menu follows the same order, with **NiFi Instances** and **Collection Health** under **Configuration**, and **Search** at the end.
+
+Every colour comes from a threshold, and every threshold can be set for the whole app or for one instance — see [Thresholds](https://kudawdev.github.io/nifi-monitoring-splunk/references/#thresholds).
+
+## Overview
+
+The landing page: is the fleet healthy right now? Six figures, then one row per instance that is in the [inventory](https://kudawdev.github.io/nifi-monitoring-splunk/instance-lookup/index.md) or has sent data, worst first.
+
+| Indicator                        | What it tells you                                                                                                                                                                                                                                         |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Healthy instances**            | Healthy instances out of all of them, heard from or not.                                                                                                                                                                                                  |
+| **ERROR bulletins · 15 min**     | ERROR bulletins across the fleet in the last 15 minutes; red from the first one.                                                                                                                                                                          |
+| **Worst heap**                   | The highest heap use of any instance, and which one. Coloured by that instance's own heap threshold.                                                                                                                                                      |
+| **Worst repository**             | The fullest FlowFile, content or provenance repository of any instance, and which one. Coloured by that instance's repository threshold.                                                                                                                  |
+| **FlowFiles queued**             | Everything waiting in a queue, across every instance.                                                                                                                                                                                                     |
+| **Invalid components**           | Processors and services NiFi will not start; amber from the first one.                                                                                                                                                                                    |
+| **Instances**                    | One row per instance: health and its reason, cluster, NiFi version, when the last data arrived, component counts (running, stopped, invalid, disabled), queue, heap, worst repository and recent ERROR bulletins. Click a row to open it in **Instance**. |
+| **Bulletins by level**           | Bulletins in 10-minute buckets, over the selected range.                                                                                                                                                                                                  |
+| **FlowFiles queued by instance** | Queue over time for the four busiest instances; the rest fold into OTHER.                                                                                                                                                                                 |
+
+The health of each instance is one of *Critical*, *Degraded*, *Stale* (no data for longer than its polling interval allows), *No data* or *Healthy*, and the reason column says which threshold decided it. An instance listed in the inventory that has never sent anything still gets its row; one that sends data but is not listed gets its row too, with cluster "—".
+
+## Instance
+
+What is happening on one instance. It opens on the worst one of the Overview list, and the selector at the top switches to another.
+
+| Indicator                                                  | What it tells you                                                                     |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| **Status**                                                 | Health and its reason, NiFi and Java versions, uptime and when the last data arrived. |
+| **Active threads**, **FlowFiles queued**, **Bytes queued** | What the instance is doing right now.                                                 |
+| **Components**                                             | Running · stopped · invalid · disabled.                                               |
+| **Versioned process groups**                               | Up to date · locally modified · stale · failing to sync with their registry.          |
+| **ERROR bulletins · 15 min**                               | This instance's recent errors.                                                        |
+| **Heap used**                                              | % of max heap over time, with this instance's threshold as a dashed line.             |
+| **JVM threads**                                            | Total and daemon threads.                                                             |
+| **Load average**                                           | 1-minute load against the available cores (dashed).                                   |
+| **GC time per collector**                                  | Milliseconds spent in each garbage collector per 5 minutes.                           |
+| **Repositories**                                           | One row per repository — content and provenance can be several — with its latest use. |
+| **Repository usage**                                       | % used over time, with this instance's threshold dashed.                              |
+| **Data in, out and processed**                             | MB per 5 minutes received, sent and written by the whole flow.                        |
+| **FlowFiles received and sent**                            | FlowFiles per 5 minutes from and to outside NiFi.                                     |
+| **Recent bulletins**                                       | The latest ten; a click opens **Bulletins** filtered to this instance.                |
+
+The two throughput charts need *Flow metrics* enabled on the TA input on the pull path; on the push path they come from the Reporting Task.
+
+## Components
+
+Which processor, process group or connection is the bottleneck. The selectors pick the instance, processors or process groups, the metric and how it is aggregated.
+
+| Indicator                                   | What it tells you                                                                                                                                      |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Connections over backpressure threshold** | Connections whose object count or size is at or over this instance's backpressure threshold.                                                           |
+| **Reaching backpressure soon**              | Connections NiFi itself predicts will reach backpressure within the hour.                                                                              |
+| **Components with history**                 | How many components have their status history collected.                                                                                               |
+| **Top 10 by the selected metric**           | The ten heaviest components by task time, FlowFiles in and out, bytes read and written, and so on, each with a trend line. Click one to plot it below. |
+| **Busiest connections**                     | How full each connection is, by object count and by size, and NiFi's estimate of the time left before backpressure.                                    |
+| **Selected component**                      | The chosen metric per 5 minutes for the component clicked above.                                                                                       |
+
+The components listed are the ones whose status history is collected: the processor and process group ids set on the TA input ([Status history](https://kudawdev.github.io/nifi-monitoring-splunk/configuration-pull/#4-status-history)), or in the push flow's `processors_list` and `process_groups_list`. Connections need *Flow metrics* on the TA input.
+
+## Bulletins
+
+The errors and warnings NiFi components raise, from either collection path. Filter by instance, level, category or component.
+
+| Indicator                             | What it tells you                                                            |
+| ------------------------------------- | ---------------------------------------------------------------------------- |
+| **Bulletins**, **ERROR**, **WARNING** | How many in the selected range, and of which level.                          |
+| **Components affected**               | How many distinct components raised them.                                    |
+| **Bulletins over time**               | Hourly, by level.                                                            |
+| **Components with most bulletins**    | Where to look first.                                                         |
+| **Bulletin details**                  | Each message whole, with its instance, level, category, component and group. |
+
+The process group comes as a name on the push path and as an id on the pull path, which is all NiFi's bulletin board provides.
+
+## Logs
+
+NiFi's own log files, shipped by a Universal Forwarder (any of them) or by the push flow (application, bootstrap and user logs only — Deprecations and API requests need the forwarder). Filter by instance and severity, and search the events.
+
+| Indicator                          | What it tells you                                                                                                           |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Events by level**                | Events by level across NiFi's logs, all but the request log.                                                                |
+| **Events**                         | The `nifi-app.log` events, newest first, matching the search box.                                                           |
+| **Deprecated usage · last 7 days** | What an instance uses that a later NiFi removes, from `nifi-deprecation.log` — the list to clear before moving to NiFi 2.x. |
+| **Requests by status class**       | `nifi-request.log` in 5-minute buckets, by 2xx, 3xx, 4xx and 5xx.                                                           |
+| **Top failing requests**           | The 4xx and 5xx requests that fail most.                                                                                    |
+
+## Cluster
+
+Whether a NiFi cluster is whole.
+
+| Indicator                                 | What it tells you                                                                |
+| ----------------------------------------- | -------------------------------------------------------------------------------- |
+| **Connected nodes**                       | Nodes connected out of the total.                                                |
+| **Primary node**, **Cluster coordinator** | Which node holds each role.                                                      |
+| **Nodes**                                 | One row per node: status, roles, last heartbeat, active threads, queue and heap. |
+| **Heap used by node**                     | Heap per node — the aggregate hides the node that is running out.                |
+| **FlowFiles queued by node**              | Queue per node.                                                                  |
+
+A standalone NiFi has nothing to show here. The TA detects a cluster by itself; there is nothing to enable.
+
+The per-node data comes from the TA only, so this view stays empty on the push strategy, which polls the cluster-wide API, and so does the *Cluster node disconnected* alert.
+
+## Alerts
+
+The alerts the app ships, whether each is enabled, and which ones fired in the selected range.
+
+| Indicator                       | What it tells you                                                  |
+| ------------------------------- | ------------------------------------------------------------------ |
+| **Alerts enabled**              | How many of the shipped alerts are on.                             |
+| **Fired in range**              | How many times any of them fired; red from the first one.          |
+| **Alerts shipped with the app** | Each alert, whether it is enabled, its condition and its schedule. |
+| **Fired**                       | Each firing: when, which alert, and its severity.                  |
+
+They ship **disabled**. Enable the ones you want in *Settings › Searches, reports, and alerts* (app *nifi_monitoring*) and add the actions there — email, webhook — since none come configured:
+
+| Alert                       | Fires when                                                                                            |
+| --------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Instance without data       | an instance in the inventory sends nothing for longer than its polling interval allows                |
+| Repository filling up       | a repository reaches the instance's repository threshold                                              |
+| Sustained high heap         | heap stays over the instance's heap threshold for several samples in a row                            |
+| ERROR bulletin spike        | an instance raises more ERROR bulletins than its bulletin threshold                                   |
+| Backpressure                | a connection reaches the backpressure threshold, or NiFi predicts it will soon (needs *Flow metrics*) |
+| Cluster node disconnected   | a cluster member is not connected (pull only)                                                         |
+| Versioned flow sync failure | a versioned process group cannot sync with its registry                                               |
+| TA HTTP errors              | the TA cannot log in to NiFi, is refused, or gets a server error                                      |
+
+Every alert uses the same thresholds as the panels; see [Thresholds](https://kudawdev.github.io/nifi-monitoring-splunk/references/#thresholds).
+
+## Configuration
+
+### NiFi Instances
+
+Opens the [Instance Lookup](https://kudawdev.github.io/nifi-monitoring-splunk/instance-lookup/index.md): one row per monitored instance or cluster, with its cluster name and, optionally, thresholds of its own.
+
+### Collection Health
+
+Whether data collection is working — check here first when a panel is empty.
+
+| Indicator                             | What it tells you                                                                                                                                                                             |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Events the app can see**            | Events reachable through the `index_nifi` macro; zero means the macro points at the wrong index.                                                                                              |
+| **Instances behind**                  | Instances that are *Stale* or have *No data*.                                                                                                                                                 |
+| **TA HTTP errors**                    | Requests the TA could not complete.                                                                                                                                                           |
+| **Last data per instance and source** | When each instance last sent each kind of data: on time, late or missing against its polling interval. A blank cell is a source that is not enabled for that instance, not an error.          |
+| **TA HTTP errors by status code**     | A login failure means wrong credentials, 403 missing permissions, 404 a wrong component id, 5xx a problem on NiFi's side.                                                                     |
+| **Where NiFi data is**                | Which index actually holds the NiFi data: if it is not the one the macro points at, change the macro (see [Upgrading](https://kudawdev.github.io/nifi-monitoring-splunk/upgrading/index.md)). |
+# Optional
+
+# About Küdaw
+
+**Nifi Monitoring** and **Nifi Monitoring TA** are developed and maintained by [Küdaw](https://www.kudaw.com), specialists in data and AI.
+
+Küdaw was founded in Chile in 2010 to bring data and artificial intelligence technologies within reach of companies in the Americas and Europe. Today it works from Mexico, the United States, Canada, Spain, Switzerland, Chile, Peru and Colombia, and is a strategic partner of Splunk, Cloudera, Microsoft, Qlik and Google Cloud, among others.
+
+## Why these apps exist
+
+Küdaw builds and runs Splunk and data platforms for its clients, and Apache NiFi moves the data in many of them. Watching NiFi meant opening each instance's UI, one at a time; these apps bring that into Splunk, next to everything else.
+
+They are free and open source, under the MIT license, and published on Splunkbase: [Nifi Monitoring](https://splunkbase.splunk.com/app/6125) and [Nifi Monitoring TA](https://splunkbase.splunk.com/app/6124). Contributions are welcome — see [Contribute](https://kudawdev.github.io/nifi-monitoring-splunk/contributing/index.md).
+
+## What Küdaw does
+
+- **Cybersecurity and observability with Splunk**: SIEM, SOAR and a 24/7 SOC.
+- **Data platforms**: data lakes, warehouses and ETL pipelines — NiFi among them.
+- **Advanced analytics**: dashboards, BI and predictive models.
+- **AI and automation**: AI agents, chatbots and LLMs.
+- **Compliance**: automating data-subject rights and consent management.
+
+## Contact
+
+- About these apps — an evaluation, a deployment, or help running them — and professional services for any NiFi, data or AI project: **splunk.app@kudaw.com**
+- Anything else: [kudaw.com/contacto](https://www.kudaw.com/contacto)
+- [LinkedIn](https://www.linkedin.com/company/kudaw-latam)
+
+A bug or a feature request for the apps belongs in [GitHub issues](https://github.com/kudawdev/nifi-monitoring-splunk/issues), where everyone can follow it.
+
+# Pull strategy: Splunk Data Input NiFi (1.2)
+
+For version 1.2.x of both apps
+
+This is the setup as it was in release 1.2.3. On 2.0, the input has its own form inside the TA — see [Pull strategy (2.0)](https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0/index.md).
+
+*This configuration must be applied when the NiFi instances have at least basic authentication.*
+
+In the Splunk data inputs you can configure several resources, such as: NiFi Endpoints for monitoring System Diagnostics, Flow Status and Site to Site, and the NiFi Status History for specific monitoring of processors and process groups based on their IDs.
+
+To configure, in the Splunk where the Nifi Monitoring application is installed, open the app's Home.
+
+Then go to **Settings > Data Inputs**.
+
+In the local data inputs, find **NiFi** and click **+ Add new**.
+
+A window like the following will be displayed:
+
+**We recommend configuring each of the monitoring resources independently, for later changes in the configuration and because of the execution times to obtain data.**
+
+The resources are:
+
+- a. NiFi Endpoints
+- b. NiFi Status History for Processors
+- c. NiFi Status History for Process Groups
+
+## 1. Basic resource configuration
+
+For each of the resources you must configure all the required fields:
+
+- **NIFI Instance name**: a name for the NiFi instance.
+- **NIFI API URL**: the NiFi REST API address (e.g. `http://<address:port>/nifi-api/`).
+- **Auth Type**: the authentication type:
+  - `none`: no authentication.
+  - `basic`: access with username and password credentials.
+- **Interval**: time in seconds between the requests that extract the information; 60 seconds by default.
+- **Host**: the name of the NiFi host, which must match what is defined in the [Instance Lookup](https://kudawdev.github.io/nifi-monitoring-splunk/instance-lookup/index.md).
+- **Index**: the destination index for this data source. A dedicated index is recommended, for example `nifi`. If it does not exist, create it first.
+
+### a. NiFi Endpoints
+
+In the **NIFI Endpoints** section, select the elements to monitor from the list:
+
+- System Diagnostics
+- Flow Status
+- Site to Site
+
+### b. NiFi Status History for Processors
+
+In the **NIFI Status History > List Processors ID** section, give the IDs of the processors to monitor, separated by commas if there are several.
+
+### c. NiFi Status History for Process Groups
+
+In the **NIFI Status History > Process Groups ID** section, give the IDs of the process groups to monitor, separated by commas if there are several.
+
+After the configuration is complete, click **Next** and the input is created.
+
+Repeat the configuration for each resource you need to monitor. An example of the three resources created independently:
+
+Then configure the [Instance Lookup](https://kudawdev.github.io/nifi-monitoring-splunk/instance-lookup/index.md), which is needed whichever strategy you use.
+
+# Push strategy: Direct Sending (1.2)
+
+For version 1.2.x of both apps
+
+This is the setup as it was in release 1.2.3, with the flow that release shipped. On 2.0, see [Push strategy (2.0)](https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0-push/index.md), which covers both NiFi 1.x and 2.x.
+
+This configuration makes NiFi the main way data is sent to Splunk, and it should be used when NiFi has no authentication enabled.
+
+Configure only one strategy: running both generates duplicate data.
+
+## 1. Configuring the HTTP Event Collector (HEC) in Splunk
+
+An HTTP Event Collector (HEC) is required. It lets NiFi instances send events to Splunk over HTTP and HTTPS.
+
+From the Splunk menu, select **Settings > Data Inputs**. In the Local Inputs list, find **HTTP Event Collector** and add a new one. In the process you must:
+
+- assign a name to the data input,
+- set the sourcetype to **automatic**,
+- select the *App Context* **NIFI Monitoring**, and
+- select the index where the data will be stored.
+
+A dedicated index is recommended for this monitoring. If it does not exist, create it before this configuration.
+
+When the HEC is created you get a **Token Value**, needed later to configure the sending of data from NiFi.
+
+## 2. Import the Flow Definition into NiFi
+
+Download the Flow Definition for the 1.2 setup, [`flow_definition/NiFiMonitoring.json` at 1.2.3](https://github.com/kudawdev/nifi-monitoring-splunk/blob/1.2.3/flow_definition/NiFiMonitoring.json).
+
+The Flow Definition is the structure of a process group that collects NiFi's data and sends it to Splunk. It is a JSON file that can be imported directly.
+
+To import it, drag a *process group* box onto the NiFi canvas.
+
+In the pop-up window, select the import icon, browse your computer and pick the `NiFiMonitoring.json` flow definition.
+
+Once imported, click **Add** to finish.
+
+You will see the process group, which contains:
+
+- Monitoring API
+- Monitoring Logs
+- Monitoring ReportingTask
+- SendHEC
+
+## 3. Global variables configuration
+
+The global variables are required for the flow to work. To set them, right-click on the NiFiMonitoring box > **Variables**.
+
+A pop-up window opens where you set:
+
+- `nifi_api_url`: the route of the NiFi REST API (e.g. `http://127.0.0.1:8080/nifi-api/`).
+- `nifi_path`: the NiFi installation path on the server (on a cluster, it must be installed in the same path on every node), e.g. `/home/nifi/nifi-1.10.0/`.
+- `process_groups_list`: the **IDs of the process groups** to monitor, one per line.
+- `processors_list`: the **IDs of the processors** to monitor, one per line.
+- `splunk_hec`: the address of the Splunk server where the HTTP Event Collector was configured (e.g. `http://<host>:8088/`).
+- `splunk_hec_token`: the token from [configuring the HTTP Event Collector](#1-configuring-the-http-event-collector-hec-in-splunk).
+
+## 4. Components configuration
+
+With the variables set, create the following components. Open NiFi's settings from the menu > **Controller Settings**.
+
+A pop-up window like the following opens:
+
+In the **Reporting Task Controller Services** tab, add the **JsonRecordSetWriter** controller service, which parses the results of the reporting tasks for indexing in Splunk. To add it, click the (+) button.
+
+Filter the list with the name of the item to add, select it and add it.
+
+Once added, enable it: click the lightning bolt icon (ϟ) and confirm in the pop-up window. You should then have a configuration like the following.
+
+In the same window, in the **Reporting Task** tab, add these reporting tasks:
+
+- MonitorDiskUsage
+- SiteToSiteBulletinReportingTask
+- SiteToSiteMetricsReportingTask
+
+Add them the same way as in the previous step, with the (+) icon. Once added you will see something like:
+
+Configure them as follows:
+
+- **MonitorDiskUsage**: an internal reporting task that raises events when the filesystem usage threshold is exceeded, captured in a specific flow.
+
+- **SiteToSiteBulletinReportingTask**: an internal reporting task that raises events as bulletins are generated, captured in a specific flow:
+
+  - Destination URL: `http://${hostname(true)}:8080/nifi`
+  - Input Port Name: `bulletin_report`
+  - Instance URL: `http://${hostname(true)}:8080/nifi`
+  - Transport Protocol: `HTTP`
+  - Record Writer: `JsonRecordSetWriter`
+
+- **SiteToSiteMetricsReportingTask**: an internal reporting task that raises events as metrics are generated by the same environment, captured in a specific flow:
+
+  - Destination URL: `http://${hostname(true)}:8080/nifi`
+  - Input Port Name: `reporting_task`
+  - Instance URL: `http://${hostname(true)}:8080/nifi`
+  - Transport Protocol: `HTTP`
+  - Record Writer: `JsonRecordSetWriter`
+  - Output Format: `Record Format`
+
+Once configured, start each reporting task by clicking start (►).
+
+## 5. Enabling the sending of data
+
+With all of the above done, start the process group: right-click on it, then **Start**.
+
+If everything is configured correctly, the data starts being sent to Splunk. For it to show in the app, configure the [Instance Lookup](https://kudawdev.github.io/nifi-monitoring-splunk/instance-lookup/index.md).
+
+# Contributing
+
+Nifi Monitoring is open source, under the [MIT license](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/LICENSE), and maintained by [Küdaw](https://kudawdev.github.io/nifi-monitoring-splunk/about/index.md). Bug reports, fixes, new endpoints and documentation are all welcome.
+
+## Pull requests
+
+Open them against `main`. The best pull request is a focused one, with tests and documentation: more than one thing in the same request makes it harder to review. Before you open it:
+
+- Run the unit tests, and the integration scenario closest to what you changed (below).
+- If you touched user-facing behaviour, update the docs in both languages.
+- If you added a NiFi endpoint, follow the checklist in [`AGENTS.md`](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/AGENTS.md): the endpoint list, the sourcetype routing and the input form go together.
+
+By contributing you agree that your contribution is licensed under the MIT license, like the rest of the project.
+
+## Running the tests
+
+The add-on is generated, so the first step is building it. You need Docker and Python 3, and network access the first time: the build installs `ucc-gen` from PyPI into a virtualenv of its own. The unit tests use the standard library only.
+
+```
+./tests/build-ta.sh
+cd tests/unit && python3 -m unittest discover -v
+```
+
+The integration harness brings up NiFi and Splunk in containers and checks that data actually arrives and that the fields come out. It covers ten scenarios — NiFi 1.23.2, 1.28.1, 2.0.0 and 2.11.0, standalone, multi-instance and cluster, across both ways of getting data out of NiFi:
+
+```
+cd tests
+./run.sh --list                 # the scenarios
+./run.sh --list cluster         # everything about one of them
+./run.sh nifi2-current          # bring it up, assert, tear down
+```
+
+`run.sh` exits non-zero if anything fails, and tears the stack down afterwards. `--keep` leaves it running so you can look around, and `--bare` brings up the machines without installing anything, which is how to exercise the installation itself; it leaves them running too.
+
+`make check` runs the lint, the unit tests, AppInspect and the integration scenarios in the same image CI uses; `make integration` runs only the scenarios.
+
+A pull request does not need the whole matrix. Run the unit tests, plus the one scenario closest to what you changed — `./run.sh --list` says what each one covers. Every pull request runs the lint, the unit tests, a strict docs build and AppInspect automatically; the integration scenarios run by hand, four of them or all ten before a release.
+
+There is more detail, including the known rough edges of the environment, in [`tests/README.md`](https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/tests/README.md).
+
+## Documentation
+
+These pages live in `doc/` and are built with MkDocs. To preview them while you edit:
+
+```
+pip install -r doc/requirements.txt
+mkdocs serve      # http://127.0.0.1:8000/nifi-monitoring-splunk/
+```
+
+They are bilingual: every `*.md` has an `*.es.md` counterpart, and a change to one belongs in the other. A new page goes in the `nav` of `mkdocs.yml` and in the `llmstxt` sections, which is how agents find it; the unit tests fail if any of the three is missing.
+
+## Issues
+
+Found a bug or missing something? Check the [existing issues](https://github.com/kudawdev/nifi-monitoring-splunk/issues) first — it may already be reported — and otherwise [open a new one](https://github.com/kudawdev/nifi-monitoring-splunk/issues/new). A bug report is much faster to act on with:
+
+- The versions: both apps, NiFi and Splunk.
+- How data gets in: pull or push, and standalone, several instances or a cluster.
+- What you expected and what happened instead — the panel, the search, or the error on screen.
+- On pull, the add-on's own log: `index=_internal sourcetype=splunkd component=ExecProcessor "nifi.py"` around the time of the problem.
+
+For an evaluation, a deployment, or help running the apps, write to splunk.app@kudaw.com — see [About Küdaw](https://kudawdev.github.io/nifi-monitoring-splunk/about/index.md).

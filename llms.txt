@@ -1,0 +1,32 @@
+# Nifi Monitoring Splunk
+
+> Nifi Monitoring Splunk Documentation
+
+Nifi Monitoring is a pair of Splunk apps -- Nifi Monitoring (dashboards) and Nifi Monitoring TA (the add-on that collects the data) -- that centralize the operational visibility of Apache NiFi 1.16-1.28.1 and 2.0-2.11 in Splunk 9.4-10.x. Data arrives by pull (the TA polls NiFi's REST API, recommended) or push (a NiFi flow sends to Splunk's HEC). Developed and maintained, as open source (MIT), by Küdaw (https://www.kudaw.com), a data and AI consultancy and Splunk partner.
+
+## Start here
+
+- [Introduction](https://kudawdev.github.io/nifi-monitoring-splunk/index.md): What the apps do and how data reaches Splunk
+- [Compatibility and collection strategy](https://kudawdev.github.io/nifi-monitoring-splunk/compatibility/index.md): Supported versions, and choosing pull or push
+- [Install NIFI Monitoring](https://kudawdev.github.io/nifi-monitoring-splunk/installation/index.md): Installing both apps
+
+## Configure 2.0
+
+- [Pull strategy](https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0/index.md): Set up the pull strategy
+- [Pull input reference](https://kudawdev.github.io/nifi-monitoring-splunk/configuration-pull/index.md): Every field of the pull input
+- [Push strategy](https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0-push/index.md): Set up the push strategy
+- [Instance Lookup](https://kudawdev.github.io/nifi-monitoring-splunk/instance-lookup/index.md): The NiFi instance inventory
+- [Upgrading to 2.0.0](https://kudawdev.github.io/nifi-monitoring-splunk/upgrading/index.md): Upgrading from 1.x to 2.0.0
+
+## Reference
+
+- [Data Reference](https://kudawdev.github.io/nifi-monitoring-splunk/references/index.md): Sourcetypes, fields and data models
+- [Dashboards](https://kudawdev.github.io/nifi-monitoring-splunk/overview/index.md): Tour of the dashboards
+
+## Optional
+
+- [About Küdaw](https://kudawdev.github.io/nifi-monitoring-splunk/about/index.md): Küdaw, who develops and maintains the apps
+- [Pull strategy](https://kudawdev.github.io/nifi-monitoring-splunk/configuration-pull-1-2/index.md): Pull strategy on the legacy 1.2 apps
+- [Push strategy](https://kudawdev.github.io/nifi-monitoring-splunk/configuration-push-1-2/index.md): Push strategy on the legacy 1.2 apps
+- [Contribute](https://kudawdev.github.io/nifi-monitoring-splunk/contributing/index.md): Building, testing and contributing
+
