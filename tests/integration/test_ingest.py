@@ -700,9 +700,13 @@ class DashboardPanelTest(IntegrationTestCase):
             'index=nifi sourcetype="nifi:api:system_diagnostics" '
             '[| inputlookup instance | fields host] | stats count by host',
             minimum=1, timeout=420)
+        # Processors, not just any component: the Components panels read
+        # processor history, and on the push path a process group's can land
+        # first, which let the wait pass and those panels come back empty.
         wait_for_events(
             self.splunk,
-            '| tstats count from datamodel=NIFI.Component_Status by host',
+            '| tstats count from datamodel=NIFI.Component_Status '
+            'where Component_Status.component_kind="processor" by host',
             minimum=1, timeout=420)
         wait_for_events(
             self.splunk,
