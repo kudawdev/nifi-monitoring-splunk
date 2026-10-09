@@ -58,6 +58,12 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      - name: Trust the checkout
+        # checkout marks the workspace safe only in a temporary git config it
+        # removes when done; root then refuses a directory the runner owns
+        # ("dubious ownership"), and every git call fails.
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: App versions agree
         # The release tag comes from nifi_monitoring's app.conf; the TA's
         # globalConfig.json and app.manifest derive from it (make version-sync).
