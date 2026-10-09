@@ -33,6 +33,12 @@ env:
   # they drift.
   MAX_WARNING: 13
 
+# A job in a container runs `run:` with sh, not bash, unless told otherwise,
+# and sh refuses the `set -o pipefail` every step here starts with.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   unit:
     name: Lint and unit tests
