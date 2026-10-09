@@ -1,24 +1,39 @@
 # Project information
 site_name: Nifi Monitoring Splunk
-site_author: Kudaw S.A.
+site_author: Küdaw
 site_description: Nifi Monitoring Splunk Documentation
 site_url: https://kudawdev.github.io/nifi-monitoring-splunk/
 
 # Copyright
-copyright: Copyright &copy; 2021 Kudaw S.A. All Rights Reserved
+copyright: >-
+  Copyright &copy; 2021&ndash;2026 Küdaw &middot; Developed and maintained by
+  <a href="/nifi-monitoring-splunk/about/">Küdaw</a>, specialists in data and AI
 
 # Repository information
 repo_url: https://github.com/kudawdev/nifi-monitoring-splunk
 repo_name: NIFI Monitoring Splunk
 
+# Source directory (doc/ = public docs; docs/ = internal dev docs)
+docs_dir: doc
+
 # Navigation
 nav:
   - Introduction: index.md
-  - Overview: overview.md
-  - Install and configure NIFI Monitoring on Splunk: installation.md
-  - NIFI Configuration: configuration.md
+  - Dashboards: overview.md
+  - Compatibility and collection strategy: compatibility.md
+  - Install NIFI Monitoring: installation.md
+  - Configure Nifi Monitoring 1.2:
+      - "Pull strategy": configuration-pull-1-2.md
+      - "Push strategy": configuration-push-1-2.md
+  - Configure Nifi Monitoring 2.0:
+      - "Pull strategy": config-nifi-monitoring-2-0.md
+      - "Pull input reference": configuration-pull.md
+      - "Push strategy": config-nifi-monitoring-2-0-push.md
+  - Instance Lookup: instance-lookup.md
   - Data Reference: references.md
+  - Upgrading to 2.0.0: upgrading.md
   - Contribute: contributing.md
+  - About Küdaw: about.md
 
 # Configuration
 theme: 
@@ -26,16 +41,19 @@ theme:
   #custom_dir: docs/theme/material
   language: en
   locale: en
+  # The app's logo, on the left. Küdaw's wordmark goes on the right of the
+  # header, from assets/css/theme.css.
   logo: assets/images/nifi.png
   favicon: assets/images/favicon.ico
+  # Küdaw's corporate palette, set in assets/css/theme.css.
   palette:
-    primary: black
-    accent: black
+    primary: custom
+    accent: custom
   font:
     text: Roboto
     code: Roboto Mono
-  features:
-    - instant
+  # No navigation.instant: it stops the language switcher from keeping the
+  # reader on the same page when they change language.
 
 # Extras
 extra:
@@ -48,42 +66,91 @@ extra:
       link: https://hub.docker.com/r/kudaw
     - icon: fontawesome/brands/github
       link: https://github.com/kudawdev
-  current_version: 1.0
-  alternate:
-    # Switch to English
-    - name: English
-      link: ""
-      lang: en
-    # Switch to Spanish
-    - name: Español
-      link: /nifi-monitoring-splunk/es/
-      lang: es
+  current_version: 2.0
 
-extra_javascript:
-- assets/js/theme.js
 extra_css:
 - assets/css/theme.css
 
 # Extensions
 markdown_extensions:
   - admonition
-  - codehilite:
-      guess_lang: false
+  - attr_list
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  # Material renders mermaid fences itself, following the palette.
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
   - toc:
       permalink: true
       
+# Hooks
+hooks:
+  - tools/mkdocs_hooks.py
+
 # Plugins
 plugins:
   - search
+  # llms.txt + a Markdown copy of each page, for agents (https://llmstxt.org).
+  # English only: tools/mkdocs_hooks.py keeps it out of the Spanish pass.
+  - llmstxt:
+      markdown_description: >-
+        Nifi Monitoring is a pair of Splunk apps -- Nifi Monitoring (dashboards)
+        and Nifi Monitoring TA (the add-on that collects the data) -- that
+        centralize the operational visibility of Apache NiFi 1.16-1.28.1 and
+        2.0-2.11 in Splunk 9.4-10.x. Data arrives by pull (the TA polls NiFi's
+        REST API, recommended) or push (a NiFi flow sends to Splunk's HEC).
+        Developed and maintained, as open source (MIT), by Küdaw
+        (https://www.kudaw.com), a data and AI consultancy and Splunk partner.
+      full_output: llms-full.txt
+      sections:
+        Start here:
+          - index.md: What the apps do and how data reaches Splunk
+          - compatibility.md: Supported versions, and choosing pull or push
+          - installation.md: Installing both apps
+        Configure 2.0:
+          - config-nifi-monitoring-2-0.md: Set up the pull strategy
+          - configuration-pull.md: Every field of the pull input
+          - config-nifi-monitoring-2-0-push.md: Set up the push strategy
+          - instance-lookup.md: The NiFi instance inventory
+          - upgrading.md: Upgrading from 1.x to 2.0.0
+        Reference:
+          - references.md: Sourcetypes, fields and data models
+          - overview.md: Tour of the dashboards
+        Optional:
+          - about.md: Küdaw, who develops and maintains the apps
+          - configuration-pull-1-2.md: Pull strategy on the legacy 1.2 apps
+          - configuration-push-1-2.md: Push strategy on the legacy 1.2 apps
+          - contributing.md: Building, testing and contributing
   - i18n:
-      default_language: en
+      docs_structure: suffix
       languages:
-        es: Spanish
-      nav_translations:
-        es:
-          Introduction: Introducción
-          Overview: Vista General
-          Install and configure NIFI Monitoring on Splunk: Instalación y configuración de NIFI Monitoring en Splunk
-          NIFI Configuration: Configuración de NIFI
-          Data Reference: Referencia de Datos
-          Contribute: Contribuya
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: es
+          name: Español
+          build: true
+          copyright: >-
+            Copyright &copy; 2021&ndash;2026 Küdaw &middot; Desarrollado y mantenido por
+            <a href="/nifi-monitoring-splunk/es/about/">Küdaw</a>, especialistas en datos e IA
+          nav_translations:
+            Introduction: Introducción
+            Dashboards: Dashboards
+            Compatibility and collection strategy: Compatibilidad y estrategia de recolección
+            Configure Nifi Monitoring 2.0: Configurar Nifi Monitoring 2.0
+            "Pull strategy": Estrategia pull
+            "Push strategy": Estrategia push
+            "Pull input reference": Referencia del input pull
+            Install NIFI Monitoring: Instalar NIFI Monitoring
+            Instance Lookup: Lookup de Instancias
+            Configure Nifi Monitoring 1.2: Configurar Nifi Monitoring 1.2
+            Data Reference: Referencia de Datos
+            Upgrading to 2.0.0: Actualizar a 2.0.0
+            Contribute: Contribuir
+            About Küdaw: Acerca de Küdaw

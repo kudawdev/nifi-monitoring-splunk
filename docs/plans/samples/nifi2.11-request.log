@@ -1,0 +1,8 @@
+172.17.0.1 - anonymousUser [24/Aug/2026:19:08:29 +0000] "GET /nifi-api/access/config HTTP/2.0" 401 12 "" "curl/8.18.0"
+172.17.0.1 - - [24/Aug/2026:19:08:29 +0000] "POST /nifi-api/access/token HTTP/2.0" 201 462 "" "curl/8.18.0"
+172.17.0.1 - admin [24/Aug/2026:19:08:31 +0000] "GET /nifi-api/flow/status HTTP/2.0" 200 364 "" "curl/8.18.0"
+172.17.0.1 - admin [24/Aug/2026:19:08:31 +0000] "GET /nifi-api/flow/status HTTP/2.0" 200 364 "" "curl/8.18.0"
+172.17.0.1 - admin [24/Aug/2026:19:08:31 +0000] "GET /nifi-api/flow/status HTTP/2.0" 200 364 "" "curl/8.18.0"
+172.17.0.1 - admin [24/Aug/2026:19:08:31 +0000] "GET /nifi-api/flow/status HTTP/2.0" 200 364 "" "curl/8.18.0"
+172.17.0.1 - admin [24/Aug/2026:19:08:31 +0000] "GET /nifi-api/flow/status HTTP/2.0" 200 364 "" "curl/8.18.0"
+172.17.0.1 - anonymousUser [24/Aug/2026:19:08:31 +0000] "GET /nifi-api/flow/status HTTP/2.0" 401 12 "" "curl/8.18.0"

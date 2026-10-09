@@ -1,0 +1,57 @@
+# Lookup de Instancias
+
+Configura esto sin importar la versión de la app o la estrategia de
+recolección que uses. El inventario le da a cada instancia su cluster y,
+opcionalmente, umbrales propios, y es lo que hace que una instancia que
+nunca envió datos aparezca como *No data* en lugar de faltar. Sin él, las
+instancias que envían datos igual aparecen, con cluster "—" y los umbrales
+de la app.
+
+Requiere [NIFI Monitoring instalado](installation.es.md).
+
+Abre la app **Nifi Monitoring** (no la TA). En el menú de la app, ve a **Configuration > NiFi Instances**.
+Esto abre el editor de lookups sobre el lookup `instance`:
+
+![image](/nifi-monitoring-splunk/assets/images/splunk/instance_lookup_editor.png)
+
+Para encontrar los valores exactos de host a ingresar, ejecuta (últimos
+60 minutos):
+
+```
+index=* sourcetype=nifi* | dedup host | table host
+```
+
+![image](/nifi-monitoring-splunk/assets/images/splunk/sourcetype_search.png)
+
+!!! note "¿No hay resultados en esa búsqueda?"
+    Los procesos de NiFi ya tienen que estar mandando datos para que esta
+    búsqueda devuelva algo:
+
+    1. Estrategia push: inicia el flow de NiFi — ver [Inicia el flow](config-nifi-monitoring-2-0-push.es.md#5-inicia-el-flow).
+    2. Estrategia pull: los data inputs configurados deben estar habilitados.
+
+Agrega una fila por host, con el cluster al que pertenece. El Overview toma
+una fila nueva en su siguiente actualización.
+
+Las demás columnas son umbrales opcionales solo para esa instancia — déjalas
+vacías para usar el valor por defecto de la app:
+
+| Columna | Por defecto | Significado |
+|---|---|---|
+| `heap_threshold`, `heap_threshold_critical` | 85, 95 | % del heap máximo para degradada, crítica |
+| `repo_threshold`, `repo_threshold_critical` | 80, 90 | % del volumen de un repositorio para degradada, crítica |
+| `backpressure_threshold` | 80 | % del límite de una conexión |
+| `bulletin_threshold` | 5 | Boletines ERROR en 15 minutos que disparan la alerta de boletines |
+
+Un NiFi cuyo repositorio de contenido está al 85 % por diseño, por ejemplo,
+recibe `repo_threshold` 92 y deja de aparecer degradado, mientras el resto
+conserva el valor por defecto. Los valores por defecto son macros; ver
+[Umbrales](references.es.md#umbrales).
+
+El [Overview](overview.es.md#overview) lista entonces cada fila — una
+instancia que todavía no envió nada aparece como *No data* en lugar de
+faltar.
+
+Siguiente: elige tu versión y estrategia de recolección en la barra
+lateral, bajo **Configurar Nifi Monitoring 1.2** o
+**Configurar Nifi Monitoring 2.0**.

@@ -1,0 +1,20 @@
+# UCC's generated REST handlers and the modular input need these, and Splunk
+# ships none of them. Pure Python once pinned as below, so the package stays
+# platform- and interpreter-independent.
+splunktaucclib
+
+# Pinned below 3 on purpose. splunk-sdk 3.0.0 added a splunklib/ai/ package
+# whose sources AppInspect's parser rejects outright -- check_all_python_files
+# _are_well_formed goes from 0 failures to 2, and a failure is a hard stop on
+# the precert gate. Nothing here uses it; the add-on needs splunklib.client
+# and splunklib.modularinput, which are unchanged across the major.
+splunk-sdk>=2.1,<3
+
+# Pinned below 8 on purpose. solnlib 8.0.0 added grpcio and the OpenTelemetry
+# exporter as hard dependencies, which is 21 MB and, worse, two compiled
+# extensions -- cygrpc is built for one CPU architecture and one Python minor
+# version. Shipping them would make the add-on stop working on Windows, on
+# ARM, and on any Splunk whose interpreter is not the one the wheel was built
+# against. Same reasoning as the requests decision in exclude.txt (B-15).
+# Nothing here uses the tracing they provide.
+solnlib>=7,<8

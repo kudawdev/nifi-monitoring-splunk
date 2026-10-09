@@ -1,143 +1,571 @@
-<form refresh="60" version="1.1" hideEdit="true" script="nifi_monitor_overview.js" stylesheet="nifi_monitor_overview.css">
-  <label>Nifi Monitor Overview</label>
-  <fieldset submitButton="false"></fieldset>
-  <row>
-    <panel>
-      <table id="table_nifi_status">
-        <title>Overall Status Nifi</title>
-        <search>
-          <query>| inputlookup instance 
-| join type=left host 
-    [| tstats count, values(Flow_Status.cluster) as cluster last(Flow_Status.controllerStatus.activeThreadCount) as "Active Threads" last(Flow_Status.controllerStatus.bytesQueued) as "Bytes Queued" last(Flow_Status.controllerStatus.runningCount) as "Running Components" last(Flow_Status.controllerStatus.stoppedCount) as "Stopped Components" last(Flow_Status.controllerStatus.disabledCount) as "Disabled Components" last(Flow_Status.controllerStatus.flowFilesQueued) as "FlowFiles Queued" last(Flow_Status.controllerStatus.invalidCount) as "Invalid Components" last(Flow_Status.controllerStatus.locallyModifiedAndStaleCount) as "Locally Modified And Stale Versioned Process Group" last(Flow_Status.controllerStatus.locallyModifiedCount) as "Locally Modified Versioned Process Group" last(Flow_Status.controllerStatus.syncFailureCount) as "Sync Failure Versioned Process Group" last(Flow_Status.controllerStatus.upToDateCount) as "Up To Date Versioned Process Group" last(Flow_Status.controllerStatus.staleCount) as "Stale Versioned Process Group" last(Flow_Status.controllerStatus.activeRemotePortCount) as "Transmitting Remote Process Group" last(Flow_Status.controllerStatus.inactiveRemotePortCount) as "Not Transmitting Remote Process Group" from datamodel=NIFI.Flow_Status groupby host] 
-| eval "Total Queued Data" ='FlowFiles Queued'+"/"+'Bytes Queued' 
-| eval status=if(count&gt;0,"Up","Down") 
-| join type=left host 
-    [| tstats count as "Bulletin Errors" from datamodel=NIFI.Reporting_Bulletin by host ] 
-| sort + status,cluster,host   
-|table host cluster status "Active Threads" "Total Queued Data" "Transmitting Remote Process Group" "Not Transmitting Remote Process Group" "Running Components" "Stopped Components" "Invalid Components" "Disabled Components" "Up To Date Versioned Process Group" "Locally Modified Versioned Process Group" "Stale Versioned Process Group" "Locally Modified And Stale Versioned Process Group" "Sync Failure Versioned Process Group" "Bulletin Errors"</query>
-          <earliest>-5m</earliest>
-          <latest>now</latest>
-          <refresh>5m</refresh>
-          <refreshType>delay</refreshType>
-        </search>
-        <option name="drilldown">row</option>
-        <option name="link.visible">0</option>
-        <option name="refresh.display">none</option>
-        <option name="rowNumbers">false</option>
-        <option name="wrap">false</option>
-        <drilldown>
-          <link target="_blank">/app/nifi_monitoring/nifi_instances_detail?form.host=$click.value$</link>
-        </drilldown>
-      </table>
-    </panel>
-  </row>
-  <row>
-    <panel>
-      <table id="table_disk_space_status">
-        <title>Status Disk Space by Repository</title>
-        <search>
-          <query>| inputlookup instance 
-| join type=left host 
-    [| tstats last(systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage{}.freeSpace) as contentFreeSpace last(systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage{}.usedSpace) as contentUsedSpace last(systemDiagnostics.aggregateSnapshot.contentRepositoryStorageUsage{}.utilization) as contentUtilization last(systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.freeSpace) as flowFreeSpace last(systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.usedSpace) as flowUsedSpace last(systemDiagnostics.aggregateSnapshot.flowFileRepositoryStorageUsage.utilization) as flowUtilization last(systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage{}.freeSpace) as provenanceFreeSpace last(systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage{}.usedSpace) as provenanceUsedSpace last(systemDiagnostics.aggregateSnapshot.provenanceRepositoryStorageUsage{}.utilization) as provenanceUtilization last(System_Diagnostics.cluster) as cluster from datamodel=NIFI.System_Diagnostics groupby host ] 
-| eval "Content (Used/Free)" = contentUsedSpace+" / "+contentFreeSpace 
-| eval "Flow (Used/Free)" = flowUsedSpace+" / "+flowFreeSpace 
-| eval "Provenance (Used/Free)" = provenanceUsedSpace+" / "+provenanceFreeSpace 
-| rename contentUtilization as "Content %", flowUtilization as "Flow %", provenanceUtilization as "Provenance %" 
-| table host cluster "Content (Used/Free)" "Content %" "Flow (Used/Free)" "Flow %" "Provenance (Used/Free)" "Provenance %"</query>
-          <earliest>-5m</earliest>
-          <latest>now</latest>
-          <refresh>5m</refresh>
-          <refreshType>delay</refreshType>
-        </search>
-        <option name="drilldown">cell</option>
-        <option name="link.visible">0</option>
-        <option name="refresh.display">none</option>
-        <option name="rowNumbers">false</option>
-        <format type="number" field="contentUtilization"></format>
-        <drilldown>
-          <link target="_blank">/app/nifi_monitoring/nifi_instances_detail?form.host=$click.value$</link>
-        </drilldown>
-      </table>
-    </panel>
-  </row>
-  <row>
-    <panel>
-      <input type="time" token="timetk">
-        <label>Time</label>
-        <default>
-          <earliest>-60m@m</earliest>
-          <latest>now</latest>
-        </default>
-      </input>
-      <chart>
-        <title>Bulletin Events Over Time</title>
-        <search>
-          <query>| tstats count from datamodel=NIFI.Reporting_Bulletin groupby _time host span=1m 
-| timechart sum(count) by host span=5m 
-| fillnull value=0</query>
-          <earliest>$timetk.earliest$</earliest>
-          <latest>$timetk.latest$</latest>
-          <sampleRatio>1</sampleRatio>
-          <refresh>5m</refresh>
-          <refreshType>delay</refreshType>
-        </search>
-        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
-        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
-        <option name="charting.axisTitleX.visibility">collapsed</option>
-        <option name="charting.axisTitleY.text">Count</option>
-        <option name="charting.axisTitleY.visibility">visible</option>
-        <option name="charting.axisTitleY2.visibility">visible</option>
-        <option name="charting.axisX.abbreviation">none</option>
-        <option name="charting.axisX.scale">linear</option>
-        <option name="charting.axisY.abbreviation">none</option>
-        <option name="charting.axisY.minimumNumber">0</option>
-        <option name="charting.axisY.scale">linear</option>
-        <option name="charting.axisY2.abbreviation">none</option>
-        <option name="charting.axisY2.enabled">0</option>
-        <option name="charting.axisY2.scale">inherit</option>
-        <option name="charting.chart">column</option>
-        <option name="charting.chart.bubbleMaximumSize">50</option>
-        <option name="charting.chart.bubbleMinimumSize">10</option>
-        <option name="charting.chart.bubbleSizeBy">area</option>
-        <option name="charting.chart.nullValueMode">zero</option>
-        <option name="charting.chart.showDataLabels">none</option>
-        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
-        <option name="charting.chart.stackMode">stacked</option>
-        <option name="charting.chart.style">shiny</option>
-        <option name="charting.drilldown">all</option>
-        <option name="charting.layout.splitSeries">0</option>
-        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
-        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
-        <option name="charting.legend.mode">standard</option>
-        <option name="charting.legend.placement">bottom</option>
-        <option name="charting.lineWidth">2</option>
-        <option name="refresh.display">none</option>
-        <option name="trellis.enabled">0</option>
-        <option name="trellis.scales.shared">1</option>
-        <option name="trellis.size">medium</option>
-        <option name="link.visible">0</option>
-        <drilldown>
-          <link target="_blank">/app/nifi_monitoring/nifi_bulletin?form.host=$click.name2$</link>
-        </drilldown>
-      </chart>
-    </panel>
-  </row>
-  <row id="footer">
-    <panel>
-      <html>
-        <style>
-            [id^="footer"] .dashboard-panel {
-              background:#f2f4f5 !important;
+<dashboard version="2" theme="light" hideEdit="false">
+  <label>Overview</label>
+  <description>Is the fleet healthy right now?</description>
+  <definition><![CDATA[
+{
+    "dataSources": {
+        "ds_bulletins_time": {
+            "name": "ds_bulletins_time",
+            "options": {
+                "query": "| tstats count from datamodel=NIFI.Bulletins where host=* by _time Bulletins.bulletinLevel span=10m\n| rename Bulletins.bulletinLevel as level\n| lookup instance host OUTPUT cluster | fillnull value=\"—\" cluster | search cluster=\"$cluster$\"\n| timechart span=10m sum(count) by level",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_fleet": {
+            "name": "Fleet",
+            "options": {
+                "query": "| `nifi_fleet` | search cluster=\"$cluster$\"",
+                "queryParameters": {
+                    "earliest": "-24h",
+                    "latest": "now"
+                },
+                "refresh": "1m",
+                "refreshType": "delay"
+            },
+            "type": "ds.search"
+        },
+        "ds_input_cluster": {
+            "name": "Choices for Cluster",
+            "options": {
+                "query": "| inputlookup instance | stats count by cluster | fields cluster",
+                "queryParameters": {
+                    "earliest": "-24h@h",
+                    "latest": "now"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_k_bulletins": {
+            "name": "ds_k_bulletins",
+            "options": {
+                "extend": "ds_fleet",
+                "query": "| stats sum(bulletin_errors) as value | fillnull value=0 value"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_healthy": {
+            "name": "ds_k_healthy",
+            "options": {
+                "extend": "ds_fleet",
+                "query": "| stats count(eval(health==\"ok\")) as ok, count as total | eval value = ok . \" / \" . total"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_heap": {
+            "name": "ds_k_heap",
+            "options": {
+                "extend": "ds_fleet",
+                "query": "| where isnotnull(heap_pct) | sort - heap_pct | head 1 | rename heap_pct as value | fields value heap_severity host"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_invalid": {
+            "name": "ds_k_invalid",
+            "options": {
+                "extend": "ds_fleet",
+                "query": "| stats sum(invalid) as value | fillnull value=0 value"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_queued": {
+            "name": "ds_k_queued",
+            "options": {
+                "extend": "ds_fleet",
+                "query": "| stats sum(flowfiles_queued) as value | fillnull value=0 value"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_repo": {
+            "name": "ds_k_repo",
+            "options": {
+                "extend": "ds_fleet",
+                "query": "| where isnotnull(worst_repo_pct) | sort - worst_repo_pct | head 1 | eval where = host . \" · \" . worst_repo | rename worst_repo_pct as value | fields value repo_severity where"
+            },
+            "type": "ds.chain"
+        },
+        "ds_queue_time": {
+            "name": "ds_queue_time",
+            "options": {
+                "query": "| tstats latest(Flow_Status.controllerStatus.flowFilesQueued) as queued from datamodel=NIFI.Flow_Status by _time host span=5m\n| lookup instance host OUTPUT cluster | fillnull value=\"—\" cluster | search cluster=\"$cluster$\"\n| timechart span=5m max(queued) by host limit=4 useother=true",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_t_instances": {
+            "name": "ds_t_instances",
+            "options": {
+                "extend": "ds_fleet",
+                "query": "| sort health_rank host\n| eval Health = case(health == \"critical\", \"✕ Critical\", health == \"degraded\", \"! Degraded\", health == \"stale\", \"○ Stale\", health == \"no_data\", \"○ No data\", true(), \"✓ Healthy\")\n| eval \"Last data\" = case(isnull(age), \"never\", age < 120, round(age) . \" s ago\", age < 7200, round(age / 60) . \" min ago\", true(), floor(age / 3600) . \" h \" . round((age % 3600) / 60) . \" min ago\"),\n       Components = if(isnull(running), \"—\", \"▶ \" . running . \"  ■ \" . stopped . \"  ⚠ \" . invalid . \"  ⏻ \" . disabled),\n       Queued = if(isnull(flowfiles_queued), \"—\", flowfiles_queued . \" · \" . round(bytes_queued / 1048576, 1) . \" MB\"),\n       \"Heap %\" = heap_pct, \"Worst repository\" = if(isnull(worst_repo_pct), \"—\", worst_repo_pct . \"% · \" . worst_repo)\n| table Health health_reason host cluster nifi_version \"Last data\" Components Queued \"Heap %\" \"Worst repository\" bulletin_errors\n| rename health_reason as Reason, host as Instance, cluster as Cluster, nifi_version as NiFi, bulletin_errors as \"ERROR · 15m\""
+            },
+            "type": "ds.chain"
+        }
+    },
+    "defaults": {
+        "dataSources": {
+            "ds.search": {
+                "options": {
+                    "queryParameters": {
+                        "earliest": "$time.earliest$",
+                        "latest": "$time.latest$"
+                    }
+                }
             }
-
-          </style>
-        <div style="text-align: center; font-weight: bold; font-size: 14px;">
-           Developed by
-           <a href="https://www.kudaw.com" target="_blank" style="text-decoration: none;">
-             <img src="/static/app/nifi_monitoring/kudaw.png" style="height:34px; border:0; margin-left:10px"/>
-           </a>
-          </div>
-      </html>
-    </panel>
-  </row>
-</form>
+        }
+    },
+    "description": "Is the fleet healthy right now?",
+    "inputs": {
+        "input_cluster": {
+            "context": {
+                "formattedConfig": {
+                    "number": {
+                        "prefix": ""
+                    }
+                },
+                "formattedStatics": ">statics | formatByType(formattedConfig)",
+                "label": ">primary | seriesByName(\"cluster\") | renameSeries(\"label\") | formatByType(formattedConfig)",
+                "statics": [
+                    [
+                        "All"
+                    ],
+                    [
+                        "*"
+                    ]
+                ],
+                "value": ">primary | seriesByName(\"cluster\") | renameSeries(\"value\") | formatByType(formattedConfig)"
+            },
+            "dataSources": {
+                "primary": "ds_input_cluster"
+            },
+            "options": {
+                "defaultValue": "*",
+                "items": ">frame(label, value) | prepend(formattedStatics) | objects()",
+                "token": "cluster"
+            },
+            "title": "Cluster",
+            "type": "input.dropdown"
+        },
+        "input_time": {
+            "options": {
+                "defaultValue": "-4h@m,now",
+                "token": "time"
+            },
+            "title": "Time range",
+            "type": "input.timerange"
+        }
+    },
+    "layout": {
+        "globalInputs": [
+            "input_time",
+            "input_cluster"
+        ],
+        "options": {
+            "height": 800,
+            "width": 1440
+        },
+        "structure": [
+            {
+                "item": "viz_healthy",
+                "position": {
+                    "h": 130,
+                    "w": 240,
+                    "x": 0,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_bulletins",
+                "position": {
+                    "h": 130,
+                    "w": 240,
+                    "x": 240,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_heap",
+                "position": {
+                    "h": 130,
+                    "w": 240,
+                    "x": 480,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_repo",
+                "position": {
+                    "h": 130,
+                    "w": 240,
+                    "x": 720,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_queued",
+                "position": {
+                    "h": 130,
+                    "w": 240,
+                    "x": 960,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_invalid",
+                "position": {
+                    "h": 130,
+                    "w": 240,
+                    "x": 1200,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_instances",
+                "position": {
+                    "h": 330,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 130
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_bulletins_time",
+                "position": {
+                    "h": 300,
+                    "w": 720,
+                    "x": 0,
+                    "y": 460
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_queue_time",
+                "position": {
+                    "h": 300,
+                    "w": 720,
+                    "x": 720,
+                    "y": 460
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_footer",
+                "position": {
+                    "h": 40,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 760
+                },
+                "type": "block"
+            }
+        ],
+        "type": "grid"
+    },
+    "title": "Overview",
+    "visualizations": {
+        "viz_bulletins": {
+            "context": {
+                "majorColorEditorConfig": [
+                    {
+                        "to": 1,
+                        "value": "#0CA30C"
+                    },
+                    {
+                        "from": 1,
+                        "value": "#D03B3B"
+                    }
+                ]
+            },
+            "dataSources": {
+                "primary": "ds_k_bulletins"
+            },
+            "eventHandlers": [
+                {
+                    "options": {
+                        "newTab": false,
+                        "url": "/app/nifi_monitoring/nifi_bulletins?form.level=ERROR&form.time.earliest=$time.earliest$&form.time.latest=$time.latest$"
+                    },
+                    "type": "drilldown.customUrl"
+                }
+            ],
+            "options": {
+                "majorColor": "> majorValue | rangeValue(majorColorEditorConfig)",
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "ERROR bulletins · 15 min",
+            "type": "splunk.singlevalue"
+        },
+        "viz_bulletins_time": {
+            "dataSources": {
+                "primary": "ds_bulletins_time"
+            },
+            "description": "All instances · 10-minute buckets",
+            "eventHandlers": [
+                {
+                    "options": {
+                        "newTab": false,
+                        "url": "/app/nifi_monitoring/nifi_bulletins?form.time.earliest=$time.earliest$&form.time.latest=$time.latest$"
+                    },
+                    "type": "drilldown.customUrl"
+                }
+            ],
+            "options": {
+                "legendDisplay": "bottom",
+                "seriesColors": [
+                    "#2A78D6",
+                    "#EB6834",
+                    "#1BAF7A",
+                    "#EDA100"
+                ],
+                "seriesColorsByField": {
+                    "ERROR": "#D03B3B",
+                    "INFO": "#9A9890",
+                    "WARN": "#FAB219",
+                    "WARNING": "#FAB219"
+                },
+                "showRoundedY2AxisLabels": false,
+                "showSplitSeries": false,
+                "stackMode": "stacked",
+                "xAxisTitleVisibility": "hide",
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "Bulletins by level",
+            "type": "splunk.column"
+        },
+        "viz_footer": {
+            "options": {
+                "fontSize": "default",
+                "markdown": "Developed by [Kudaw](https://www.kudaw.com)"
+            },
+            "type": "splunk.markdown"
+        },
+        "viz_healthy": {
+            "dataSources": {
+                "primary": "ds_k_healthy"
+            },
+            "description": "Healthy out of every instance in the inventory, heard from or not",
+            "options": {
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Healthy instances",
+            "type": "splunk.singlevalue"
+        },
+        "viz_heap": {
+            "context": {
+                "severityColorConfig": [
+                    {
+                        "match": "critical",
+                        "value": "#D03B3B"
+                    },
+                    {
+                        "match": "warning",
+                        "value": "#FAB219"
+                    },
+                    {
+                        "match": "ok",
+                        "value": "#0CA30C"
+                    }
+                ]
+            },
+            "dataSources": {
+                "primary": "ds_k_heap"
+            },
+            "description": "Highest heap use; coloured by that instance's threshold",
+            "options": {
+                "majorColor": "> primary | seriesByName(\"heap_severity\") | lastPoint() | matchValue(severityColorConfig)",
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off",
+                "underLabel": "> primary | seriesByName(\"host\") | lastPoint()",
+                "unit": "%"
+            },
+            "title": "Worst heap",
+            "type": "splunk.singlevalue"
+        },
+        "viz_instances": {
+            "context": {
+                "HealthRowColorsEditorConfig": [
+                    {
+                        "match": "✕ Critical",
+                        "value": "#D03B3B"
+                    },
+                    {
+                        "match": "! Degraded",
+                        "value": "#B07A00"
+                    },
+                    {
+                        "match": "○ Stale",
+                        "value": "#9A9890"
+                    },
+                    {
+                        "match": "○ No data",
+                        "value": "#9A9890"
+                    },
+                    {
+                        "match": "✓ Healthy",
+                        "value": "#0CA30C"
+                    }
+                ],
+                "tableHeaderBackgroundColorConfig": {
+                    "channel": "rgb",
+                    "value": "#E1E0D9"
+                },
+                "tableRowColorMaxContrast": {
+                    "maximum": "#0B0B0B",
+                    "minimum": "#FFFFFF"
+                }
+            },
+            "dataSources": {
+                "primary": "ds_t_instances"
+            },
+            "description": "Sorted by severity. Components: ▶ running · ■ stopped · ⚠ invalid · ⏻ disabled. Click a row to open it.",
+            "eventHandlers": [
+                {
+                    "options": {
+                        "newTab": false,
+                        "url": "/app/nifi_monitoring/nifi_instance?form.host=$row.Instance.value$&form.time.earliest=$time.earliest$&form.time.latest=$time.latest$"
+                    },
+                    "type": "drilldown.customUrl"
+                }
+            ],
+            "options": {
+                "backgroundColor": "transparent",
+                "columnFormat": {
+                    "Health": {
+                        "rowColors": "> table | seriesByName(\"Health\") | matchValue(HealthRowColorsEditorConfig)"
+                    }
+                },
+                "count": 20,
+                "headerVisibility": "fixed",
+                "showInternalFields": false,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | noRecolor()",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Instances",
+            "type": "splunk.table"
+        },
+        "viz_invalid": {
+            "context": {
+                "majorColorEditorConfig": [
+                    {
+                        "to": 1,
+                        "value": "#0CA30C"
+                    },
+                    {
+                        "from": 1,
+                        "value": "#FAB219"
+                    }
+                ]
+            },
+            "dataSources": {
+                "primary": "ds_k_invalid"
+            },
+            "options": {
+                "majorColor": "> majorValue | rangeValue(majorColorEditorConfig)",
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Invalid components",
+            "type": "splunk.singlevalue"
+        },
+        "viz_queue_time": {
+            "dataSources": {
+                "primary": "ds_queue_time"
+            },
+            "description": "Top 4 by queue; the rest fold into OTHER",
+            "options": {
+                "legendDisplay": "bottom",
+                "nullValueDisplay": "connect",
+                "seriesColors": [
+                    "#2A78D6",
+                    "#EB6834",
+                    "#1BAF7A",
+                    "#EDA100"
+                ],
+                "showRoundedY2AxisLabels": false,
+                "showSplitSeries": false,
+                "xAxisTitleVisibility": "hide",
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "FlowFiles queued by instance",
+            "type": "splunk.line"
+        },
+        "viz_queued": {
+            "dataSources": {
+                "primary": "ds_k_queued"
+            },
+            "description": "Across every instance",
+            "options": {
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "FlowFiles queued",
+            "type": "splunk.singlevalue"
+        },
+        "viz_repo": {
+            "context": {
+                "severityColorConfig": [
+                    {
+                        "match": "critical",
+                        "value": "#D03B3B"
+                    },
+                    {
+                        "match": "warning",
+                        "value": "#FAB219"
+                    },
+                    {
+                        "match": "ok",
+                        "value": "#0CA30C"
+                    }
+                ]
+            },
+            "dataSources": {
+                "primary": "ds_k_repo"
+            },
+            "description": "Fullest repository of any instance; coloured by that instance's threshold",
+            "options": {
+                "majorColor": "> primary | seriesByName(\"repo_severity\") | lastPoint() | matchValue(severityColorConfig)",
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off",
+                "underLabel": "> primary | seriesByName(\"where\") | lastPoint()",
+                "unit": "%"
+            },
+            "title": "Worst repository",
+            "type": "splunk.singlevalue"
+        }
+    }
+}
+]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+]]></meta>
+</dashboard>

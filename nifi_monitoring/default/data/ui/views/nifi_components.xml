@@ -1,0 +1,477 @@
+<dashboard version="2" theme="light" hideEdit="false">
+  <label>Components</label>
+  <description>Which processor, group or connection is the bottleneck?</description>
+  <definition><![CDATA[
+{
+    "dataSources": {
+        "ds_conn_table": {
+            "name": "ds_conn_table",
+            "options": {
+                "extend": "ds_connections",
+                "query": "| eval Connection = source . \" → \" . destination, \"Objects %\" = round(objects, 0), \"Size %\" = round(size, 0),\n       \"To backpressure\" = if(isnull(eta) OR eta <= 0, \"—\", tostring(round(eta / 1000), \"duration\"))\n| sort - \"Objects %\"\n| table Connection \"Objects %\" \"Size %\" \"To backpressure\""
+            },
+            "type": "ds.chain"
+        },
+        "ds_connections": {
+            "name": "Connections",
+            "options": {
+                "query": "`index_nifi` sourcetype=\"nifi:api:flow_metrics\" host=\"$host$\" component_type=\"Connection\"\n  metric_name IN (\"nifi_percent_used_count\", \"nifi_percent_used_bytes\", \"nifi_time_to_count_backpressure_prediction\", \"nifi_time_to_bytes_backpressure_prediction\")\n| stats latest(metric_value) as value, latest(source_name) as source, latest(destination_name) as destination by component_id metric_name\n| eval metric = case(metric_name == \"nifi_percent_used_count\", \"objects\", metric_name == \"nifi_percent_used_bytes\", \"size\", metric_name == \"nifi_time_to_count_backpressure_prediction\", \"eta_count\", true(), \"eta_bytes\")\n| eval {metric} = value\n| stats values(source) as source, values(destination) as destination, max(objects) as objects, max(size) as size, min(eta_count) as eta_count, min(eta_bytes) as eta_bytes by component_id\n| eval eta = min(if(eta_count > 0, eta_count, null()), if(eta_bytes > 0, eta_bytes, null()))",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_input_host": {
+            "name": "Choices for Instance",
+            "options": {
+                "query": "| `nifi_fleet` | sort health_rank host | fields host",
+                "queryParameters": {
+                    "earliest": "-24h",
+                    "latest": "now"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_input_metric": {
+            "name": "Choices for Metric",
+            "options": {
+                "query": "| inputlookup nifi_status_metrics | search component_type=\"$kind$\" OR component_type=\"both\" | eval label = label . \" (\" . unit . \")\" | fields field label",
+                "queryParameters": {
+                    "earliest": "-24h@h",
+                    "latest": "now"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_k_eta": {
+            "name": "ds_k_eta",
+            "options": {
+                "extend": "ds_connections",
+                "query": "| where eta > 0 AND eta < `nifi_backpressure_horizon` * 1000 | stats count as value"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_over": {
+            "name": "ds_k_over",
+            "options": {
+                "extend": "ds_connections",
+                "query": "| eval host = \"$host$\" | `nifi_instance_thresholds` | where objects >= backpressure_warn OR size >= backpressure_warn | stats count as value"
+            },
+            "type": "ds.chain"
+        },
+        "ds_series": {
+            "name": "ds_series",
+            "options": {
+                "extend": "ds_status",
+                "query": "| search component=\"$component$\" | timechart span=5m max(v) by component limit=5 useother=false"
+            },
+            "type": "ds.chain"
+        },
+        "ds_status": {
+            "name": "Component status",
+            "options": {
+                "query": "| tstats $operation$(Component_Status.$metric$) as v from datamodel=NIFI.Component_Status\n  where host=\"$host$\" Component_Status.component_kind=\"$kind$\"\n  by _time Component_Status.component_label span=5m\n| rename Component_Status.component_label as component",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_top": {
+            "name": "ds_top",
+            "options": {
+                "extend": "ds_status",
+                "query": "| stats $operation$(v) as value, sparkline($operation$(v), 5m) as trend by component\n| sort - value | head 10\n| eval value = round(value, 1)\n| rename component as Component, value as \"$metric$ ($operation$)\", trend as Trend"
+            },
+            "type": "ds.chain"
+        },
+        "ds_tracked": {
+            "name": "ds_tracked",
+            "options": {
+                "query": "| tstats dc(Component_Status.component_key) as value from datamodel=NIFI.Component_Status where host=\"$host$\"",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        }
+    },
+    "defaults": {
+        "dataSources": {
+            "ds.search": {
+                "options": {
+                    "queryParameters": {
+                        "earliest": "$time.earliest$",
+                        "latest": "$time.latest$"
+                    }
+                }
+            }
+        },
+        "tokens": {
+            "default": {
+                "component": {
+                    "value": "*"
+                }
+            }
+        }
+    },
+    "description": "Which processor, group or connection is the bottleneck?",
+    "inputs": {
+        "input_host": {
+            "context": {
+                "formattedConfig": {
+                    "number": {
+                        "prefix": ""
+                    }
+                },
+                "formattedStatics": ">statics | formatByType(formattedConfig)",
+                "label": ">primary | seriesByName(\"host\") | renameSeries(\"label\") | formatByType(formattedConfig)",
+                "statics": [],
+                "value": ">primary | seriesByName(\"host\") | renameSeries(\"value\") | formatByType(formattedConfig)"
+            },
+            "dataSources": {
+                "primary": "ds_input_host"
+            },
+            "options": {
+                "items": ">frame(label, value) | prepend(formattedStatics) | objects()",
+                "selectFirstSearchResult": true,
+                "token": "host"
+            },
+            "title": "Instance",
+            "type": "input.dropdown"
+        },
+        "input_kind": {
+            "options": {
+                "defaultValue": "processor",
+                "items": [
+                    {
+                        "label": "Processors",
+                        "value": "processor"
+                    },
+                    {
+                        "label": "Process groups",
+                        "value": "process_group"
+                    }
+                ],
+                "token": "kind"
+            },
+            "title": "Component type",
+            "type": "input.dropdown"
+        },
+        "input_metric": {
+            "context": {
+                "formattedConfig": {
+                    "number": {
+                        "prefix": ""
+                    }
+                },
+                "formattedStatics": ">statics | formatByType(formattedConfig)",
+                "label": ">primary | seriesByName(\"label\") | renameSeries(\"label\") | formatByType(formattedConfig)",
+                "statics": [],
+                "value": ">primary | seriesByName(\"field\") | renameSeries(\"value\") | formatByType(formattedConfig)"
+            },
+            "dataSources": {
+                "primary": "ds_input_metric"
+            },
+            "options": {
+                "defaultValue": "taskMillis",
+                "items": ">frame(label, value) | prepend(formattedStatics) | objects()",
+                "token": "metric"
+            },
+            "title": "Metric",
+            "type": "input.dropdown"
+        },
+        "input_operation": {
+            "options": {
+                "defaultValue": "sum",
+                "items": [
+                    {
+                        "label": "Sum",
+                        "value": "sum"
+                    },
+                    {
+                        "label": "Average",
+                        "value": "avg"
+                    },
+                    {
+                        "label": "Max",
+                        "value": "max"
+                    }
+                ],
+                "token": "operation"
+            },
+            "title": "Operation",
+            "type": "input.dropdown"
+        },
+        "input_time": {
+            "options": {
+                "defaultValue": "-4h@m,now",
+                "token": "time"
+            },
+            "title": "Time range",
+            "type": "input.timerange"
+        }
+    },
+    "layout": {
+        "globalInputs": [
+            "input_host",
+            "input_kind",
+            "input_metric",
+            "input_operation",
+            "input_time"
+        ],
+        "options": {
+            "height": 810,
+            "width": 1440
+        },
+        "structure": [
+            {
+                "item": "viz_over",
+                "position": {
+                    "h": 130,
+                    "w": 480,
+                    "x": 0,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_eta",
+                "position": {
+                    "h": 130,
+                    "w": 480,
+                    "x": 480,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_tracked",
+                "position": {
+                    "h": 130,
+                    "w": 480,
+                    "x": 960,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_top",
+                "position": {
+                    "h": 380,
+                    "w": 720,
+                    "x": 0,
+                    "y": 130
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_conn",
+                "position": {
+                    "h": 380,
+                    "w": 720,
+                    "x": 720,
+                    "y": 130
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_series",
+                "position": {
+                    "h": 300,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 510
+                },
+                "type": "block"
+            }
+        ],
+        "type": "grid"
+    },
+    "title": "Components",
+    "visualizations": {
+        "viz_conn": {
+            "context": {
+                "tableHeaderBackgroundColorConfig": {
+                    "channel": "rgb",
+                    "value": "#E1E0D9"
+                },
+                "tableRowColorMaxContrast": {
+                    "maximum": "#0B0B0B",
+                    "minimum": "#FFFFFF"
+                }
+            },
+            "dataSources": {
+                "primary": "ds_conn_table"
+            },
+            "description": "Latest · % of the backpressure limit · needs flow metrics (endpoint_flow_metrics)",
+            "options": {
+                "backgroundColor": "transparent",
+                "count": 10,
+                "headerVisibility": "fixed",
+                "showInternalFields": false,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | noRecolor()",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Busiest connections",
+            "type": "splunk.table"
+        },
+        "viz_eta": {
+            "context": {
+                "majorColorEditorConfig": [
+                    {
+                        "to": 1,
+                        "value": "#0CA30C"
+                    },
+                    {
+                        "from": 1,
+                        "value": "#D03B3B"
+                    }
+                ]
+            },
+            "dataSources": {
+                "primary": "ds_k_eta"
+            },
+            "description": "NiFi's own prediction, within nifi_backpressure_horizon (1 h by default)",
+            "options": {
+                "majorColor": "> majorValue | rangeValue(majorColorEditorConfig)",
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Reaching backpressure soon",
+            "type": "splunk.singlevalue"
+        },
+        "viz_over": {
+            "context": {
+                "majorColorEditorConfig": [
+                    {
+                        "to": 1,
+                        "value": "#0CA30C"
+                    },
+                    {
+                        "from": 1,
+                        "value": "#FAB219"
+                    }
+                ]
+            },
+            "dataSources": {
+                "primary": "ds_k_over"
+            },
+            "description": "% of the object or size limit ≥ this instance's backpressure threshold · needs flow metrics",
+            "options": {
+                "majorColor": "> majorValue | rangeValue(majorColorEditorConfig)",
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Connections over backpressure threshold",
+            "type": "splunk.singlevalue"
+        },
+        "viz_series": {
+            "dataSources": {
+                "primary": "ds_series"
+            },
+            "description": "$metric$ per 5 minutes · all components until a row above is clicked",
+            "options": {
+                "legendDisplay": "bottom",
+                "nullValueDisplay": "connect",
+                "seriesColors": [
+                    "#2A78D6",
+                    "#EB6834",
+                    "#1BAF7A",
+                    "#EDA100"
+                ],
+                "showRoundedY2AxisLabels": false,
+                "showSplitSeries": false,
+                "xAxisTitleVisibility": "hide",
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "Selected component",
+            "type": "splunk.line"
+        },
+        "viz_top": {
+            "context": {
+                "TrendSparklineConfig": {
+                    "sparkline": {
+                        "sparklineColors": "#2A78D6",
+                        "sparklineType": "line"
+                    }
+                },
+                "tableHeaderBackgroundColorConfig": {
+                    "channel": "rgb",
+                    "value": "#E1E0D9"
+                },
+                "tableRowColorMaxContrast": {
+                    "maximum": "#0B0B0B",
+                    "minimum": "#FFFFFF"
+                }
+            },
+            "dataSources": {
+                "primary": "ds_top"
+            },
+            "description": "Click a row to plot it below",
+            "eventHandlers": [
+                {
+                    "options": {
+                        "tokens": [
+                            {
+                                "key": "row.Component.value",
+                                "token": "component"
+                            }
+                        ]
+                    },
+                    "type": "drilldown.setToken"
+                }
+            ],
+            "options": {
+                "backgroundColor": "transparent",
+                "columnFormat": {
+                    "Trend": {
+                        "data": "> table | seriesByName(\"Trend\") | formatByType(TrendSparklineConfig)"
+                    }
+                },
+                "count": 10,
+                "headerVisibility": "fixed",
+                "showInternalFields": false,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | noRecolor()",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Top 10 by the selected metric",
+            "type": "splunk.table"
+        },
+        "viz_tracked": {
+            "dataSources": {
+                "primary": "ds_tracked"
+            },
+            "description": "Only the ids configured on the TA input (or the push flow's processors_list)",
+            "options": {
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Components with history",
+            "type": "splunk.singlevalue"
+        }
+    }
+}
+]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+]]></meta>
+</dashboard>

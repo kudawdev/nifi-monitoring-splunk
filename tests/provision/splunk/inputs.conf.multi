@@ -1,0 +1,21 @@
+# Second TA input, appended to the auth-mode template when a profile declares
+# more than one instance.
+#
+# The point is that this is a second *independent* NiFi -- its own API, its own
+# credentials, its own token -- not a cluster node. Two inputs means two
+# processes, because the modular input declares use_single_instance = false,
+# which is exactly the concurrency the old .env token storage could not take
+# (defect B-14).
+
+[nifi://nifi-b]
+api_url = https://nifi-b:8443/nifi-api/
+auth_type = basic
+username = admin
+password = ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB
+verify_tls = 0
+
+endpoint_flow_status = 1
+endpoint_system_diagnostics = 1
+host = nifi-b
+index = nifi
+interval = 60

@@ -1,0 +1,352 @@
+<dashboard version="2" theme="light" hideEdit="false">
+  <label>Collection Health</label>
+  <description>Is data collection working?</description>
+  <definition><![CDATA[
+{
+    "dataSources": {
+        "ds_events": {
+            "name": "ds_events",
+            "options": {
+                "query": "| tstats count where `index_nifi` sourcetype=nifi:* | rename count as value",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_fleet": {
+            "name": "Fleet",
+            "options": {
+                "query": "| `nifi_fleet`",
+                "queryParameters": {
+                    "earliest": "-24h",
+                    "latest": "now"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_k_behind": {
+            "name": "ds_k_behind",
+            "options": {
+                "extend": "ds_fleet",
+                "query": "| search health=\"stale\" OR health=\"no_data\" | stats count as value"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_ta": {
+            "name": "ds_k_ta",
+            "options": {
+                "extend": "ds_ta_errors",
+                "query": "| stats count as value"
+            },
+            "type": "ds.chain"
+        },
+        "ds_matrix": {
+            "name": "ds_matrix",
+            "options": {
+                "query": "| tstats latest(_time) as last where `index_nifi` sourcetype=nifi:* earliest=-24h latest=now by host sourcetype\n| append [| rest splunk_server=local count=0 /servicesNS/-/-/data/inputs/nifi | eval host = coalesce(host, title) | fields host interval]\n| eventstats max(interval) as interval by host\n| where isnotnull(sourcetype)\n| eval interval = coalesce(interval, `nifi_default_interval`), age = now() - last,\n       state = case(sourcetype LIKE \"nifi:log:%\" OR sourcetype LIKE \"%bulletin%\", \"✓\", age <= interval * `nifi_stale_factor`, \"✓\", age <= 3600, \"! late\", true(), \"✕ \" . tostring(round(age), \"duration\")),\n       sourcetype = replace(sourcetype, \"^nifi:\", \"\")\n| xyseries host sourcetype state\n| rename host as Instance",
+                "queryParameters": {
+                    "earliest": "-24h",
+                    "latest": "now"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_ta_errors": {
+            "name": "TA HTTP errors",
+            "options": {
+                "query": "index=_internal sourcetype=splunkd component=ExecProcessor \"nifi.py\" \"status_code:\"\n| rex \"status_code: (?<status_code>\\d+)\"\n| eval login = if(searchmatch(\"get_token\"), 1, 0)\n| where tonumber(status_code) >= 400 AND NOT (status_code == \"401\" AND login == 0)\n| eval code = case(login == 1, \"login \" . status_code, tonumber(status_code) >= 500, \"5xx\", true(), status_code)",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_ta_time": {
+            "name": "ds_ta_time",
+            "options": {
+                "extend": "ds_ta_errors",
+                "query": "| timechart span=1h count by code"
+            },
+            "type": "ds.chain"
+        },
+        "ds_where": {
+            "name": "ds_where",
+            "options": {
+                "query": "| tstats count where index=* sourcetype=nifi:* by index sourcetype\n| stats sum(count) as Events, dc(sourcetype) as Sourcetypes by index\n| sort - Events | rename index as Index",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        }
+    },
+    "defaults": {
+        "dataSources": {
+            "ds.search": {
+                "options": {
+                    "queryParameters": {
+                        "earliest": "$time.earliest$",
+                        "latest": "$time.latest$"
+                    }
+                }
+            }
+        }
+    },
+    "description": "Is data collection working?",
+    "inputs": {
+        "input_time": {
+            "options": {
+                "defaultValue": "-24h@h,now",
+                "token": "time"
+            },
+            "title": "Time range",
+            "type": "input.timerange"
+        }
+    },
+    "layout": {
+        "globalInputs": [
+            "input_time"
+        ],
+        "options": {
+            "height": 730,
+            "width": 1440
+        },
+        "structure": [
+            {
+                "item": "viz_events",
+                "position": {
+                    "h": 130,
+                    "w": 480,
+                    "x": 0,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_behind",
+                "position": {
+                    "h": 130,
+                    "w": 480,
+                    "x": 480,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_ta",
+                "position": {
+                    "h": 130,
+                    "w": 480,
+                    "x": 960,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_matrix",
+                "position": {
+                    "h": 300,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 130
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_ta_time",
+                "position": {
+                    "h": 300,
+                    "w": 840,
+                    "x": 0,
+                    "y": 430
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_where",
+                "position": {
+                    "h": 300,
+                    "w": 600,
+                    "x": 840,
+                    "y": 430
+                },
+                "type": "block"
+            }
+        ],
+        "type": "grid"
+    },
+    "title": "Collection Health",
+    "visualizations": {
+        "viz_behind": {
+            "context": {
+                "majorColorEditorConfig": [
+                    {
+                        "to": 1,
+                        "value": "#0CA30C"
+                    },
+                    {
+                        "from": 1,
+                        "value": "#FAB219"
+                    }
+                ]
+            },
+            "dataSources": {
+                "primary": "ds_k_behind"
+            },
+            "description": "No data for more than nifi_stale_factor intervals",
+            "options": {
+                "majorColor": "> majorValue | rangeValue(majorColorEditorConfig)",
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Instances behind",
+            "type": "splunk.singlevalue"
+        },
+        "viz_events": {
+            "context": {
+                "majorColorEditorConfig": [
+                    {
+                        "to": 1,
+                        "value": "#D03B3B"
+                    },
+                    {
+                        "from": 1,
+                        "value": "#0CA30C"
+                    }
+                ]
+            },
+            "dataSources": {
+                "primary": "ds_events"
+            },
+            "description": "Through the index_nifi macro; zero means the macro points at the wrong index",
+            "options": {
+                "majorColor": "> majorValue | rangeValue(majorColorEditorConfig)",
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Events the app can see",
+            "type": "splunk.singlevalue"
+        },
+        "viz_matrix": {
+            "context": {
+                "tableHeaderBackgroundColorConfig": {
+                    "channel": "rgb",
+                    "value": "#E1E0D9"
+                },
+                "tableRowColorMaxContrast": {
+                    "maximum": "#0B0B0B",
+                    "minimum": "#FFFFFF"
+                }
+            },
+            "dataSources": {
+                "primary": "ds_matrix"
+            },
+            "description": "✓ on time · ! late (more than nifi_stale_factor intervals) · ✕ missing for that long · blank: not collected. Logs and bulletins arrive only when there is something to say, so they are never late",
+            "options": {
+                "backgroundColor": "transparent",
+                "count": 20,
+                "headerVisibility": "fixed",
+                "showInternalFields": false,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | noRecolor()",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Last data per instance and source",
+            "type": "splunk.table"
+        },
+        "viz_ta": {
+            "context": {
+                "majorColorEditorConfig": [
+                    {
+                        "to": 1,
+                        "value": "#0CA30C"
+                    },
+                    {
+                        "from": 1,
+                        "value": "#FAB219"
+                    }
+                ]
+            },
+            "dataSources": {
+                "primary": "ds_k_ta"
+            },
+            "options": {
+                "majorColor": "> majorValue | rangeValue(majorColorEditorConfig)",
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "TA HTTP errors",
+            "type": "splunk.singlevalue"
+        },
+        "viz_ta_time": {
+            "dataSources": {
+                "primary": "ds_ta_time"
+            },
+            "description": "login 401: credentials · 403: permissions · 404: a wrong id · 5xx: NiFi. Expired-token 401s are renewed on the spot and not counted",
+            "options": {
+                "legendDisplay": "bottom",
+                "seriesColors": [
+                    "#2A78D6",
+                    "#EB6834",
+                    "#1BAF7A",
+                    "#EDA100"
+                ],
+                "showRoundedY2AxisLabels": false,
+                "showSplitSeries": false,
+                "stackMode": "stacked",
+                "xAxisTitleVisibility": "hide",
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "TA HTTP errors by status code",
+            "type": "splunk.column"
+        },
+        "viz_where": {
+            "context": {
+                "tableHeaderBackgroundColorConfig": {
+                    "channel": "rgb",
+                    "value": "#E1E0D9"
+                },
+                "tableRowColorMaxContrast": {
+                    "maximum": "#0B0B0B",
+                    "minimum": "#FFFFFF"
+                }
+            },
+            "dataSources": {
+                "primary": "ds_where"
+            },
+            "description": "Point the index_nifi macro at the index listed here",
+            "options": {
+                "backgroundColor": "transparent",
+                "count": 10,
+                "headerVisibility": "fixed",
+                "showInternalFields": false,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | noRecolor()",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Where NiFi data is",
+            "type": "splunk.table"
+        }
+    }
+}
+]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+]]></meta>
+</dashboard>

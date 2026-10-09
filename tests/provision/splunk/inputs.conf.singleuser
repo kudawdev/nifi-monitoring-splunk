@@ -1,0 +1,29 @@
+# TA input for the single-user NiFi profile.
+#
+# The password is in cleartext here because this stanza is written before
+# splunkd starts, which is the one way of configuring the add-on that does not
+# go through the form. nifi.py accepts it, with a warning, and the form's REST
+# handler encrypts it into storage/passwords the first time the Inputs page
+# lists it. The form's own path -- encrypted on save, a mask in this file --
+# is what FormCreatedInputTest covers.
+[nifi://nifi]
+api_url = https://nifi:8443/nifi-api/
+auth_type = basic
+username = admin
+password = ctsBtRBKHRAx69EqUghvvgEvjnaLjFEB
+# The NiFi container generates a self-signed certificate for a hostname that
+# only exists inside the compose network, so there is nothing to verify it
+# against. Real deployments should leave verify_tls at its default of 1 and
+# point ca_bundle at a bundle that trusts the instance.
+verify_tls = 0
+
+endpoint_flow_status = 1
+endpoint_system_diagnostics = 1
+
+# Exercised by the harness so the flattening runs against a real payload.
+# Off by default in the shipped app: see the volume note in inputs.conf.spec.
+endpoint_flow_metrics = 1
+metrics_strategy = ALL_COMPONENTS
+host = nifi
+index = nifi
+interval = 60

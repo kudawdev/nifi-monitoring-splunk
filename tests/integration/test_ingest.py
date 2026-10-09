@@ -1,0 +1,1606 @@
+"""Does data actually reach Splunk, and are the fields extracted?
+
+The old harness brought up containers and stopped there: nothing verified
+that events arrived or that the app could read them. These are the checks
+that make "the tests pass" mean something.
+
+Skipped automatically when no stack is running, so `python3 -m unittest
+discover` stays safe to run anywhere.
+"""
+
+import json
+import os
+import unittest
+
+from support import IntegrationTestCase, env, search, wait_for_events
+
+# Sourcetypes the TA's pull path must produce in every supported version.
+CORE_SOURCETYPES = [
+    "nifi:api:flow_status",
+    "nifi:api:system_diagnostics",
+]
+
+# nifi:api:site_to_site was removed in 2.0.0: it was collected and no panel
+# or datamodel object ever read it.
+REMOVED_SOURCETYPES = ["nifi:api:site_to_site"]
+
+# The cluster profile points one custom endpoint at a path NiFi 2.x does not
+# serve, on purpose: CustomEndpointTest asserts a 404 writes no event and
+# still reaches the log. That endpoint therefore logs one error per poll for
+# as long as the stack is up, which is not what the guards below are about --
+# they bound the input's errors to a cold start. Left in, they would fail on
+# uptime instead of on a defect, and the longer the stack ran the worse it
+# would get. Excluded by path so a real error at any other URL still counts.
+DELIBERATE_FAILURE = "controller/status/history"
+NOT_DELIBERATE = 'NOT "%s" ' % DELIBERATE_FAILURE
+
+
+class IngestTest(IntegrationTestCase):
+    collection = "pull"
+
+    def test_the_modular_input_produces_events(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:*" | stats count by sourcetype',
+            minimum=1,
+        )
+        self.assertTrue(
+            rows, "no nifi:api:* events reached Splunk; check the input and splunkd.log"
+        )
+
+    def test_every_core_sourcetype_arrives(self):
+        wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:*" | stats count by sourcetype',
+            minimum=len(CORE_SOURCETYPES),
+        )
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:*" | stats count by sourcetype',
+        )
+        seen = {row["sourcetype"] for row in rows}
+        for sourcetype in CORE_SOURCETYPES:
+            with self.subTest(sourcetype=sourcetype):
+                self.assertIn(sourcetype, seen)
+
+    def test_the_removed_sourcetype_is_no_longer_collected(self):
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:site_to_site" | stats count',
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertEqual(count, 0, "site_to_site is still being ingested")
+
+    def test_flow_status_fields_are_extracted(self):
+        """INDEXED_EXTRACTIONS must turn the JSON into the datamodel's fields."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:flow_status" '
+            "| head 1 | table controllerStatus.activeThreadCount, "
+            "controllerStatus.runningCount, controllerStatus.flowFilesQueued",
+            minimum=1,
+        )
+        self.assertTrue(rows, "no flow_status events to check fields on")
+        row = rows[0]
+        for field in (
+            "controllerStatus.activeThreadCount",
+            "controllerStatus.runningCount",
+            "controllerStatus.flowFilesQueued",
+        ):
+            with self.subTest(field=field):
+                self.assertIn(field, row)
+
+    def test_instance_lookup_enriches_events_with_the_cluster(self):
+        """props.conf declares LOOKUP-instance; without it the app cannot group
+        instances by cluster."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:flow_status" '
+            "| head 1 | table host, cluster",
+            minimum=1,
+        )
+        self.assertTrue(rows)
+        self.assertTrue(rows[0].get("cluster"), "cluster was not looked up from host")
+
+    def unexpected_errors(self):
+        """Errors the input has no business logging, by status code.
+
+        Zero is the right budget on a standalone NiFi and the assertion says
+        so. A cluster is the one case where it is not: a node that is still
+        joining makes the coordinator answer 5xx, and the add-on's correct
+        move is to log it and poll again -- which is exactly the condition
+        provision_flow.py retries in this same harness. One such answer during
+        formation is the cluster settling, not the input failing.
+
+        Seen once, on a run whose assertions took 407 seconds against the
+        usual 172, and not reproduced since. The URL was not captured, so
+        rather than claim a cause this allows a bounded number of one-off 5xx
+        on a clustered profile and nothing else. A real failure is a code that
+        comes back poll after poll, and that still fails at any count.
+        """
+        rows = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd log_level=ERROR "Nifi Log pid=" '
+            + NOT_DELIBERATE +
+            '| rex "status_code: (?<code>\\d+)" '
+            "| stats count by code",
+            earliest="-1h",
+        )
+        if env("CLUSTER", "0") != "1":
+            return rows
+        return [row for row in rows
+                if not (str(row.get("code", "")).startswith("5")
+                        and int(row["count"]) <= 2)]
+
+    def test_the_input_logs_no_errors_at_all(self):
+        """A healthy input has nothing to say at ERROR level.
+
+        This used to allow one 401 per endpoint, because a cold start sent a
+        placeholder bearer and let NiFi refuse it. TA-7 asks for the token
+        first, so the allowance is gone and any ERROR is now a real one.
+        """
+        unexpected = self.unexpected_errors()
+        self.assertEqual(
+            unexpected, [], "the input logged errors: %s" % unexpected
+        )
+
+    def skip_unless_the_input_logs_in(self):
+        """Only a basic-auth input ever calls POST /access/token.
+
+        Asked of Splunk rather than of the profile name: NIFI_AUTH names an
+        environment file, and `none` and `none2x` are both unauthenticated.
+        Reading the first for the second is how these two guards ran against
+        a cluster that never logs in and reported that it had not.
+        """
+        rows = search(
+            self.splunk,
+            '| rest /servicesNS/nobody/nifi_TA_monitoring/data/inputs/nifi '
+            '| search auth_type=basic disabled=0 | stats count')
+        configured = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        if not configured:
+            self.skipTest("no enabled basic-auth input: nothing ever logs in")
+
+    def test_the_cold_start_costs_no_401(self):
+        """TA-7: an authenticated input logs in before its first request.
+
+        The old behaviour was to send the string "unknown" as the bearer,
+        collect a 401 per enabled endpoint and renew from there. It worked --
+        the previous version of this test asserted the recovery -- but it
+        filled the log an operator reads to judge the add-on's health with
+        errors that meant nothing was wrong. The renewal path itself is still
+        there for an expired token, and TokenRefreshTest covers it: that case
+        cannot be detected in advance, only reacted to, so it has no integration
+        signature to assert here.
+        """
+        self.skip_unless_the_input_logs_in()
+        rows = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd log_level=ERROR "Nifi Log pid=" '
+            '"status_code: 401" | stats count',
+            earliest="-1h",
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertEqual(
+            count, 0,
+            "%d bootstrap 401s: the input is still provoking a refusal instead "
+            "of asking for a token" % count,
+        )
+
+    def test_the_input_logs_in_exactly_once_per_cold_start(self):
+        """The other half of TA-7. Asking first is only an improvement if it
+        is asked once: a login per request would trade a bounded handful of
+        401s for an unbounded number of round trips, which is worse. The token
+        goes to storage/passwords, so the next run finds it there.
+
+        Measured per run of the input, not in total. It used to allow four
+        logins across the whole stack, a number with two things folded into
+        it that are not the defect: how many inputs the profile has, and
+        whether NiFi was still starting when splunkd first ran them. A run
+        that could not get a token asks again on every endpoint -- correctly,
+        there is nothing to reuse -- so one slow NiFi on multi-instance, plus
+        the input FormCreatedInputTest adds, came to seven and failed a
+        healthy stack. What the assertion is about is a run that *had* a
+        token and asked again, and that is what is counted.
+        """
+        self.skip_unless_the_input_logs_in()
+        runs = self.logins_by_run()
+        self.assertTrue(any(int(r["logins"]) for r in runs),
+                        "the input never logged in at all")
+        repeated = [r for r in runs
+                    if int(r["failures"]) == 0 and int(r["logins"]) > 1]
+        self.assertEqual(
+            repeated, [],
+            "runs that logged in more than once with a token in hand: the "
+            "token is not being reused across requests: %s" % repeated)
+
+    def logins_by_run(self):
+        """Logins and token failures, per run of the input.
+
+        Every line the input writes carries `Nifi Log pid="<uuid>"`, drawn
+        once per process, and a process is one run of one input.
+        """
+        return search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" '
+            '("No stored token for input" OR "Could not obtain a token" '
+            'OR "Token renewal failed") '
+            '| rex "Nifi Log pid=\\"(?<run>[^\\"]+)\\"" '
+            '| stats count(eval(searchmatch("\\"No stored token for input\\""))) as logins '
+            'count(eval(searchmatch("\\"Could not obtain a token\\" OR '
+            '\\"Token renewal failed\\""))) as failures by run',
+            earliest="-1h",
+        )
+
+    def test_a_healthy_input_errors_zero_times(self):
+        """This has had three shapes, each one a smaller allowance.
+
+        It began by comparing total errors against total indexed events, which
+        was flaky: the error count is a one-off from startup while the event
+        count grows with uptime, so the same healthy stack passed when the
+        assertions ran late and failed when they ran early. It then allowed a
+        ceiling of one 401 per enabled endpoint, which was honest about the
+        cold start but still an allowance nobody could read a number out of.
+        TA-7 removed the reason for it: the input logs in before it asks for
+        anything, so the right budget is none.
+        """
+        unexpected = self.unexpected_errors()
+        total = sum(int(row["count"]) for row in unexpected)
+        self.assertEqual(
+            total, 0,
+            "%d errors from an input with nothing wrong with it: %s"
+            % (total, unexpected),
+        )
+
+
+class FormCreatedInputTest(IntegrationTestCase):
+    """An input created the way the configuration form creates one.
+
+    Every other input in this harness is written into inputs.conf before
+    splunkd starts, with its password in cleartext. That is not how anyone
+    installs the add-on: the form posts to UCC's REST handler, which encrypts
+    the password into storage/passwords and leaves a mask in inputs.conf. The
+    add-on read that mask as a new password, failed to store it, found no
+    credential and never authenticated -- and nothing here noticed, because
+    nothing here went through the form.
+
+    The events go to main, not nifi, so the assertions about the provisioned
+    input are not looking at a second one.
+    """
+
+    collection = "pull"
+    NAME = "form_input"
+    HANDLER = "/servicesNS/nobody/nifi_TA_monitoring/nifi_TA_monitoring_nifi"
+
+    @classmethod
+    def nifi_credentials(cls):
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            env("NIFI_ENV_FILE", ""))
+        values = {}
+        if os.path.isfile(path):
+            with open(path) as handle:
+                for line in handle:
+                    if "=" in line and not line.lstrip().startswith("#"):
+                        key, value = line.strip().split("=", 1)
+                        values[key] = value
+        return (values.get("SINGLE_USER_CREDENTIALS_USERNAME"),
+                values.get("SINGLE_USER_CREDENTIALS_PASSWORD"))
+
+    def setUp(self):
+        super().setUp()
+        username, password = self.nifi_credentials()
+        if not password:
+            self.skipTest("an unauthenticated NiFi: the form stores no password")
+        if not getattr(type(self), "created", False):
+            fields = {
+                "name": self.NAME,
+                "api_url": "https://nifi:8443/nifi-api/",
+                "auth_type": "basic",
+                "username": username,
+                "password": password,
+                "endpoint_flow_status": "1",
+                "endpoint_system_diagnostics": "1",
+                "endpoint_bulletin_board": "0",
+                "interval": "60",
+                "index": "main",
+                "output_mode": "json",
+            }
+            if self.profile_tls_verify:
+                fields.update(verify_tls="1", ca_bundle="/opt/nifi-certs/nifi.pem")
+            else:
+                fields.update(verify_tls="0")
+            self.splunk.post(self.HANDLER, **fields)
+            type(self).created = True
+
+    @classmethod
+    def tearDownClass(cls):
+        if getattr(cls, "created", False):
+            try:
+                cls.splunk.delete("%s/%s" % (cls.HANDLER, cls.NAME))
+            except Exception:  # noqa: BLE001 - the stack is torn down anyway
+                pass
+        super().tearDownClass()
+
+    def test_inputs_conf_holds_only_the_mask(self):
+        rows = search(
+            self.splunk,
+            '| rest /servicesNS/nobody/nifi_TA_monitoring/configs/conf-inputs '
+            '| search title="nifi://%s" | fields password' % self.NAME)
+        self.assertTrue(rows, "the form did not create the stanza")
+        self.assertTrue(set(rows[0].get("password", "")) <= {"*"},
+                        "inputs.conf holds the password in cleartext")
+
+    def test_the_password_is_stored_in_uccs_realm(self):
+        rows = search(
+            self.splunk,
+            '| rest /servicesNS/nobody/nifi_TA_monitoring/storage/passwords '
+            '| search realm="__REST_CREDENTIAL__#nifi_TA_monitoring#data/inputs/nifi" '
+            'username="%s*" | stats count' % self.NAME)
+        self.assertGreater(int(rows[0]["count"]) if rows else 0, 0)
+
+    def test_the_input_collects(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=main host=%s sourcetype="nifi:api:flow_status" | stats count by host' % self.NAME,
+            minimum=1, timeout=420)
+        self.assertTrue(rows and int(rows[0]["count"]) > 0,
+                        "the form-created input indexed nothing")
+
+    def test_the_input_found_its_password(self):
+        self.test_the_input_collects()
+        rows = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" '
+            '("No password found for input %s" OR "Password cannot contain all") '
+            '| stats count' % self.NAME)
+        self.assertEqual(int(rows[0]["count"]) if rows else 0, 0)
+
+
+class VersionDetectionTest(IntegrationTestCase):
+    collection = "pull"
+    """The TA detects which NiFi it is talking to and records it.
+
+    Detection reads versionInfo.niFiVersion from /system-diagnostics, which
+    exists on both the 1.x and 2.x lines, so this must work on every profile.
+    """
+
+    def test_the_detected_version_is_indexed(self):
+        # Pinned to the primary host: the multi-instance profile indexes a
+        # version_info per instance, and `head 1` over both would pick
+        # whichever happened to be written last.
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:version_info" host=nifi '
+            "| head 1 | table niFiVersion, javaVersion",
+            minimum=1,
+        )
+        self.assertTrue(rows, "no nifi:api:version_info event was indexed")
+        self.assertEqual(rows[0].get("niFiVersion"), self.nifi_version)
+
+    def test_the_detected_version_matches_the_profile(self):
+        """A mismatch means the harness and the TA disagree about what is
+        running, which would make every other assertion suspect.
+
+        Asserted per host rather than over the whole index: the
+        multi-instance profile runs two NiFis of different versions on
+        purpose, and collapsing them into one set would either fail here or,
+        worse, hide which input reported what.
+        """
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:version_info" '
+            "| stats values(niFiVersion) as versions by host",
+            minimum=self.profile_instances,
+        )
+        self.assertTrue(rows)
+        expected = {"nifi": self.nifi_version}
+        if self.profile_instances > 1:
+            expected["nifi-b"] = env("NIFI_B_VERSION")
+        for row in rows:
+            with self.subTest(host=row["host"]):
+                versions = row["versions"]
+                if isinstance(versions, str):
+                    versions = [versions]
+                self.assertEqual(list(versions), [expected[row["host"]]])
+
+    def test_system_diagnostics_is_not_fetched_twice(self):
+        """Version detection reuses the diagnostics response, so enabling the
+        endpoint must not double the events.
+
+        Counted per host, not per second. Two inputs polling two NiFis land in
+        the same one-second bin often enough, and that is two instances being
+        collected rather than one being collected twice -- which is what this
+        reported the first time a profile ran more than one.
+        """
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:system_diagnostics" '
+            '| bin _time span=1s | stats count by _time, host | where count > 1',
+        )
+        self.assertEqual(
+            rows, [], "system_diagnostics arrived more than once per cycle: %s" % rows
+        )
+
+
+class BulletinPollingTest(IntegrationTestCase):
+    collection = "pull"
+    """Bulletins now reach Splunk by polling /flow/bulletin-board, with no
+    reporting task configured inside NiFi (TA-5).
+
+    A NiFi with no flow produces no bulletins, so the assertions here check
+    that the polling runs cleanly rather than that bulletins exist. Proving
+    the payload shape needs a flow that actually fails, which is future work
+    (see the plan).
+    """
+
+    def test_the_bulletin_poll_reports_no_errors(self):
+        """Errors of the poll itself, not of a run that had no token.
+
+        A run that could not authenticate -- NiFi still starting when splunkd
+        first ran the input -- also fails to read the bulletin board, and
+        says so at ERROR. That is the authentication failing, which is
+        logged and asserted on its own; counting it here made this test fail
+        on a slow start, intermittently, for a poll that was fine.
+        """
+        rows = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" '
+            '(("bulletin board" log_level=ERROR) OR "Could not obtain a token" '
+            'OR "Token renewal failed") '
+            '| rex "Nifi Log pid=\\"(?<run>[^\\"]+)\\"" '
+            '| stats count(eval(searchmatch("\\"bulletin board\\" log_level=ERROR"))) as errors '
+            'count(eval(searchmatch("\\"Could not obtain a token\\" OR '
+            '\\"Token renewal failed\\""))) as failures by run '
+            '| where failures = 0 | stats sum(errors) as count',
+            earliest="-1h",
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertEqual(count, 0, "the bulletin board poll logged errors")
+
+    def test_the_poll_runs_and_reports_its_count(self):
+        """The input logs a line per poll; its absence means the endpoint was
+        never reached."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" "Bulletins collected" '
+            "| stats count",
+            minimum=1,
+            timeout=180,
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertGreater(count, 0, "the bulletin board was never polled")
+
+    def test_any_bulletin_indexed_carries_the_datamodel_fields(self):
+        """Level and category are always there; the source name is not.
+
+        A cluster emits framework bulletins of category "Clustering" that
+        describe the cluster rather than a component, and those legitimately
+        have no sourceName. Asserting it on an arbitrary bulletin passed only
+        because no profile had ever produced one -- so the field is required
+        of bulletins that name a component, and merely allowed of the rest.
+        """
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:bulletin_board" '
+            "| head 10 | table bulletinLevel, bulletinCategory, bulletinSourceName",
+        )
+        if not rows:
+            self.skipTest("no bulletins were produced by this NiFi")
+        for row in rows:
+            with self.subTest(category=row.get("bulletinCategory")):
+                self.assertIn("bulletinLevel", row)
+                self.assertIn("bulletinCategory", row)
+
+        # Not a list of framework categories to exclude: a cluster emits
+        # "Clustering" and "Primary Node" and there is no reason to believe
+        # that is all of them. The rule is whether the bulletin names a
+        # component, which is exactly what having the field means.
+        named = [r for r in rows if r.get("bulletinSourceName")]
+        if not named:
+            self.skipTest(
+                "only framework bulletins, which describe the instance rather "
+                "than a component: categories seen were %s"
+                % sorted({r.get("bulletinCategory") for r in rows}))
+        self.assertTrue(named[0]["bulletinSourceName"])
+
+
+class FlowMetricsTest(IntegrationTestCase):
+    collection = "pull"
+    """The flattening has to survive a real payload (TA-2).
+
+    /flow/metrics/json returns Prometheus' model with parallel label arrays;
+    the TA zips them into one flat event per sample. The harness enables the
+    endpoint, which the shipped app does not, because of its volume.
+    """
+
+    def test_samples_are_indexed_as_individual_events(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:flow_metrics" | stats count by sourcetype',
+            minimum=1,
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertGreater(count, 1, "flow metrics produced no individual events")
+
+    def test_the_labels_became_searchable_fields(self):
+        """The point of the flattening: labelNames/labelValues would arrive as
+        two uncorrelated multivalue fields without it."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:flow_metrics" metric_name=nifi_jvm_heap_used '
+            "| head 1 | table metric_name, metric_value, instance",
+            minimum=1,
+        )
+        self.assertTrue(rows, "no nifi_jvm_heap_used sample was indexed")
+        self.assertEqual(rows[0]["metric_name"], "nifi_jvm_heap_used")
+        self.assertTrue(rows[0].get("metric_value"))
+        self.assertTrue(rows[0].get("instance"))
+
+    def test_the_parallel_arrays_are_gone(self):
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:flow_metrics" '
+            "| head 1 | table labelNames, labelValues",
+        )
+        if rows:
+            self.assertFalse(rows[0].get("labelNames"), "labelNames reached the index raw")
+            self.assertFalse(rows[0].get("labelValues"), "labelValues reached the index raw")
+
+    def test_component_labels_are_present_on_component_metrics(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:flow_metrics" component_type=* '
+            "| head 1 | table metric_name, component_type, component_name",
+            minimum=1,
+        )
+        self.assertTrue(rows, "no component-scoped metric was indexed")
+        self.assertTrue(rows[0].get("component_type"))
+
+    def test_metrics_collection_reports_no_errors(self):
+        rows = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" '
+            '"flow metrics" log_level=ERROR | stats count',
+            earliest="-1h",
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertEqual(count, 0, "flow metrics collection logged errors")
+
+
+class IndexAndAccelerationTest(IntegrationTestCase):
+    """The app has to find its own data, and the datamodel the panels query
+    has to be accelerated (B-6, APP-2)."""
+
+    def test_the_index_the_macro_points_at_exists(self):
+        rows = search(
+            self.splunk,
+            "| rest /services/data/indexes | search title=nifi | table title",
+        )
+        self.assertTrue(rows, "the nifi index was not created by the app")
+
+    def test_the_macro_resolves_to_data(self):
+        """Runs the macro itself, so a macro pointing at an empty index fails
+        here rather than showing empty panels."""
+        rows = wait_for_events(
+            self.splunk,
+            "| tstats count where `index_nifi` sourcetype=nifi:* by sourcetype",
+            minimum=1,
+        )
+        self.assertTrue(rows, "the index_nifi macro finds no NiFi data")
+
+    def test_the_datamodel_ships_unaccelerated(self):
+        """Acceleration ships off because AppInspect rejects an app that
+        distributes it on; enabling it is the operator's call, documented in
+        upgrading.md. The REST field is a flag, not the JSON blob the .conf
+        holds."""
+        rows = search(
+            self.splunk,
+            "| rest /services/data/models/NIFI | table title, acceleration",
+        )
+        self.assertTrue(rows, "the NIFI datamodel is not present")
+        self.assertIn(
+            str(rows[0]["acceleration"]).lower(), ("0", "false"),
+            "acceleration reads %r" % rows[0]["acceleration"],
+        )
+
+    def test_the_macro_is_visible_outside_the_app(self):
+        """The datamodel is exported to system and every constraint goes
+        through index_nifi, so the macro has to be exported too. These
+        searches run with no app context, which is exactly the case that
+        breaks when it is not."""
+        rows = search(
+            self.splunk,
+            "| rest /services/admin/macros | search title=index_nifi "
+            "| table title, definition",
+        )
+        self.assertTrue(rows, "index_nifi is not visible outside nifi_monitoring")
+
+    def test_the_datamodel_returns_rows_through_tstats(self):
+        """What every dashboard panel does."""
+        rows = wait_for_events(
+            self.splunk,
+            "| tstats count from datamodel=NIFI.Flow_Status",
+            minimum=1,
+        )
+        self.assertTrue(rows)
+        self.assertGreater(int(rows[0].get("count", 0)), 0,
+                           "the datamodel returns no rows via tstats")
+
+
+class DashboardPanelTest(IntegrationTestCase):
+    """Run every data source of every shipped view and check it returns rows.
+
+    The defect this exists for is D-T: the panels used to be tested three at
+    a time, so a whole view could read a dataset only the other collection
+    path feeds -- every bulletin panel, half the instance view -- and the
+    matrix still passed. Here each data source is resolved the way Studio
+    resolves it (a chain runs its base, then its own query), with the views'
+    default tokens, and must return rows unless this profile cannot feed it.
+    """
+
+    VIEWS = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        "nifi_monitoring", "default", "data", "ui", "views",
+    )
+
+    def views(self):
+        import re
+        out = {}
+        for name in sorted(os.listdir(self.VIEWS)):
+            if name.endswith(".xml"):
+                text = open(os.path.join(self.VIEWS, name), encoding="utf-8").read()
+                match = re.search(r"<definition><!\[CDATA\[(.*)\]\]></definition>", text, re.S)
+                out[name[:-4]] = json.loads(match.group(1))
+        return out
+
+    def tokens(self):
+        """What the views' inputs default to, with the instance an input
+        would pick first."""
+        rows = search(self.splunk, "| inputlookup instance | fields host | head 1")
+        host = rows[0]["host"] if rows else "nifi"
+        return {"time.earliest": "-4h@m", "time.latest": "now", "cluster": "*", "host": host,
+                "kind": "processor", "metric": "taskMillis", "operation": "sum", "component": "*",
+                "level": "*", "category": "*", "source": "*", "search": "*"}
+
+    def resolve(self, definition, ds_id, tokens):
+        ds = definition["dataSources"][ds_id]
+        query = ds["options"]["query"]
+        if ds["type"] == "ds.chain":
+            base, earliest = self.resolve(definition, ds["options"]["extend"], tokens)
+            query = base + "\n" + query
+        else:
+            earliest = ds["options"].get("queryParameters", {}).get("earliest", "-4h")
+        for key, value in tokens.items():
+            query = query.replace("$%s$" % key, value)
+            earliest = earliest.replace("$%s$" % key, value)
+        return query, earliest
+
+    def may_be_empty(self, view, ds_id):
+        """The data sources this profile has nothing for, and why."""
+        pull = self.profile_collection == "pull"
+        if view == "nifi_cluster":
+            # A standalone NiFi has no cluster, and the per-node data comes
+            # from the TA only: the push flow polls the cluster-wide API.
+            return not self.profile_cluster or not pull
+        if ds_id in ("ds_deprecations", "ds_fired", "ds_ta_errors", "ds_ta_time"):
+            return True                              # empty on a healthy, clean NiFi
+        if view == "nifi_components" and ds_id in ("ds_connections", "ds_conn_table"):
+            return not pull                          # flow metrics: the TA only
+        if view == "nifi_logs" and ds_id.startswith("ds_req"):
+            return not self.profile_forwarder        # the request log ships with the forwarder
+        if view == "nifi_logs" and ds_id in ("ds_levels", "ds_events", "ds_input_host"):
+            return pull and not self.profile_forwarder
+        return False
+
+    def wait_for_the_data_behind_the_panels(self):
+        """The panels read the API, the workload's status history and its
+        bulletins. Waiting on a panel query is not a wait: most of them
+        return a row whatever happened.
+
+        Returns what Splunk holds of the status history when the wait for it
+        ran out, or "" when it did not: a note for a failing panel to say."""
+        wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:system_diagnostics" '
+            '[| inputlookup instance | fields host] | stats count by host',
+            minimum=1, timeout=420)
+        # What the Components panels filter on, all of it: the instance's
+        # host, processors, and a taskMillis to sum. Waiting for any row of
+        # Component_Status, and then for any processor's, both passed on the
+        # push path while those panels came back empty.
+        host = self.tokens()["host"]
+        history = wait_for_events(
+            self.splunk,
+            '| tstats count from datamodel=NIFI.Component_Status '
+            'where host="%s" Component_Status.component_kind="processor" '
+            'Component_Status.taskMillis=* by host' % host,
+            minimum=1, timeout=420)
+        wait_for_events(
+            self.splunk,
+            '| tstats count from datamodel=NIFI.Bulletins '
+            'where [| inputlookup instance | fields host] by host',
+            minimum=1, timeout=420)
+        if history:
+            return ""
+        by_kind = search(
+            self.splunk,
+            '| tstats count from datamodel=NIFI.Component_Status '
+            'by host Component_Status.component_kind')
+        with_millis = search(
+            self.splunk,
+            '| tstats count from datamodel=NIFI.Component_Status '
+            'where Component_Status.taskMillis=* by host Component_Status.component_kind')
+        return ("\nno processor history with taskMillis for host=%s after 420s."
+                "\nComponent_Status by host and kind: %s"
+                "\n...of which with taskMillis: %s" % (host, by_kind, with_millis))
+
+    def test_every_panel_this_profile_feeds_returns_rows(self):
+        note = self.wait_for_the_data_behind_the_panels()
+        tokens = self.tokens()
+        for view, definition in self.views().items():
+            for ds_id in definition["dataSources"]:
+                query, earliest = self.resolve(definition, ds_id, tokens)
+                with self.subTest(view=view, ds=ds_id):
+                    rows = search(self.splunk, query, earliest=earliest)
+                    if not self.may_be_empty(view, ds_id):
+                        self.assertTrue(rows, "%s.%s returned nothing:\n%s%s"
+                                        % (view, ds_id, query[:300], note))
+
+    def test_the_fleet_has_a_row_per_instance_with_its_numbers(self):
+        self.wait_for_the_data_behind_the_panels()
+        rows = search(self.splunk, "| `nifi_fleet`", earliest="-24h")
+        lookup = {r["host"] for r in search(self.splunk, "| inputlookup instance | fields host")}
+        self.assertEqual({r["host"] for r in rows} & lookup, lookup,
+                         "an instance in the lookup has no fleet row")
+        for row in rows:
+            if row["host"] not in lookup:
+                continue
+            with self.subTest(host=row["host"]):
+                self.assertNotIn(row.get("health"), ("no_data", "stale"), row.get("health_reason"))
+                self.assertTrue(0 <= float(row["heap_pct"]) <= 100)
+                self.assertTrue(0 <= float(row["worst_repo_pct"]) <= 100)
+                # the workload leaves one invalid processor and a failing one
+                self.assertGreaterEqual(int(row["invalid"]), 1)
+                self.assertEqual(row.get("health"), "degraded")
+
+    def test_the_instance_header_reports_the_version(self):
+        self.wait_for_the_data_behind_the_panels()
+        definition = self.views()["nifi_instance"]
+        query, earliest = self.resolve(definition, "ds_header", self.tokens())
+        rows = search(self.splunk, query, earliest=earliest)
+        self.assertTrue(rows)
+        self.assertEqual(rows[0].get("NiFi"), self.nifi_version)
+
+
+class InstanceThresholdTest(IntegrationTestCase):
+    """A threshold set on an instance's row of the inventory changes that
+    instance's health, and nothing else's.
+
+    What an operator does: open Configuration > NiFi Instances and fill in
+    heap_threshold for one NiFi. Here the row is written through the KV
+    store's REST API, the same store the Lookup File Editor writes to, and
+    put back the way it was afterwards.
+    """
+
+    COLLECTION = "storage/collections/data/instance"
+
+    def kv(self):
+        from support import connect
+        return connect(app="nifi_monitoring", owner="nobody")
+
+    def rows(self, service):
+        return json.loads(service.get(self.COLLECTION, output_mode="json").body.read().decode())
+
+    def write(self, service, row):
+        service.post("%s/%s" % (self.COLLECTION, row["_key"]),
+                     headers=[("Content-Type", "application/json")], body=json.dumps(row))
+
+    def fleet_row(self, host):
+        for row in search(self.splunk, "| `nifi_fleet`", earliest="-24h"):
+            if row["host"] == host:
+                return row
+        return None
+
+    def test_a_heap_threshold_on_the_row_makes_that_instance_critical(self):
+        wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:system_diagnostics" '
+            '[| inputlookup instance | fields host] | stats count by host',
+            minimum=1, timeout=420)
+        service = self.kv()
+        original = self.rows(service)[0]
+        host = original["host"]
+        before = self.fleet_row(host)
+        self.assertNotEqual(before.get("heap_severity"), "critical",
+                            "heap is already critical; the test proves nothing")
+        try:
+            changed = {k: v for k, v in original.items() if not k.startswith("_") or k == "_key"}
+            changed.update({"heap_threshold": 1, "heap_threshold_critical": 2})
+            self.write(service, changed)
+            after = self.fleet_row(host)
+            self.assertEqual(after["heap_warn"], "1")
+            self.assertEqual(after["heap_crit"], "2")
+            self.assertEqual(after["heap_severity"], "critical")
+            self.assertEqual(after["health"], "critical")
+            self.assertIn(">= 2%", after["health_reason"])
+        finally:
+            self.write(service, {k: v for k, v in original.items()
+                                 if not k.startswith("_") or k == "_key"})
+        restored = self.fleet_row(host)
+        self.assertEqual(restored["heap_warn"], before["heap_warn"])
+
+    def test_an_unlisted_host_falls_back_to_the_macros(self):
+        """The lookup's default_match puts "standalone" in every column of a
+        host it does not know; that must not become a threshold."""
+        rows = search(self.splunk,
+                      '| makeresults | eval host="not-in-the-inventory" | `nifi_instance_thresholds` '
+                      '| eval macro = `nifi_threshold_heap` | table heap_threshold heap_warn macro')
+        self.assertTrue(rows)
+        self.assertEqual(rows[0]["heap_warn"], rows[0]["macro"])
+
+
+class DatamodelObjectTest(IntegrationTestCase):
+    """The objects added for the new sourcetypes have to actually return rows
+    through the model, not just exist in NIFI.json (APP-3)."""
+
+    def requires_pull(self):
+        """Some objects are only fed by the TA, so they have nothing to show
+        on a push profile even though the object itself is fine."""
+        if self.profile_collection != "pull":
+            self.skipTest("only the TA produces this sourcetype")
+
+    def rows_from(self, obj):
+        return search(self.splunk, "| tstats count from datamodel=NIFI.%s" % obj)
+
+    def count_from(self, obj):
+        rows = self.rows_from(obj)
+        return int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+
+    def test_the_model_knows_the_new_objects(self):
+        """Query each object rather than reading the model's REST
+        representation: an object Splunk has not registered makes tstats
+        fail, which is the behaviour that matters, and it does not depend on
+        how the REST endpoint happens to name its fields."""
+        for obj in ("Flow_Metrics", "Bulletins", "Throughput", "Component_Status",
+                    "Version_Info", "Request_Log"):
+            with self.subTest(obj=obj):
+                rows = search(
+                    self.splunk, "| tstats count from datamodel=NIFI.%s" % obj
+                )
+                # An unknown object errors out and yields no rows at all; a
+                # known object with no data still returns a count row.
+                self.assertTrue(rows, "datamodel=NIFI.%s is not queryable" % obj)
+
+    def test_flow_metrics_returns_rows(self):
+        self.requires_pull()
+        wait_for_events(self.splunk, "| tstats count from datamodel=NIFI.Flow_Metrics",
+                        minimum=1)
+        self.assertGreater(self.count_from("Flow_Metrics"), 0)
+
+    def test_version_info_returns_rows(self):
+        self.requires_pull()
+        wait_for_events(self.splunk, "| tstats count from datamodel=NIFI.Version_Info",
+                        minimum=1)
+        self.assertGreater(self.count_from("Version_Info"), 0)
+
+    def test_flow_metrics_fields_are_queryable_through_the_model(self):
+        self.requires_pull()
+        rows = wait_for_events(
+            self.splunk,
+            "| tstats count from datamodel=NIFI.Flow_Metrics "
+            "where Flow_Metrics.metric_name=nifi_jvm_heap_used by Flow_Metrics.instance",
+            minimum=1,
+        )
+        self.assertTrue(rows, "metric_name is not queryable through the model")
+
+    def test_the_request_log_stays_out_of_the_generic_logs_object(self):
+        """Logs excludes it, so a request event must not appear there."""
+        rows = search(
+            self.splunk,
+            "| tstats count from datamodel=NIFI.Logs "
+            'where Logs.sourcetype="nifi:log:request"',
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertEqual(count, 0, "the request log leaked into the Logs object")
+
+
+class ForwarderPathTest(IntegrationTestCase):
+    """The other half of the pull strategy: NiFi's log files, shipped by a
+    Universal Forwarder.
+
+    The API half had four profiles and the log half had none, so every
+    log-side change of 2.0.0 -- the two new sourcetypes, the event breaking
+    that groups multi-line messages, the corrected container paths -- was
+    only ever checked against props.conf, never against a real log file
+    arriving in a real index.
+    """
+
+    forwarder = True
+
+    #: nifi-deprecation.log is created empty and only written when something
+    #: deprecated is used, so a clean instance legitimately has nothing to
+    #: send. It is asserted separately, and so is the bootstrap log.
+    EXPECTED = [
+        "nifi:log:app",
+        "nifi:log:user",
+        "nifi:log:request",
+    ]
+
+    def wait_for_app_events(self):
+        """`| stats count` emits a row even when it counts nothing, so waiting
+        on it returns at once and proves nothing -- and then `max()` over an
+        empty set emits no column at all, which surfaces as a KeyError rather
+        than as the assertion failing. A by-clause returns no rows until there
+        is data, which is what "wait" has to mean here.
+        """
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:app" | stats count by sourcetype',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows, "no nifi:log:app events arrived")
+
+    def test_the_forwarder_delivers_the_log_sourcetypes(self):
+        wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:*" | stats count by sourcetype',
+            minimum=len(self.EXPECTED), timeout=420,
+        )
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:*" | stats count by sourcetype')
+        seen = {r["sourcetype"] for r in rows}
+        for sourcetype in self.EXPECTED:
+            with self.subTest(sourcetype=sourcetype):
+                self.assertIn(sourcetype, seen)
+
+    def test_the_bootstrap_log_arrives_when_the_entrypoint_writes_one(self):
+        """Measured, not assumed: nifi-bootstrap.log is 0 bytes under the
+        unsecured entrypoint.
+
+        That entrypoint ends in `nifi.sh run`, which keeps NiFi in the
+        foreground and sends the bootstrap messages to stdout; the image's own
+        start.sh launches it in the background and waits, which is what fills
+        the file. So the sourcetype is a property of how NiFi was started, not
+        of the add-on, and requiring it everywhere would fail a profile for
+        something it does not control.
+        """
+        entrypoint = env("NIFI_ENTRYPOINT", "")
+        if "start-unsecured" in entrypoint:
+            self.skipTest(
+                "this profile runs NiFi in the foreground, which leaves "
+                "nifi-bootstrap.log empty")
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:bootstrap" | stats count by sourcetype',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows, "no nifi:log:bootstrap events arrived")
+
+    def test_the_shipped_monitor_paths_match_the_container(self):
+        """Defect B-21: the stanzas pointed at /opt/nifi/logs/, which is not
+        where the official image keeps them. Only the local/ override flips
+        `disabled`, so the paths under test are the ones the TA ships."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:app" | stats count by source',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows, "no nifi:log:app events arrived")
+        for row in rows:
+            with self.subTest(source=row["source"]):
+                self.assertTrue(
+                    row["source"].startswith("/opt/nifi/nifi-current/logs/"),
+                    "unexpected source %r" % row["source"],
+                )
+
+    def test_multi_line_messages_are_one_event(self):
+        """Defect B-20, the reason for the LINE_BREAKER in props.conf.
+
+        A clean NiFi 2.11 start writes about a thousand continuation lines
+        with no timestamp of their own. Broken on every newline they become
+        that many junk events; grouped, they stay part of the message that
+        owns them.
+        """
+        self.wait_for_app_events()
+        # Counting newlines with len()/replace() rather than the `regex`
+        # command or split()/mvcount(): those depend on how SPL unescapes a
+        # backslash inside a double-quoted string, and both came back empty
+        # against a stack that demonstrably held multi-line events.
+        rows = search(
+            self.splunk,
+            r'index=nifi sourcetype="nifi:log:app" '
+            r'| eval newlines = len(_raw) - len(replace(_raw, "[\r\n]", "")) '
+            r'| stats max(newlines) as longest, count as events')
+        self.assertTrue(rows, "the search returned nothing at all")
+        self.assertGreater(
+            int(rows[0]["longest"]), 0,
+            "no event spans more than one line, so multi-line messages "
+            "were split into one event per line",
+        )
+
+    def test_no_event_is_an_orphan_continuation_line(self):
+        """The negative half of the same defect: a continuation line indexed
+        on its own has no timestamp and no level, which is exactly how the
+        breakage shows up in a search.
+
+        Waits first: with no events at all the count is trivially zero and the
+        test would pass without having checked anything.
+        """
+        self.wait_for_app_events()
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:app" '
+            '| where isnull(level) | stats count as orphans')
+        self.assertTrue(rows, "the search returned nothing at all")
+        self.assertEqual(
+            int(rows[0]["orphans"]), 0,
+            "%s events carry no level, so they are stray continuation lines"
+            % rows[0]["orphans"],
+        )
+
+    def test_the_request_log_is_parsed_as_ncsa(self):
+        """TA-12 reuses the core's access-extractions instead of repeating the
+        regex, so the proof is that the core's field names come out."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:request" '
+            '| head 1 | table status, uri_path, clientip',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows, "no nifi:log:request events arrived")
+        row = rows[0]
+        for field in ("status", "uri_path", "clientip"):
+            with self.subTest(field=field):
+                self.assertTrue(row.get(field), "%s not extracted" % field)
+
+    def test_the_request_log_keeps_its_own_timestamp(self):
+        """It is the only NiFi log with a timestamp of its own, so _time must
+        be the request's, not the moment the forwarder read the line."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:request" '
+            '| eval lag = _indextime - _time | stats min(lag) as lag',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows, "no nifi:log:request events arrived")
+        self.assertGreaterEqual(
+            float(rows[0]["lag"]), 0,
+            "events are indexed before they happened, so _time is wrong",
+        )
+
+    def test_the_deprecation_log_is_monitored_even_when_empty(self):
+        """The file is created empty and stays that way until something
+        deprecated runs, so its absence from the index is not a failure. What
+        must hold is that the TA declares the stanza -- the panel that reads
+        it is the migration-readiness one."""
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:deprecation" | stats count')
+        count = int(rows[0]["count"]) if rows else 0
+        if count == 0:
+            self.skipTest(
+                "nifi-deprecation.log is empty on a clean instance; the "
+                "stanza itself is covered by the unit tests")
+        self.assertGreater(count, 0)
+
+
+class ClusterTest(IntegrationTestCase):
+    """A NiFi cluster read through one input.
+
+    Section 11.3 of the plan: the cluster is the instance and the node is a
+    dimension (decision C-1), so `host` keeps meaning what the operator
+    configured and `node` says which member an event describes. Nothing in the
+    input asks for any of this -- the add-on detects that NiFi is clustered
+    and collects it -- which is what these assertions are really checking.
+    """
+
+    cluster = True
+    collection = "pull"
+
+    NODES = 2
+
+    def test_every_node_is_reported(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:cluster_nodes" '
+            '| stats count by node',
+            minimum=self.NODES, timeout=420,
+        )
+        self.assertEqual(len(rows), self.NODES,
+                         "expected %d nodes, got %s" % (self.NODES, [r["node"] for r in rows]))
+
+    def test_the_cluster_is_reported_whole(self):
+        """The number an operator actually wants: connected out of total."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:cluster_nodes" '
+            '| stats latest(clusterConnectedNodeCount) as connected, '
+            'latest(clusterNodeCount) as total',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows)
+        self.assertEqual(int(rows[0]["connected"]), self.NODES)
+        self.assertEqual(int(rows[0]["total"]), self.NODES)
+
+    def test_exactly_one_node_coordinates(self):
+        """Two coordinators means a split cluster; none means it has not
+        finished electing."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:cluster_nodes" roles=*Coordinator* '
+            '| stats dc(node) as coordinators',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows)
+        self.assertEqual(int(rows[0]["coordinators"]), 1)
+
+    def test_diagnostics_arrive_per_node(self):
+        """Finding (a) of section 11.3: the aggregate hid the node that is
+        running out of heap. Each node's snapshot has the same shape as the
+        aggregate, so the datamodel fields work unchanged."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:node_diagnostics" '
+            '| stats count by node',
+            minimum=self.NODES, timeout=420,
+        )
+        self.assertEqual(len(rows), self.NODES)
+
+    def test_per_node_diagnostics_carry_the_aggregate_fields(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:node_diagnostics" '
+            '| head 1 | table node, '
+            '"systemDiagnostics.aggregateSnapshot.heapUtilization", '
+            '"systemDiagnostics.aggregateSnapshot.totalThreads"',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows)
+        row = rows[0]
+        self.assertTrue(row.get("node"))
+        self.assertTrue(row.get("systemDiagnostics.aggregateSnapshot.heapUtilization"),
+                        "the per-node snapshot did not extract like the aggregate")
+
+    def test_the_host_still_names_the_cluster_not_the_node(self):
+        """Decision C-1. If `host` became the node, every existing panel would
+        start reporting one NiFi as two."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:*" | stats dc(host) as hosts',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows)
+        self.assertEqual(int(rows[0]["hosts"]), 1)
+
+    def test_the_cluster_panels_return_a_row_per_node(self):
+        """Finding D-D of section 12 says APP-3 added four datamodel objects
+        that no dashboard queries. Adding two more and no panel would have
+        repeated it, so the panels are asserted the same way the data is."""
+        import re as _re
+        view = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "..", "nifi_monitoring", "default", "data", "ui", "views", "nifi_cluster.xml")
+        text = open(view, encoding="utf-8").read()
+        definition = json.loads(_re.search(r"<definition><!\[CDATA\[(.*)\]\]></definition>",
+                                           text, _re.S).group(1))
+        # Wait on the sourcetypes, then ask the panel: the panel is a tstats
+        # over the datamodel and answers with whatever the model has.
+        for sourcetype in ("nifi:api:cluster_nodes", "nifi:api:node_diagnostics"):
+            wait_for_events(
+                self.splunk,
+                'index=nifi sourcetype="%s" | stats count by node' % sourcetype,
+                minimum=self.NODES, timeout=420)
+        host = search(self.splunk, "| tstats count from datamodel=NIFI.Cluster_Nodes by host")[0]["host"]
+        query = definition["dataSources"]["ds_nodes"]["options"]["query"].replace("$host$", host)
+        rows = search(self.splunk, query, earliest="-15m")
+        self.assertEqual(len(rows), self.NODES,
+                         "the nodes panel returned %d rows for %d nodes" % (len(rows), self.NODES))
+        for row in rows:
+            with self.subTest(node=row.get("node")):
+                self.assertTrue(row.get("node"), "the panel does not name the node")
+                self.assertEqual(row.get("status"), "CONNECTED")
+                self.assertTrue(0 < float(row["heap"]) <= 100, "no per-node heap")
+
+    def test_bulletins_name_the_node_they_came_from(self):
+        """Finding (c): FIELDALIAS-bulletin_node went two releases without a
+        cluster to validate it against."""
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:bulletin_board" '
+            '| where isnotnull(bulletinNodeAddress) | stats count')
+        self.assertTrue(rows, "the search returned nothing at all")
+        if int(rows[0]["count"]) == 0:
+            self.skipTest("this cluster produced no bulletins to check")
+        self.assertGreater(int(rows[0]["count"]), 0)
+
+
+class CustomEndpointTest(IntegrationTestCase):
+    """User-declared endpoints, which had no integration coverage at all.
+
+    TA-15 shipped with twenty-three unit tests, every one of them about
+    parsing and validating the field. Nothing checked that a custom endpoint
+    reaches the index, and nothing checked what happens when it cannot -- so
+    defect CE-1, an error body indexed under the user's own sourcetype, went
+    unnoticed until someone configured thirteen of them by hand and read what
+    arrived.
+    """
+
+    cluster = True
+    collection = "pull"
+
+    def test_a_working_custom_endpoint_reaches_the_index(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:custom:cluster" | stats count by sourcetype',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows)
+        self.assertGreater(int(rows[0]["count"]), 0)
+
+    def test_a_failing_custom_endpoint_indexes_nothing(self):
+        """CE-1. /flow/controller/status/history does not exist in NiFi 2.x;
+        the add-on must log the 404 and write no event, not index the body."""
+        wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:custom:cluster" | stats count by sourcetype',
+            minimum=1, timeout=420,
+        )
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:custom:missing" | stats count')
+        self.assertTrue(rows, "the search returned nothing at all")
+        self.assertEqual(
+            int(rows[0]["count"]), 0,
+            "%s events indexed for an endpoint that returns 404"
+            % rows[0]["count"])
+
+    def test_no_error_body_is_indexed_under_any_sourcetype(self):
+        """The general form of the same defect: __get_request used to return
+        the body whatever the status, so a built-in endpoint could do this
+        too."""
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:*" '
+            '("could not be found" OR "WebClientServiceException") '
+            '| stats count by sourcetype')
+        self.assertEqual(
+            rows, [],
+            "error bodies indexed as data: %s" % [r.get("sourcetype") for r in rows])
+
+    def test_the_failure_is_still_visible_in_the_log(self):
+        """Not writing the event must not mean hiding the problem.
+
+        Waits on a by-clause, not `| stats count`: that returns a row even
+        when it counts nothing, so waiting on it comes back at once and the
+        assertion runs before splunkd has indexed the line. The same mistake
+        is spelled out in ForwarderPathTest.wait_for_app_events, and this is
+        where it was made again.
+        """
+        rows = wait_for_events(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" '
+            '("%s" OR "returned nothing usable") ' % DELIBERATE_FAILURE +
+            '| stats count by sourcetype',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(
+            rows,
+            "the endpoint failed silently: nothing indexed and nothing logged")
+        self.assertGreater(int(rows[0]["count"]), 0)
+
+
+class TlsVerificationTest(IntegrationTestCase):
+    """Defect R-8: the add-on's default is to verify NiFi's certificate, and
+    no profile exercised it.
+
+    2.0.0 turned verification on by default (B-23) and called it a breaking
+    change, but every harness profile set verify_tls = 0 because the
+    containers use self-signed certificates -- so the only path under test was
+    the one a real deployment is told not to use. The certificate NiFi issues
+    for itself is exported and handed to the add-on as a CA bundle, which is
+    what an operator does with a private CA.
+    """
+
+    tls_verify = True
+    collection = "pull"
+
+    def test_events_arrive_with_verification_on(self):
+        """The whole assertion in one line: if the handshake were rejected,
+        nothing would be indexed at all."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:flow_status" | stats count by sourcetype',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows)
+        self.assertGreater(
+            int(rows[0]["count"]), 0,
+            "no events with verify_tls = 1: the certificate was rejected")
+
+    def test_no_certificate_error_is_logged(self):
+        """Events could still arrive while a cycle fails intermittently, and a
+        certificate problem names itself in the log."""
+        rows = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" '
+            '(CERTIFICATE_VERIFY_FAILED OR SSLError OR "certificate verify failed") '
+            '| stats count')
+        self.assertTrue(rows, "the search returned nothing at all")
+        self.assertEqual(
+            int(rows[0]["count"]), 0,
+            "%s certificate errors logged" % rows[0]["count"])
+
+    def test_the_input_really_has_verification_on(self):
+        """Guards against the assertion above passing because the seed quietly
+        left verify_tls at 0."""
+        job = self.splunk.jobs.create(
+            "| rest /servicesNS/nobody/nifi_TA_monitoring/data/inputs/nifi "
+            "| table title, verify_tls, ca_bundle",
+            exec_mode="normal")
+        import time as _t
+        deadline = _t.time() + 60
+        while not job.is_done() and _t.time() < deadline:
+            _t.sleep(2)
+        import json as _json
+        rows = _json.loads(job.results(output_mode="json").read().decode())["results"]
+        self.assertTrue(rows, "the input is not registered")
+        for row in rows:
+            with self.subTest(input=row.get("title")):
+                self.assertEqual(str(row.get("verify_tls")), "1")
+                self.assertTrue(row.get("ca_bundle"), "no ca_bundle configured")
+
+
+class MultiInstanceTest(IntegrationTestCase):
+    """Several independent NiFi instances behind one TA.
+
+    The app's stated purpose is centralising visibility across several NiFi
+    instances, and until this profile existed nothing exercised it: every
+    other profile has one instance, one input and one lookup row. Two inputs
+    also mean two processes, because the modular input declares
+    use_single_instance = false, which is the concurrency the old .env token
+    storage could not survive (defect B-14).
+    """
+
+    instances = 2
+    collection = "pull"
+
+    HOSTS = ["nifi", "nifi-b"]
+
+    def test_every_instance_produces_events(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:flow_status" | stats count by host',
+            minimum=len(self.HOSTS), timeout=420,
+        )
+        seen = {row["host"] for row in rows}
+        for host in self.HOSTS:
+            with self.subTest(host=host):
+                self.assertIn(host, seen)
+
+    def test_the_instances_are_told_apart_by_version(self):
+        """The profile runs different NiFi versions on purpose: autodetection
+        (TA-3) has to be per input, not per installation. Identical versions
+        here would prove nothing."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:version_info" '
+            '| stats values(niFiVersion) as version by host',
+            minimum=len(self.HOSTS), timeout=420,
+        )
+        versions = {row["host"]: str(row["version"]) for row in rows}
+        for host in self.HOSTS:
+            with self.subTest(host=host):
+                self.assertIn(host, versions)
+        self.assertNotEqual(
+            versions["nifi"], versions["nifi-b"],
+            "both inputs report %r, so the version is not being detected per "
+            "input" % versions["nifi"],
+        )
+
+    def test_neither_input_steals_the_other_token(self):
+        """The defect this profile was built to catch. Two processes renewing
+        a token at once used to rewrite one shared .env non-atomically; the
+        symptom is one input authenticating fine while the other loops on 401
+        long after its cold start.
+
+        The allowance for a bootstrap 401 per input is gone with TA-7: each
+        one logs in before its first request, so a 401 here is either an
+        expired token -- which cannot happen inside a test run, NiFi issues
+        them for eight hours -- or the clobbering this exists to catch.
+        """
+        rows = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" '
+            '"Error HTTP request" "status_code: 401" '
+            '| stats count')
+        self.assertTrue(rows, "the search returned nothing at all")
+        count = int(rows[0]["count"]) if rows[0].get("count") else 0
+        self.assertEqual(
+            count, 0,
+            "%d 401s across %d inputs: the token is being clobbered"
+            % (count, len(self.HOSTS)),
+        )
+
+    def test_each_instance_keeps_its_own_lookup_row(self):
+        """Without a row per host the app cannot group them, and the lookup
+        falls back to default_match = standalone."""
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:flow_status" '
+            '| stats values(cluster) as cluster by host',
+            minimum=len(self.HOSTS), timeout=420,
+        )
+        for row in rows:
+            with self.subTest(host=row["host"]):
+                self.assertNotEqual(
+                    str(row["cluster"]), "standalone",
+                    "%s did not match the instance lookup" % row["host"],
+                )
+
+    def test_the_overview_lists_every_instance(self):
+        """The panel an operator opens first has to show both, or centralising
+        them is a claim with nothing behind it."""
+        import re as _re
+        text = open(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "..", "nifi_monitoring", "default", "data", "ui", "views",
+            "nifi_overview.xml"), encoding="utf-8").read()
+        sources = json.loads(_re.search(r"<definition><!\[CDATA\[(.*)\]\]></definition>",
+                                        text, _re.S).group(1))["dataSources"]
+        # the instances table: the fleet search and the chain that shapes it
+        query = (sources["ds_fleet"]["options"]["query"] + "\n"
+                 + sources["ds_t_instances"]["options"]["query"]).replace("$cluster$", "*")
+        wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:system_diagnostics" '
+            '| stats count by host',
+            minimum=len(self.HOSTS), timeout=420)
+        rows = search(self.splunk, query, earliest="-24h")
+        seen = {row["Instance"] for row in rows}
+        for host in self.HOSTS:
+            with self.subTest(host=host):
+                self.assertIn(host, seen)
+
+
+class PushPathTest(IntegrationTestCase):
+    collection = "hec"
+    """Data arriving through the flow inside NiFi rather than the TA.
+
+    Only meaningful on a profile whose collection is `hec`; the others skip.
+    """
+
+    def test_events_arrive_through_the_hec(self):
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:*" | stats count by sourcetype',
+            minimum=1,
+            timeout=420,
+        )
+        self.assertTrue(rows, "nothing reached Splunk through the HEC")
+
+    def test_the_ta_input_is_not_also_collecting(self):
+        """Running both paths duplicates every event, which the docs warn
+        about; the profile disables the input so this must stay at zero."""
+        rows = search(
+            self.splunk,
+            'index=_internal sourcetype=splunkd "Nifi Log pid=" "Started Stream Events" '
+            "| stats count",
+            earliest="-1h",
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertEqual(count, 0, "the TA input ran as well as the flow")
+
+    def test_the_flow_delivers_the_sourcetypes_it_is_responsible_for(self):
+        """What the push path actually carries: the API endpoints the flow
+        polls, plus NiFi's own log files through TailFile."""
+        wait_for_events(self.splunk,
+                        'index=nifi | stats count by sourcetype', minimum=1, timeout=420)
+        rows = search(self.splunk, 'index=nifi | stats count by sourcetype')
+        seen = {r["sourcetype"] for r in rows}
+        for sourcetype in ("nifi:api:flow_status", "nifi:api:system_diagnostics",
+                           "nifi:log:app"):
+            with self.subTest(sourcetype=sourcetype):
+                self.assertIn(sourcetype, seen)
+
+    def test_the_flow_does_not_duplicate_itself_across_nodes(self):
+        """The defect this profile exists for.
+
+        NiFi replicates a flow to every node, so with the default
+        executionNode = ALL each node polled the cluster-wide API and pushed
+        its own copy: two nodes meant two of every event and twice the licence
+        bill, with nothing in the data to show it. The API sources are pinned
+        to the primary node, and what that has to look like from here is one
+        event per poll rather than one per node per poll.
+        """
+        if not self.profile_cluster:
+            self.skipTest("a single node cannot duplicate across nodes")
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:api:flow_status" '
+            '| bin _time span=10s | stats count by _time '
+            '| stats max(count) as worst',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows)
+        self.assertLessEqual(
+            int(rows[0]["worst"]), 1,
+            "%s flow_status events in one 10s bucket: the flow is running on "
+            "more than one node" % rows[0]["worst"],
+        )
+
+    def test_the_instance_wide_events_name_the_instance_not_the_node(self):
+        """Decision C-1 on the push path. The flow used to send every event
+        with host = the sending node's hostname; once the API sources were
+        pinned to the primary, that named the cluster after whichever node
+        won the election, which matches the instance lookup only by luck --
+        the overview then reports the cluster Down and the node as a phantom
+        instance. The reporting tasks' records arrive over Site-to-Site on
+        whichever node it picks, which split bulletins and throughput across
+        node names. instance_name gives both the lookup's host."""
+        if not self.profile_cluster:
+            self.skipTest("a single node's hostname is its instance name")
+        wait_for_events(
+            self.splunk,
+            'index=nifi (sourcetype="nifi:api:*" OR sourcetype="nifi:reporting:*") '
+            '| stats count by host',
+            minimum=1, timeout=420,
+        )
+        sent = {r["host"] for r in search(
+            self.splunk, 'index=nifi (sourcetype="nifi:api:*" OR sourcetype="nifi:reporting:*") '
+                         '| stats count by host')}
+        configured = {r["host"] for r in search(
+            self.splunk, '| inputlookup instance | fields host')}
+        self.assertEqual(sent, configured,
+                         "the API and reporting events carry host %s, the instance lookup "
+                         "configures %s" % (sorted(sent), sorted(configured)))
+
+    def test_the_logs_still_come_from_every_node(self):
+        """The other half of the same fix. Pinning the API sources must not
+        pin the log tailer: log files are the one thing that really is per
+        node, so every node has to tail its own."""
+        if not self.profile_cluster:
+            self.skipTest("a single node has only its own logs")
+        rows = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:log:app" | stats dc(host) as hosts, count',
+            minimum=1, timeout=420,
+        )
+        self.assertTrue(rows)
+        self.assertGreater(int(rows[0]["count"]), 0,
+                           "no log events arrived: the tailer was pinned too")
+
+    def test_the_flow_does_not_send_the_retired_sourcetype(self):
+        """site_to_site was retired from the TA (D-2). The flow must match, or
+        it delivers events for a sourcetype no props.conf defines any more --
+        they arrive with no fields extracted."""
+        rows = search(self.splunk,
+                      'index=nifi sourcetype="nifi:api:site_to_site" | stats count')
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertEqual(count, 0, "the flow still sends site_to_site")
+
+    def test_the_flow_reports_no_bulletins_at_error_level(self):
+        """A processor failing inside the flow raises an ERROR bulletin, which
+        is how a broken push path shows itself."""
+        # The harness workload fails on purpose (provision_workload.py), and
+        # its bulletins are also the proof that bulletins reach Splunk on this
+        # path at all: until the harness installed the reporting tasks no
+        # nifi:reporting:bulletin ever arrived, and this test passed by
+        # counting nothing.
+        workload = wait_for_events(
+            self.splunk,
+            'index=nifi sourcetype="nifi:reporting:bulletin" bulletinGroupName="harness-workload" '
+            '| stats count by bulletinSourceName',
+            minimum=1, timeout=420)
+        self.assertTrue(workload, "no bulletin reached Splunk through the reporting task")
+        rows = search(
+            self.splunk,
+            'index=nifi sourcetype="nifi:*" bulletinLevel=ERROR bulletinGroupName!="harness-workload" '
+            '| stats count values(bulletinSourceName) as sources',
+        )
+        count = int(rows[0]["count"]) if rows and rows[0].get("count") else 0
+        self.assertEqual(count, 0, "the flow raised %d error bulletins: %s"
+                         % (count, rows[0].get("sources") if rows else ""))
+
+
+if __name__ == "__main__":
+    unittest.main()

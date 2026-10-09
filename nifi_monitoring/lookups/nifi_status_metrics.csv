@@ -1,0 +1,19 @@
+field,label,unit,component_type,description
+taskMillis,Task time,ms,both,Time spent running the component's tasks
+taskCount,Tasks,count,processor,Number of tasks run
+inputCount,FlowFiles in,count,both,FlowFiles received from upstream connections
+inputBytes,Bytes in,bytes,both,Bytes of the FlowFiles received from upstream connections
+outputCount,FlowFiles out,count,both,FlowFiles sent to downstream connections
+outputBytes,Bytes out,bytes,both,Bytes of the FlowFiles sent to downstream connections
+bytesRead,Bytes read,bytes,both,Content read from the content repository
+bytesWritten,Bytes written,bytes,both,Content written to the content repository
+bytesTransferred,Bytes transferred,bytes,both,Bytes read plus bytes written
+flowFilesRemoved,FlowFiles removed,count,processor,FlowFiles dropped or auto-terminated
+averageLineageDuration,Average lineage duration,ms,processor,Average time a FlowFile has spent in the flow when it reaches this processor
+cpuTime,CPU time,ms,processor,CPU time spent by the component (NiFi 2.x)
+garbageCollectionTime,GC time,ms,processor,Garbage collection time attributed to the component (NiFi 2.x)
+contentRepoReadTime,Content read time,ms,processor,Time reading the content repository (NiFi 2.x)
+contentRepoWriteTime,Content write time,ms,processor,Time writing the content repository (NiFi 2.x)
+sessionCommitTime,Session commit time,ms,processor,Time committing sessions (NiFi 2.x)
+queuedCount,FlowFiles queued,count,process_group,FlowFiles waiting in the group's connections
+queuedBytes,Bytes queued,bytes,process_group,Bytes waiting in the group's connections

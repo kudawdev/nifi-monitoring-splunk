@@ -1,48 +1,212 @@
-# Tests in Docker compose
+# Tests
 
+Two layers:
 
-## Stand Alone without Login - Nifi 1.23, Splunk 9.1
+| | What it checks | Needs Docker |
+|---|---|---|
+| `unit/` | The TA's Python: token refresh, input validation, credential handling, and the matrix reader | no |
+| `integration/` | That data actually reaches Splunk and the fields come out, against a real NiFi + Splunk pair | yes |
 
-Run 1 nifi 1.23 container (standalone) and 1 splunk 9.1 container (standalone)
+## Building the add-on
 
-* Run docker compose test environment
+`nifi_TA_monitoring` is generated. `app.conf`, `inputs.conf`, the spec,
+`restmap.conf`, `lib/` and the whole configuration UI come out of `ucc-gen`
+and land in `output/nifi_TA_monitoring/`, which is gitignored:
+
 ```
-docker compose -f nifi123-splunk91-nifi_nologin.yml -p "nifi_nologin" up
-```
-
-* Connect to splunk container and run the script
-```
-docker exec -u root -ti $(docker ps -qf "name=nifi_nologin-splunk1") bash
-cd /tmp/test/tests/script/
-bash init_splunk_nologin.sh (--copy-apps | --config | --all)
-```
-
-* In Splunk disable SSL in HEC global configuration (Workaround).
-
-
-* Connect to nifi container and run the script
-```
-docker exec -u root -ti $(docker ps -qf "name=nifi_nologin-nifi1") bash
+./build-ta.sh
 ```
 
-* Configure Nifi following the doc instructions.
-    - nifi_api_url: http://nifi1:8080/nifi-api/
-    - nifi_path: /opt/nifi/nifi-current/
-    - process_groups_list (optional)
-    - processors_listNiFiMonitoring (optional)
-    - splunk_hec: http://splunk1:8088
-    - splunk_hec_token: Password123
+The first run creates `.venv-ucc` and installs `ucc-gen` into it; after that
+it takes a few seconds. Both layers below need it, and `run.sh` calls it for
+you.
 
+## Unit tests
 
-## Stand Alone with Login - Nifi 1.23, Splunk 9.1
+Standard library only, but the build has to have run -- `splunklib` is no
+longer versioned, it is installed into the built add-on's `lib/`:
 
-Run 1 nifi 1.23 container (standalone) and 1 splunk 9.1 container (standalone)
-
-* Run docker compose test environment
 ```
-docker compose -f nifi123-splunk91-nifi_login.yml -p "nifi_login" up
+./build-ta.sh
+cd unit && python3 -m unittest discover -v
 ```
 
-* In Splunk disable SSL in HEC global configuration (Workaround).
+Without a build they skip, with a message saying to run it. `REQUIRE_BUILT_TA=1`
+turns those skips into failures; CI sets it, because a green run where the
+generated half of the add-on was never looked at is worse than a red one.
 
-* Configure Nifi following the doc instructions.
+These run in CI on every pull request (the `unit` job of `pr.yml`) and
+before a release (`main.yml`).
+
+## Integration environment
+
+One compose file covers every supported combination. Pick one by name from
+`matrix.yml` instead of copying compose files:
+
+```
+cd tests
+./run.sh --list            # show the profiles
+./run.sh --list cluster    # everything about one of them
+./run.sh                   # default: nifi2-current
+./run.sh nifi1-legacy      # NiFi 1.23.2 + Splunk 9.4, unsecured
+./run.sh --keep nifi2-current   # leave the stack up to poke at it
+./run.sh --bare cluster    # the environment only, for installing by hand
+./run.sh --showcase multi-instance   # a healthy fleet, for screenshots
+```
+
+Or a whole set at once, which is what `make check` calls:
+
+```
+./integration-matrix.sh                 # pull_request: one per axis
+./integration-matrix.sh release         # all ten
+./integration-matrix.sh cluster nifi2-hec
+```
+
+It builds the add-on once, runs each scenario in turn and reports a line per
+scenario. It never stops at the first failure: a run this long should come
+back with the whole picture.
+
+`run.sh` builds the add-on, writes `.env` from the profile, brings the stack
+up, waits for NiFi to answer, runs the assertions, and tears down. It exits
+non-zero if anything fails, so CI can call it directly. `SKIP_TA_BUILD=1`
+reuses the last build, for a quick re-run against unchanged add-on code.
+
+## Testing by hand
+
+```
+./run.sh --bare cluster
+```
+
+Brings up the scenario's machines and installs nothing: no apps, no input,
+no lookup, no flow, and no assertions. Splunk extracts its own `etc/` into
+the empty volume on first boot, so what you get is a virgin Splunk next to
+the NiFi topology the profile describes, and you install and configure
+everything yourself. It prints the URLs, the credentials and the packaging
+command when it is ready.
+
+This is the one path the automated profiles cannot cover, because they exist
+to remove it: the `provision` service seeds `/opt/splunk/etc` before
+`splunkd` first starts, so nothing here ever uploads a `.tar.gz`, reads the
+setup screen or fills in the form. That is the first thing every user does.
+
+The packages to install are built from `output/`, not from the tree:
+
+```
+make package DEV=1    # from the repo root; the two .tar.gz land in dist/
+```
+
+A dev build carries `-dev.<timestamp>` inside its `app.conf`, so Splunk lists
+it apart from a release, and it skips AppInspect. The release packages come
+from `make package DRY_RUN=0`, which needs a clean tree.
+
+The app also needs the two Splunkbase visualisations it depends on, which are
+in `additional_apps/`. For the push path, import the flow from
+`flow_definition/` through NiFi's own UI.
+
+While a stack is up:
+
+| | |
+|---|---|
+| Splunk Web | http://localhost:38000 (`admin` / `Password123`) |
+| Splunk management | https://localhost:38089 |
+| Splunk HEC | http://localhost:38088 (token in `.env`) |
+| NiFi (unsecured profiles) | http://localhost:38080/nifi |
+| NiFi (single-user profiles) | https://localhost:38443/nifi (`admin` / see `env/nifi-singleuser.env`) |
+
+## Screenshots for the documentation
+
+```
+./run.sh --showcase multi-instance   # Overview, Instance, Components, Bulletins, Logs, Alerts, Collection Health
+./run.sh --showcase cluster          # Cluster
+```
+
+The other profiles build a deliberately broken workload — an invalid
+component, a processor that fails on every run, a connection pinned at its
+backpressure limit — because the assertions need every panel to have
+something to show. That is the wrong picture for the documentation: every
+instance reads *Degraded*. `--showcase` builds a healthy one instead (two
+process groups with steady traffic, a queue that fills and drains, a WARN
+bulletin every five minutes), gives the inventory the cluster names
+`production` and `edge`, enables the alerts the app ships, skips the
+assertions and leaves the stack up. Give it half an hour before taking the
+screenshots, so the charts have a history.
+
+Run the assertions against a stack you started yourself:
+
+```
+cd tests/integration && python3 -m unittest discover -v
+```
+
+They skip, rather than fail, when no stack is reachable.
+
+### Profiles
+
+`matrix.yml` holds the supported combinations and which ones CI runs.
+
+There are two recommended ways to get data out of NiFi, and each one is
+covered **whole** -- API *and* logs -- by one profile:
+
+| Strategy | API | Logs | Profile |
+|---|---|---|---|
+| **Push** | the flow's `InvokeHTTP` → HEC | the flow's `TailFile` → HEC | `nifi2-hec` |
+| **Pull + forwarder** | the TA's modular input | a Universal Forwarder | `nifi2-current` |
+
+The remaining profiles (`nifi1-legacy`, `nifi1-last`, `nifi2-first`) are
+version regression: their job is to prove the TA still talks to every
+supported NiFi, not to cover a strategy.
+
+`nifi_auth` selects an environment file from `env/`:
+
+- `none` — plain HTTP, no authentication. The TA's `auth_type = none` path.
+- `singleuser` — HTTPS with NiFi's single-user provider. Exercises
+  `POST /access/token`, the same login the TA performs.
+
+`forwarder: true` brings up the `universalforwarder` service. `matrix.py`
+turns it into `COMPOSE_PROFILES=forwarder` in `.env`, which Compose reads by
+itself -- `run.sh` needs no flag for it.
+
+### Provisioning
+
+There is no manual setup step. The `provision` service seeds
+`/opt/splunk/etc` before `splunkd` first starts (the Splunk image extracts
+its own `etc/` additively, so seeded files survive), which installs both
+apps plus the two bundled third-party visualizations, enables the HEC
+without SSL, loads the `instance` lookup, and installs the TA input
+matching the profile's auth mode (`provision/splunk/inputs.conf.<mode>`).
+
+The **TA comes from `output/`, not from the tree** -- seeding the tree would
+install an add-on with no `app.conf`, no `inputs.conf` and no UI, which looks
+like it installed and then does nothing. The seed script refuses rather than
+doing that. The app, which is not generated, still comes from the tree.
+
+This replaces the old procedure of `docker exec`-ing into the container,
+running `init_splunk_nologin.sh` by hand, and then turning off SSL on the
+HEC in the UI on every start.
+
+### Notes
+
+- **Splunk cold start is slow.** The healthcheck allows 15 minutes
+  (`start_period: 900s`); with less, `docker compose up --wait` gives up
+  before `splunkd` is listening. Splunk 10 also requires
+  `SPLUNK_GENERAL_TERMS`, which the compose file sets.
+- **NiFi 2.x needs `NIFI_WEB_PROXY_HOST`.** Without it NiFi answers HTTP
+  421 Misdirected Request to every API call, because it rejects Host
+  headers it does not recognise.
+- **A single-user password must be at least 12 characters.** NiFi silently
+  ignores shorter ones and generates random credentials instead.
+- **Unsecured NiFi 2.x is awkward.** The container's `start.sh` applies the
+  container hostname to the HTTPS host, which takes precedence over the HTTP
+  settings. The `none` profile is verified on 1.x; for 2.x prefer
+  `singleuser`, which is also closer to a real deployment.
+- **The forwarder has no management port.** Its image sets the management
+  mode to "auto (Allows UDS)", so splunkd listens on a Unix socket and TCP
+  8089 answers nothing at all -- `curl` returns 000, not 401. Its healthcheck
+  therefore looks for the process, unlike Splunk's and NiFi's.
+- **The forwarder gets the real TA**, not a bespoke `inputs.conf`. The
+  seeded `local/inputs.conf` only flips `disabled` and sets the index, so the
+  profile tests the monitor paths and sourcetypes exactly as shipped -- which
+  is how defect B-21 (the stanzas pointed at `/opt/nifi/logs/`, not where the
+  official image keeps them) would be caught next time.
+- **`nifi-deprecation.log` is created empty** and stays that way until
+  something deprecated runs, so its assertion skips rather than fails on a
+  clean instance.

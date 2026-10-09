@@ -1,0 +1,355 @@
+<dashboard version="2" theme="light" hideEdit="false">
+  <label>Cluster</label>
+  <description>Is the cluster whole?</description>
+  <definition><![CDATA[
+{
+    "dataSources": {
+        "ds_heap": {
+            "name": "ds_heap",
+            "options": {
+                "query": "| tstats latest(Node_Diagnostics.systemDiagnostics.aggregateSnapshot.usedHeapBytes) as used,\n         latest(Node_Diagnostics.systemDiagnostics.aggregateSnapshot.maxHeapBytes) as max\n  from datamodel=NIFI.Node_Diagnostics where host=\"$host$\" by _time Node_Diagnostics.node span=5m\n| eval heap = round(used * 100 / max, 1)\n| timechart span=5m max(heap) by Node_Diagnostics.node",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_input_host": {
+            "name": "Choices for Cluster",
+            "options": {
+                "query": "| tstats count from datamodel=NIFI.Cluster_Nodes by host | fields host",
+                "queryParameters": {
+                    "earliest": "-24h",
+                    "latest": "now"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_k_connected": {
+            "name": "ds_k_connected",
+            "options": {
+                "extend": "ds_nodes",
+                "query": "| stats max(connected) as c, max(total) as t | eval value = c . \" / \" . t"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_coordinator": {
+            "name": "ds_k_coordinator",
+            "options": {
+                "extend": "ds_nodes",
+                "query": "| search roles=\"Cluster Coordinator\" | stats values(node) as value"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_primary": {
+            "name": "ds_k_primary",
+            "options": {
+                "extend": "ds_nodes",
+                "query": "| search roles=\"Primary Node\" | stats values(node) as value"
+            },
+            "type": "ds.chain"
+        },
+        "ds_nodes": {
+            "name": "Nodes",
+            "options": {
+                "query": "| tstats latest(_time) as last_seen, latest(Cluster_Nodes.status) as status, values(Cluster_Nodes.roles) as roles,\n         latest(Cluster_Nodes.activeThreadCount) as threads, latest(Cluster_Nodes.flowFilesQueued) as queued,\n         latest(Cluster_Nodes.heartbeat) as heartbeat,\n         latest(Cluster_Nodes.clusterConnectedNodeCount) as connected, latest(Cluster_Nodes.clusterNodeCount) as total\n  from datamodel=NIFI.Cluster_Nodes where host=\"$host$\" earliest=-15m latest=now by Cluster_Nodes.node\n| rename Cluster_Nodes.node as node\n| append [| tstats latest(Node_Diagnostics.systemDiagnostics.aggregateSnapshot.usedHeapBytes) as used,\n                  latest(Node_Diagnostics.systemDiagnostics.aggregateSnapshot.maxHeapBytes) as max\n           from datamodel=NIFI.Node_Diagnostics where host=\"$host$\" earliest=-15m latest=now by Node_Diagnostics.node\n          | rename Node_Diagnostics.node as node | eval heap = round(used * 100 / max, 1) | fields node heap]\n| stats values(*) as * by node",
+                "queryParameters": {
+                    "earliest": "-15m",
+                    "latest": "now"
+                },
+                "refresh": "1m",
+                "refreshType": "delay"
+            },
+            "type": "ds.search"
+        },
+        "ds_nodes_table": {
+            "name": "ds_nodes_table",
+            "options": {
+                "extend": "ds_nodes",
+                "query": "| eval Status = if(status == \"CONNECTED\", \"✓ \" . status, \"✕ \" . status), Roles = mvjoin(roles, \", \")\n| table node Status Roles heartbeat threads queued heap\n| rename node as Node, heartbeat as \"Last heartbeat\", threads as \"Active threads\", queued as Queued, heap as \"Heap %\""
+            },
+            "type": "ds.chain"
+        },
+        "ds_queue": {
+            "name": "ds_queue",
+            "options": {
+                "query": "| tstats latest(Cluster_Nodes.flowFilesQueued) as queued from datamodel=NIFI.Cluster_Nodes\n  where host=\"$host$\" by _time Cluster_Nodes.node span=5m\n| timechart span=5m max(queued) by Cluster_Nodes.node",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        }
+    },
+    "defaults": {
+        "dataSources": {
+            "ds.search": {
+                "options": {
+                    "queryParameters": {
+                        "earliest": "$time.earliest$",
+                        "latest": "$time.latest$"
+                    }
+                }
+            }
+        }
+    },
+    "description": "Is the cluster whole?",
+    "inputs": {
+        "input_host": {
+            "context": {
+                "formattedConfig": {
+                    "number": {
+                        "prefix": ""
+                    }
+                },
+                "formattedStatics": ">statics | formatByType(formattedConfig)",
+                "label": ">primary | seriesByName(\"host\") | renameSeries(\"label\") | formatByType(formattedConfig)",
+                "statics": [],
+                "value": ">primary | seriesByName(\"host\") | renameSeries(\"value\") | formatByType(formattedConfig)"
+            },
+            "dataSources": {
+                "primary": "ds_input_host"
+            },
+            "options": {
+                "items": ">frame(label, value) | prepend(formattedStatics) | objects()",
+                "selectFirstSearchResult": true,
+                "token": "host"
+            },
+            "title": "Cluster",
+            "type": "input.dropdown"
+        },
+        "input_time": {
+            "options": {
+                "defaultValue": "-4h@m,now",
+                "token": "time"
+            },
+            "title": "Time range",
+            "type": "input.timerange"
+        }
+    },
+    "layout": {
+        "globalInputs": [
+            "input_host",
+            "input_time"
+        ],
+        "options": {
+            "height": 700,
+            "width": 1440
+        },
+        "structure": [
+            {
+                "item": "viz_note",
+                "position": {
+                    "h": 50,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_connected",
+                "position": {
+                    "h": 130,
+                    "w": 480,
+                    "x": 0,
+                    "y": 50
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_primary",
+                "position": {
+                    "h": 130,
+                    "w": 480,
+                    "x": 480,
+                    "y": 50
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_coordinator",
+                "position": {
+                    "h": 130,
+                    "w": 480,
+                    "x": 960,
+                    "y": 50
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_nodes",
+                "position": {
+                    "h": 240,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 180
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_heap",
+                "position": {
+                    "h": 280,
+                    "w": 720,
+                    "x": 0,
+                    "y": 420
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_queue",
+                "position": {
+                    "h": 280,
+                    "w": 720,
+                    "x": 720,
+                    "y": 420
+                },
+                "type": "block"
+            }
+        ],
+        "type": "grid"
+    },
+    "title": "Cluster",
+    "visualizations": {
+        "viz_connected": {
+            "dataSources": {
+                "primary": "ds_k_connected"
+            },
+            "options": {
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Connected nodes",
+            "type": "splunk.singlevalue"
+        },
+        "viz_coordinator": {
+            "dataSources": {
+                "primary": "ds_k_coordinator"
+            },
+            "options": {
+                "majorFontSize": 22,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Cluster coordinator",
+            "type": "splunk.singlevalue"
+        },
+        "viz_heap": {
+            "dataSources": {
+                "primary": "ds_heap"
+            },
+            "description": "% of max heap — the aggregate hides the node that runs out",
+            "options": {
+                "legendDisplay": "bottom",
+                "nullValueDisplay": "connect",
+                "seriesColors": [
+                    "#2A78D6",
+                    "#EB6834",
+                    "#1BAF7A",
+                    "#EDA100"
+                ],
+                "showRoundedY2AxisLabels": false,
+                "showSplitSeries": false,
+                "xAxisTitleVisibility": "hide",
+                "yAxisMax": 100,
+                "yAxisMin": 0,
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "Heap used by node",
+            "type": "splunk.line"
+        },
+        "viz_nodes": {
+            "context": {
+                "StatusRowColorsEditorConfig": [
+                    {
+                        "match": "✓ CONNECTED",
+                        "value": "#0CA30C"
+                    }
+                ],
+                "tableHeaderBackgroundColorConfig": {
+                    "channel": "rgb",
+                    "value": "#E1E0D9"
+                },
+                "tableRowColorMaxContrast": {
+                    "maximum": "#0B0B0B",
+                    "minimum": "#FFFFFF"
+                }
+            },
+            "dataSources": {
+                "primary": "ds_nodes_table"
+            },
+            "options": {
+                "backgroundColor": "transparent",
+                "columnFormat": {
+                    "Status": {
+                        "rowColors": "> table | seriesByName(\"Status\") | matchValue(StatusRowColorsEditorConfig)"
+                    }
+                },
+                "count": 10,
+                "headerVisibility": "fixed",
+                "showInternalFields": false,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | noRecolor()",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Nodes",
+            "type": "splunk.table"
+        },
+        "viz_note": {
+            "options": {
+                "fontSize": "default",
+                "markdown": "A standalone NiFi has no cluster to show: this view fills in when the TA polls a clustered NiFi, which it detects by itself."
+            },
+            "type": "splunk.markdown"
+        },
+        "viz_primary": {
+            "dataSources": {
+                "primary": "ds_k_primary"
+            },
+            "options": {
+                "majorFontSize": 22,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Primary node",
+            "type": "splunk.singlevalue"
+        },
+        "viz_queue": {
+            "dataSources": {
+                "primary": "ds_queue"
+            },
+            "description": "Per 5 minutes",
+            "options": {
+                "legendDisplay": "bottom",
+                "nullValueDisplay": "connect",
+                "seriesColors": [
+                    "#2A78D6",
+                    "#EB6834",
+                    "#1BAF7A",
+                    "#EDA100"
+                ],
+                "showRoundedY2AxisLabels": false,
+                "showSplitSeries": false,
+                "xAxisTitleVisibility": "hide",
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "FlowFiles queued by node",
+            "type": "splunk.line"
+        }
+    }
+}
+]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+]]></meta>
+</dashboard>

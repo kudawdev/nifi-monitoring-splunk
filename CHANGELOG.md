@@ -1,0 +1,131 @@
+# Changelog
+
+Historial de releases del NiFi Monitoring for Splunk. Las notas de cada GitHub Release se publican
+desde este archivo; el formato de las secciones lo produce `scripts/release-notes.sh`.
+
+Arranca en 2.0.0: las releases anteriores viven en los
+[GitHub Releases](https://github.com/kudawdev/nifi-monitoring-splunk/releases). Para incorporar una,
+`scripts/changelog.sh add <version>`.
+
+## 2.0.0 — 2026-10-09 — NiFi 2.x support
+
+Written by hand. The generator classifies by Conventional Commits and this
+repository does not use them, so every commit landed under "Other" — sixty
+subjects is not release notes anyone wants to read. `doc/upgrading.md` is the
+long form of what follows.
+
+### ⚠️ Breaking Changes
+
+- **Splunk 9.4 is the minimum.** The dashboards use Dashboard Studio features
+  verified on 9.4 and 10.4 and on nothing older; 1.x supported 9.0.
+- **The dashboards were rebuilt, and several views were renamed or merged.**
+  Bookmarks to `home`, `nifi_instances_detail`, `nifi_status_history`,
+  `nifi_bulletin` and `nifi_internal_monitoring` stop working; the upgrade
+  guide maps each to its replacement.
+- **Searches of your own on the `NIFI` datamodel may need a change.**
+  `Reporting_Bulletin` and `Reporting_Task` are now children of `Bulletins`
+  and `Throughput`, and the `Status_History` datasets became
+  `Component_Status`. A `tstats` on a dataset that became a child fails with
+  *Invalid or unaccelerable root object*.
+- **The status history has new sourcetypes.** The add-on writes
+  `nifi:api:processors_status` and `nifi:api:process_groups_status`, one event
+  per snapshot, instead of indexing each response whole. Searches on
+  `nifi:api:*_history` keep working for the push path only.
+- **The app looks in one index, not every index.** The `index_nifi` macro was
+  `index=*`. It is now `index=nifi`, and the app ships that index. If your
+  NiFi data is elsewhere, every dashboard goes empty until you override the
+  macro — Internal Monitoring reports where the data actually is.
+- **TLS certificates are verified.** Every request the add-on made used to
+  accept any certificate. Over HTTPS that let anyone intercepting the
+  connection read the credentials and the bearer token, and NiFi 2.x serves
+  HTTPS by default. Set a CA bundle, or turn verification off deliberately.
+- **`nifi:api:site_to_site` is no longer collected.** Nothing consumed it; it
+  was licence spend on data no panel showed.
+- **Datamodel acceleration ships off.** AppInspect refuses to publish an app
+  that distributes an accelerated model. Turning it on is the single biggest
+  thing an operator can do for panel latency.
+- **The add-on now appears in the app menu**, because its configuration moved
+  to a screen of its own.
+- **Passwords are stored per input**, encrypted by the configuration screen
+  when the input is saved. 1.x stored them per NiFi username, so two inputs
+  with the same user shared one. A 1.x input keeps working, with a warning,
+  until it is opened and saved again.
+
+### ✨ Features
+
+- **Eight views in Dashboard Studio** — Overview, Instance, Components,
+  Bulletins, Logs, Cluster, Alerts and Collection Health — each answering one
+  question. *Status Indicator* is no longer a dependency.
+- **Eight alerts**, shipped disabled: instance without data, repository
+  filling up, sustained high heap, ERROR bulletin spike, backpressure, cluster
+  node disconnected, versioned flow sync failure and add-on HTTP errors. They
+  read the same `nifi_threshold_*` macros as the panels, which the instance
+  inventory can override per instance.
+- **One definition of health** (`nifi_health`) that knows each input's
+  polling interval: an instance polled every five minutes is no longer
+  reported down.
+- **A Components view** that names the bottleneck processor, group or
+  connection, with NiFi's own backpressure prediction.
+- **NiFi 2.x support**, from one input: the add-on detects the version and
+  adapts. Covered against 1.23.2, 1.28.1, 2.0.0 and 2.11.0.
+- **Clusters are read as one instance with named nodes**, with per-node
+  diagnostics and bulletins that say which node raised them.
+- **Several independent NiFi instances**, one input each, with version
+  detection per input rather than per installation.
+- **A configuration screen**, generated with UCC: a grouped form with
+  validation, a **Test connection** button that performs the same two calls
+  the input performs and says what came back, and a **Logging** tab that
+  finally makes the add-on's verbosity configurable.
+- **Custom endpoints**: any NiFi REST path, named by the user and indexed
+  under `nifi:api:custom:<name>`, without waiting for a release.
+- **Flow metrics** from `/flow/metrics/json` (NiFi ≥ 1.16), off by default —
+  measure the volume before enabling it.
+- **Bulletins without a reporting task**, by polling the bulletin board with a
+  cursor.
+- **`nifi:log:deprecation` and `nifi:log:request`** monitors, the first of
+  which is what to read before planning a move to NiFi 2.x.
+- **An inventory panel** showing each instance's NiFi version, Java version
+  and which collection path its data arrived by.
+
+### 🐛 Fixes
+
+- The add-on logs in before its first request instead of provoking a 401 per
+  endpoint on every cold start.
+- A custom endpoint that fails writes no event: error bodies used to be
+  indexed under the user's own sourcetype, so the index said the endpoint was
+  working.
+- A custom endpoint can no longer be pointed at a sourcetype the add-on
+  ships, which would have mixed its response into the data the dashboards read.
+- The JWT and the bulletin cursor moved out of a `.env` inside the app, which
+  was lost on reinstall and could be clobbered between two inputs.
+- The 2.x flow definition no longer duplicates work across cluster nodes.
+- An input created from the configuration screen saves, its **Test
+  connection** button answers, and it authenticates with the password the
+  screen encrypted. All three failed before the release, unseen by a harness
+  that wrote its inputs into `inputs.conf` directly.
+- An input with no **Host** sends its events under the input's name, as the
+  form says. They carried splunkd's placeholder, `$decideOnStartup`, which
+  matched no instance and so appeared on no dashboard.
+- On a cluster, the flow sends its API events, bulletins and reporting-task
+  metrics under the instance's name instead of a node's. The API events were
+  named after whichever node won the election, and the bulletins and metrics
+  after whichever node Site-to-Site delivered them to, which the instance
+  lookup matched only by chance: the overview reported the cluster Down, the
+  node as an instance of its own, and the Bulletins view came back empty. Set
+  the new `instance_name` setting on a cluster; a single NiFi can leave it
+  empty. Applies to the 1.x flow and template too.
+
+### 🔧 Maintenance
+
+- The add-on is generated by UCC: one source for the form, the spec and the
+  `inputs.conf` defaults, which closed four fields that were implemented and
+  documented but unreachable from the UI.
+- A test harness with ten scenarios — every supported NiFi version and
+  architecture against both collection strategies — plus 372 unit tests.
+- Delivery runs through `make`; `tests/README.md` has the rest.
+- Every pull request is checked automatically: lint, unit tests, a strict
+  docs build and AppInspect. The integration scenarios run by hand, all ten
+  before a release.
+- Releases are tagged `v<version>` from this one on (`v2.0.0`); up to
+  `1.2.3` they carried no `v`.
+

@@ -35,6 +35,17 @@ access = read : [ * ], write : [ * ]
 export = system
 
 
+### MACROS
+# The NIFI datamodel is exported to system and its constraints all go through
+# the index_nifi macro, so the macro has to be visible wherever the datamodel
+# is. Without this the model resolves to nothing outside this app -- which is
+# the whole point of exporting it -- and its acceleration searches cannot
+# resolve the macro either.
+
+[macros]
+export = system
+
+
 ### DATAMODELS
 
 [datamodels/NIFI]

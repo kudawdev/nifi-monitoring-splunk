@@ -1,0 +1,164 @@
+# Supported NiFi x Splunk combinations, and which ones CI runs.
+#
+# This file is the single source of truth for the test matrix. run.sh reads a
+# profile from here by name; the CI workflows read the `ci` lists.
+#
+# Adding a version means adding a profile here, not copying a compose file.
+
+profiles:
+
+  nifi1-legacy:
+    description: >
+      Oldest NiFi the harness still covers, unsecured HTTP. Regression
+      guard for the 1.x pull path.
+    nifi_version: "1.23.2"
+    splunk_version: "9.4"
+    nifi_auth: none
+    # Every pull profile ships logs too: the strategy is pull + forwarder,
+    # and covering only its API half is covering half a strategy.
+    forwarder: true
+
+  nifi1-last:
+    description: >
+      Final 1.x release (EOL 2024-12-08), single-user auth. Exercises the
+      token path against the 1.x API.
+    nifi_version: "1.28.1"
+    splunk_version: "10.4"
+    nifi_auth: singleuser
+    # Every pull profile ships logs too: the strategy is pull + forwarder,
+    # and covering only its API half is covering half a strategy.
+    forwarder: true
+
+  nifi2-current:
+    description: >
+      The recommended strategy, whole: the TA pulls the REST API and a
+      Universal Forwarder ships NiFi's log files. Current 2.x with
+      single-user auth, which is where most clients land. Its counterpart
+      is nifi2-hec, the push strategy; between them every supported way of
+      getting data out of NiFi is exercised end to end.
+    nifi_version: "2.11.0"
+    splunk_version: "10.4"
+    nifi_auth: singleuser
+    # Brings up the universalforwarder service. Without it the pull strategy
+    # is only half covered: the API half, never the logs.
+    forwarder: true
+    # Verifies NiFi's certificate against an exported CA bundle instead of
+    # skipping verification. 2.0.0 made this the default (B-23) and no
+    # profile exercised it (R-8).
+    tls_verify: true
+
+  nifi2-first:
+    description: >
+      First 2.x release, to catch anything that depends on a feature added
+      after 2.0.0. VERSION_INFO and the repo metrics exist here.
+    nifi_version: "2.0.0"
+    splunk_version: "10.4"
+    nifi_auth: singleuser
+    # Every pull profile ships logs too: the strategy is pull + forwarder,
+    # and covering only its API half is covering half a strategy.
+    forwarder: true
+
+  cluster:
+    description: >
+      A two-node NiFi cluster behind one input. Not the same as
+      multi-instance: there the two NiFis are unrelated, here they are
+      members of one. Unsecured, for the same reason the nifi2-hec profile
+      is: a secured cluster needs a certificate per node, which is a
+      different exercise from proving the add-on reads a cluster.
+    nifi_version: "2.11.0"
+    splunk_version: "10.4"
+    nifi_auth: none2x
+    cluster: true
+    # Every pull profile ships logs too: the strategy is pull + forwarder,
+    # and covering only its API half is covering half a strategy.
+    forwarder: true
+
+  multi-hec:
+    description: >
+      Two independent NiFis, each pushing to the same HEC. Both unsecured,
+      because the flow calls its own API with no credentials -- a push profile
+      cannot have one authenticated instance and one not. What this covers
+      that a single push profile does not is that two flows feeding one HEC
+      stay distinguishable by host.
+    nifi_version: "2.11.0"
+    nifi_b_version: "2.11.0"
+    splunk_version: "10.4"
+    nifi_auth: none2x
+    instances: 2
+    collection: hec
+
+  nifi1-hec:
+    description: >
+      The push strategy against the 1.x line, which is a different artefact
+      and a different mechanism: 2.x removed both templates and the variable
+      registry, so flow_definition/nifi-1.x is configured through variables
+      where the 2.x one uses a parameter context. Nothing exercised that file
+      until now.
+    nifi_version: "1.28.1"
+    splunk_version: "10.4"
+    nifi_auth: none
+    collection: hec
+
+  cluster-hec:
+    description: >
+      The push strategy against a cluster. This is the combination the flow
+      used to get wrong: NiFi replicates a flow to every node, so with the
+      default executionNode = ALL each node polled the API and sent its own
+      copy -- N nodes, N times the events and N times the licence. The API
+      sources now run on the primary node only, and this profile is what
+      proves it.
+    nifi_version: "2.11.0"
+    splunk_version: "10.4"
+    nifi_auth: none2x
+    cluster: true
+    collection: hec
+
+  multi-instance:
+    description: >
+      Two independent NiFi instances -- not a cluster -- polled by two inputs
+      of the same TA. The app's whole premise is centralising several NiFi
+      instances, and no profile covered it: every other one has a single
+      instance, a single input and a single lookup row. The two run different
+      NiFi versions on purpose, so version autodetection is proven to be per
+      input rather than per installation.
+    nifi_version: "2.11.0"
+    nifi_b_version: "1.28.1"
+    splunk_version: "10.4"
+    nifi_auth: singleuser
+    instances: 2
+    # Every pull profile ships logs too: the strategy is pull + forwarder,
+    # and covering only its API half is covering half a strategy.
+    forwarder: true
+
+  nifi2-hec:
+    description: >
+      The push path: the monitoring flow runs inside NiFi and sends to
+      Splunk's HEC. Needs an unauthenticated NiFi, because the flow calls
+      its own API without credentials.
+    nifi_version: "2.11.0"
+    splunk_version: "10.4"
+    nifi_auth: none2x
+    collection: hec
+
+ci:
+  # integration.yml's default, dispatched by hand; also `make check`'s. One
+  # profile per NiFi major.
+  # One per strategy and per architecture: enough to catch a regression in
+  # any of them without running the whole matrix on every change.
+  pull_request:
+    - nifi1-legacy
+    - nifi2-current
+    - cluster
+    - nifi2-hec
+  # Run by main.yml, before a release, and by integration.yml on request.
+  release:
+    - nifi1-legacy
+    - nifi1-last
+    - nifi2-first
+    - nifi2-current
+    - nifi2-hec
+    - multi-instance
+    - cluster
+    - cluster-hec
+    - nifi1-hec
+    - multi-hec

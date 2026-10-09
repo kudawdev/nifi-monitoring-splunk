@@ -1,0 +1,389 @@
+"""Tests for flow_definition/migrate_to_nifi2.py.
+
+The 2.x flow is generated, so what needs guarding is the generator. Each
+assertion here corresponds to something that made a processor invalid when
+the flow was imported into a real NiFi 2.11.0.
+"""
+
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import unittest
+
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+FLOW_DIR = os.path.join(REPO, "flow_definition")
+SOURCE = os.path.join(FLOW_DIR, "nifi-1.x", "NiFiMonitoring.json")
+SHIPPED = os.path.join(FLOW_DIR, "nifi-2.x", "NiFiMonitoring.json")
+
+
+def walk(group):
+    yield group
+    for child in group.get("processGroups") or []:
+        yield from walk(child.get("flowContents", child))
+
+
+def processors(flow):
+    for group in walk(flow["flowContents"]):
+        for processor in group.get("processors") or []:
+            yield processor
+
+
+def properties(processor):
+    return (processor.get("properties")
+            or processor.get("config", {}).get("properties", {}) or {})
+
+
+class GeneratedFlowTest(unittest.TestCase):
+    """Against the 2.x flow as shipped."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(SHIPPED) as handle:
+            cls.flow = json.load(handle)
+        cls.processors = list(processors(cls.flow))
+
+    def test_no_gethttp_survives(self):
+        types = {p["type"] for p in self.processors}
+        self.assertNotIn("org.apache.nifi.processors.standard.GetHTTP", types)
+
+    def test_jolt_uses_the_relocated_type_and_bundle(self):
+        jolt = [p for p in self.processors if p["type"].endswith("JoltTransformJSON")]
+        self.assertTrue(jolt, "the flow has no Jolt processor any more")
+        for processor in jolt:
+            with self.subTest(name=processor.get("name")):
+                self.assertEqual(processor["type"],
+                                 "org.apache.nifi.processors.jolt.JoltTransformJSON")
+                self.assertEqual(processor["bundle"]["artifact"], "nifi-jolt-nar")
+
+    def test_jolt_properties_use_the_new_names(self):
+        for processor in self.processors:
+            if not processor["type"].endswith("JoltTransformJSON"):
+                continue
+            props = properties(processor)
+            with self.subTest(name=processor.get("name")):
+                self.assertNotIn("jolt-spec", props)
+                self.assertNotIn("jolt-transform", props)
+                self.assertIn("Jolt Specification", props)
+
+    def test_no_variables_remain(self):
+        for group in walk(self.flow["flowContents"]):
+            with self.subTest(group=group.get("name")):
+                self.assertNotIn("variables", group)
+
+    def test_a_parameter_context_replaces_them(self):
+        contexts = self.flow.get("parameterContexts") or {}
+        self.assertTrue(contexts, "no parameter context was created")
+        names = {p["name"] for c in contexts.values() for p in c["parameters"]}
+        self.assertIn("splunk_hec", names)
+        self.assertIn("nifi_api_url", names)
+
+    def test_every_group_names_the_context(self):
+        """A child group does not inherit its parent's parameter context;
+        setting it only on the root left every subgroup invalid."""
+        contexts = list((self.flow.get("parameterContexts") or {}))
+        for group in walk(self.flow["flowContents"]):
+            with self.subTest(group=group.get("name")):
+                self.assertIn(group.get("parameterContextName"), contexts)
+
+    def test_no_dollar_references_to_migrated_variables_remain(self):
+        names = {p["name"] for c in (self.flow.get("parameterContexts") or {}).values()
+                 for p in c["parameters"]}
+        blob = json.dumps(self.flow)
+        for name in names:
+            with self.subTest(parameter=name):
+                self.assertNotIn("${%s}" % name, blob)
+                self.assertIn("#{%s}" % name, blob)
+
+    def test_the_token_parameter_is_sensitive_and_carries_no_value(self):
+        """Marking it sensitive is what keeps NiFi from writing it into an
+        exported flow -- which is how the original token leaked."""
+        for context in (self.flow.get("parameterContexts") or {}).values():
+            for parameter in context["parameters"]:
+                if parameter["name"] == "splunk_hec_token":
+                    self.assertTrue(parameter["sensitive"])
+                    self.assertNotIn("value", parameter)
+                    return
+        self.fail("splunk_hec_token is not in the parameter context")
+
+    def test_the_authorization_header_is_declared_sensitive(self):
+        """A non-sensitive property cannot reference a sensitive parameter."""
+        for processor in self.processors:
+            props = properties(processor)
+            if "#{splunk_hec_token}" in str(props.get("Authorization", "")):
+                descriptors = processor.get("propertyDescriptors") or {}
+                self.assertTrue(descriptors.get("Authorization", {}).get("sensitive"))
+                return
+        self.fail("no processor references the token in an Authorization header")
+
+    def test_converted_processors_use_the_accepted_boolean_casing(self):
+        """2.x rejects lowercase as outside the allowed set -- but only for the
+        properties this script writes. The InvokeHTTP processors that were
+        already in the 1.x flow keep their old-style values, and NiFi migrates
+        those itself on import; the 39-of-39 result confirms it accepts them."""
+        converted = [p for p in self.processors
+                     if p["type"].endswith("InvokeHTTP")
+                     and p.get("name", "").startswith("GetHTTP-")]
+        self.assertTrue(converted, "no converted GetHTTP processors found")
+        for processor in converted:
+            for key, value in properties(processor).items():
+                if isinstance(value, str) and value.lower() in ("true", "false"):
+                    with self.subTest(processor=processor.get("name"), prop=key):
+                        self.assertIn(value, ("True", "False"))
+
+    def test_connections_out_of_converted_processors_use_Response(self):
+        converted = {
+            p.get("identifier") for p in self.processors
+            if p["type"].endswith("InvokeHTTP") and p.get("name", "").startswith("GetHTTP-")
+        }
+        self.assertTrue(converted, "no converted GetHTTP processors found")
+        for group in walk(self.flow["flowContents"]):
+            for connection in group.get("connections") or []:
+                if (connection.get("source") or {}).get("id") in converted:
+                    with self.subTest(connection=connection.get("identifier")):
+                        self.assertNotIn("success", connection.get("selectedRelationships") or [])
+
+    def test_the_retired_sourcetype_is_gone(self):
+        """site_to_site was retired from the TA (D-2), so the flow must not
+        keep delivering it: props.conf no longer defines that sourcetype, and
+        the events would arrive with nothing extracted."""
+        blob = json.dumps(self.flow)
+        self.assertNotIn("site_to_site", blob)
+        self.assertNotIn("site-to-site", blob)
+
+    def test_no_processor_is_left_without_its_branch(self):
+        """Dropping a source leaves its labelling processor orphaned, feeding
+        the funnel with nothing upstream."""
+        names = [p.get("name") for p in self.processors]
+        self.assertNotIn("GetHTTP-site_to_site", names)
+
+    def test_no_environment_data_is_shipped(self):
+        """The 1.x flow leaked a HEC token and a host this way."""
+        blob = json.dumps(self.flow)
+        self.assertNotIn("20.81.194.76", blob)
+        self.assertNotIn("c91b35d5", blob)
+
+
+class RegenerationTest(unittest.TestCase):
+    """Running the script on the 1.x flow must reproduce what is committed,
+    so the shipped file cannot drift from the generator."""
+
+    def test_the_shipped_flow_matches_a_fresh_run(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "regenerated.json")
+            subprocess.run(
+                [sys.executable, os.path.join(FLOW_DIR, "migrate_to_nifi2.py"), SOURCE, out],
+                check=True, capture_output=True, cwd=FLOW_DIR,
+            )
+            with open(out) as handle:
+                regenerated = json.load(handle)
+        with open(SHIPPED) as handle:
+            shipped = json.load(handle)
+        self.assertEqual(regenerated, shipped,
+                         "nifi-2.x/NiFiMonitoring.json is out of date; re-run the script")
+
+
+class OperatorGuidanceTest(unittest.TestCase):
+    """The flow is something a person edits after importing, so every setting
+    has to say what it is and what a working value looks like."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(SHIPPED) as handle:
+            cls.flow = json.load(handle)
+        cls.parameters = {
+            p["name"]: p
+            for c in cls.flow["parameterContexts"].values()
+            for p in c["parameters"]
+        }
+
+    def test_every_parameter_has_a_description(self):
+        """NiFi shows it in the UI; an empty one leaves an unlabelled box."""
+        for name, parameter in self.parameters.items():
+            with self.subTest(parameter=name):
+                self.assertTrue(parameter.get("description", "").strip(),
+                                "%s has no description" % name)
+
+    def test_the_two_required_ones_say_so(self):
+        for name in ("processors_list", "process_groups_list"):
+            with self.subTest(parameter=name):
+                self.assertIn("REQUIRED", self.parameters[name]["description"])
+                self.assertEqual(self.parameters[name].get("value", ""), "")
+
+    def test_the_defaults_point_at_the_local_test_stack(self):
+        """A working example beats a placeholder to decode: these are the
+        hostnames tests/docker-compose.yml uses."""
+        self.assertEqual(self.parameters["splunk_hec"]["value"], "http://splunk:8088")
+
+    def test_the_hec_endpoint_matches_the_harness(self):
+        compose = open(os.path.join(REPO, "tests", "docker-compose.yml")).read()
+        host = self.parameters["splunk_hec"]["value"].split("//")[1].split(":")[0]
+        self.assertRegex(compose, r"hostname:\s*%s\b" % host)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class PrimaryNodeExecutionTest(unittest.TestCase):
+    """In a cluster NiFi replicates the flow to every node.
+
+    With the default executionNode = ALL each node polls the cluster-wide REST
+    API and sends its own copy to the HEC: N nodes means N times the events
+    and N times the licence bill, with nothing in the data to say so. Only the
+    API *sources* are pinned to the primary node -- pinning a processor fed by
+    a connection would strand whatever is queued on the other nodes, because
+    queues are per node.
+
+    ReadLogsNifi must stay on ALL: log files are the one thing that really is
+    per node, so every node has to tail its own.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        with open(SHIPPED) as handle:
+            cls.flow = json.load(handle)
+
+    def test_the_api_sources_run_on_the_primary_node_only(self):
+        pinned = {p["name"] for p in processors(self.flow)
+                  if p.get("executionNode") == "PRIMARY"}
+        self.assertEqual(
+            pinned,
+            {"GetHTTP-flow_status", "GetHTTP-system_diagnostics", "GenerateFlowFile"},
+        )
+
+    def test_the_log_tailer_runs_everywhere(self):
+        tailers = [p for p in processors(self.flow)
+                   if p.get("type", "").endswith(".TailFile")]
+        self.assertTrue(tailers, "the flow no longer tails any log")
+        for processor in tailers:
+            with self.subTest(processor=processor["name"]):
+                self.assertNotEqual(
+                    processor.get("executionNode"), "PRIMARY",
+                    "each node has its own log files, so this must run on all")
+
+    def test_nothing_downstream_is_pinned(self):
+        """A pinned processor behind a connection never drains the queues the
+        other nodes built up."""
+        destinations = set()
+        for group in walk(self.flow["flowContents"]):
+            for connection in group.get("connections") or []:
+                destinations.add((connection.get("destination") or {}).get("id"))
+        for processor in processors(self.flow):
+            if processor.get("executionNode") != "PRIMARY":
+                continue
+            if processor.get("type", "").endswith(".GenerateFlowFile"):
+                continue  # timer-driven regardless of what is wired into it
+            with self.subTest(processor=processor.get("name")):
+                self.assertNotIn(processor["identifier"], destinations)
+
+
+class InstanceHostTest(unittest.TestCase):
+    """What host the flow gives the events it sends (decision C-1).
+
+    The API sources run on the primary node, so the node's own hostname names
+    a cluster after whichever node won the election: the instance lookup's row
+    matches only by luck, and the overview reports the cluster Down. The
+    reporting tasks' records are no better: they arrive over Site-to-Site on
+    whichever node it picks, so bulletins and throughput were split across
+    node names and the Bulletins view, which filters on the lookup's host,
+    lost them. The API and reporting labels carry splunk_host from
+    instance_name; everything else -- the logs, which really are per node --
+    falls back to the node's hostname.
+
+    Checked on both flows: the 1.x one is distributed too, and a cluster
+    running it has the same primary node.
+    """
+
+    FLOWS = {"nifi-2.x": (SHIPPED, "#{instance_name}"),
+             "nifi-1.x": (SOURCE, "${instance_name}")}
+
+    def labels(self, flow):
+        return [p for p in processors(flow) if properties(p).get("sourcetype")]
+
+    INSTANCE_WIDE = ("nifi:api:", "nifi:reporting:")
+
+    def test_the_instance_wide_labels_carry_the_instance_name(self):
+        for line, (path, reference) in self.FLOWS.items():
+            with open(path) as handle:
+                flow = json.load(handle)
+            for processor in self.labels(flow):
+                props = properties(processor)
+                with self.subTest(flow=line, sourcetype=props["sourcetype"]):
+                    if props["sourcetype"].startswith(self.INSTANCE_WIDE):
+                        self.assertEqual(props.get("splunk_host"), reference)
+                    else:
+                        self.assertNotIn("splunk_host", props,
+                                         "only the cluster-wide API and "
+                                         "reporting events are the instance's; "
+                                         "logs are the node's")
+
+    def test_the_hec_call_falls_back_to_the_node_hostname(self):
+        for line, (path, _) in self.FLOWS.items():
+            with open(path) as handle:
+                flow = json.load(handle)
+            urls = [v for p in processors(flow) for v in properties(p).values()
+                    if isinstance(v, str) and "/services/collector" in v]
+            with self.subTest(flow=line):
+                self.assertEqual(len(urls), 1)
+                self.assertIn("host=${splunk_host:replaceEmpty(${hostname(true)})",
+                              urls[0])
+
+    def test_instance_name_ships_empty(self):
+        """Empty keeps a single node exactly as it was; a shipped value would
+        name every installation after the one it was exported from."""
+        with open(SHIPPED) as handle:
+            flow = json.load(handle)
+        parameters = {p["name"]: p for c in flow["parameterContexts"].values()
+                      for p in c["parameters"]}
+        self.assertEqual(parameters["instance_name"].get("value", ""), "")
+        with open(SOURCE) as handle:
+            self.assertEqual(json.load(handle)["flowContents"]["variables"]["instance_name"], "")
+
+    def test_the_template_matches_the_flow(self):
+        """The 1.x template is edited by hand alongside the flow, so nothing
+        else notices when one of the two is left behind."""
+        template = open(os.path.join(FLOW_DIR, "nifi-1.x",
+                                     "NifiMonitoringTemplate.xml")).read()
+        self.assertEqual(template.count("<value>${instance_name}</value>"), 6)
+        self.assertIn("<key>instance_name</key>", template)
+        self.assertIn("host=${splunk_host:replaceEmpty(${hostname(true)})", template)
+
+
+class FlowApiUrlTest(unittest.TestCase):
+    """Every call the push flow makes to NiFi's API goes through nifi_api_url.
+
+    The two status-history InvokeHTTPs used to build their URL as
+    http://${hostname(true)}:8080/nifi-api/..., ignoring the parameter the
+    rest of the flow uses: wrong for any NiFi not answering plain HTTP on
+    8080 under its hostname, and refused by NiFi 2.x's Host check. Nobody saw
+    it because processors_list and process_groups_list shipped empty, so the
+    branch never ran -- until the harness filled them in.
+    """
+
+    FLOWS = [os.path.join(REPO, "flow_definition", line, "NiFiMonitoring.json")
+             for line in ("nifi-1.x", "nifi-2.x")]
+
+    def urls(self, path):
+        with open(path) as handle:
+            flow = json.load(handle)["flowContents"]
+        found = []
+
+        def walk(group):
+            for processor in group.get("processors", []):
+                for key, value in processor.get("properties", {}).items():
+                    if key in ("Remote URL", "HTTP URL", "URL") and value:
+                        found.append((processor["name"], value))
+            for child in group.get("processGroups", []):
+                walk(child)
+        walk(flow)
+        return found
+
+    def test_api_calls_use_the_nifi_api_url_parameter(self):
+        for path in self.FLOWS:
+            for name, url in self.urls(path):
+                if "collector" in url:
+                    continue   # the HEC, not NiFi
+                with self.subTest(flow=os.path.basename(os.path.dirname(path)), processor=name):
+                    self.assertRegex(url, r"^[#$]\{nifi_api_url\}/", url)

@@ -1,0 +1,160 @@
+name: Pull request checks
+
+# The gates a pull request has to pass before review: the cheap ones, on
+# every push to it. The integration scenarios are integration.yml, by hand
+# -- they bring NiFi and Splunk up in containers and take far longer.
+#
+# No `paths` filter on purpose: these are meant to be required checks, and a
+# required check that a filter skipped stays pending and blocks the merge.
+# Nothing here needs a secret, so pull requests from forks run it too.
+
+on:
+  pull_request:
+  workflow_dispatch:
+  # main.yml runs these same gates before a release.
+  workflow_call:
+
+permissions:
+  contents: read
+
+# A new push to the same pull request supersedes the run in progress.
+concurrency:
+  group: pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Measured 2026-09-21, precert, per app: nifi_monitoring 5, nifi_TA_monitoring
+  # 12. The gate is per app, so it has to clear the worse one, plus one warning
+  # of headroom. The TA's twelve are framework code, not ours: ucc-gen's own
+  # entry_page.js (check_for_splunk_js and its header/footer variant),
+  # splunklib and solnlib (check_for_supported_tls), and two informational
+  # UCC checks. Errors, failures and future failures stay gated at zero. The
+  # Makefile and delivery.conf carry the same number; a unit test fails if
+  # they drift.
+  MAX_WARNING: 13
+
+# A job in a container runs `run:` with sh, not bash, unless told otherwise,
+# and sh refuses the `set -o pipefail` every step here starts with.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  unit:
+    name: Lint and unit tests
+    runs-on: ubuntu-latest
+    container:
+      image: kudaw/appinspect:latest
+      # The image runs as `appinspect`, which cannot write the runner's
+      # /__w/_temp: actions/checkout dies with EACCES before any step runs.
+      # scripts/package.sh runs the same image as root for the same reason.
+      options: --user root
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: App versions agree
+        # The release tag comes from nifi_monitoring's app.conf; the TA's
+        # globalConfig.json and app.manifest derive from it (make version-sync).
+        run: |
+          set -euo pipefail
+          app_conf="nifi_monitoring/default/app.conf"
+          app_versions=$(awk -F= '/^version[[:space:]]*=/{gsub(/[[:space:]]/,"");print $2}' "$app_conf" | sort -u)
+          ta_version=$(python3 -c "import json;print(json.load(open('nifi_TA_monitoring/globalConfig.json'))['meta']['version'])")
+          manifest_version=$(python3 -c "import json;print(json.load(open('nifi_TA_monitoring/package/app.manifest'))['info']['id']['version'])")
+          echo "nifi_monitoring = $app_versions"
+          echo "nifi_TA_monitoring = $ta_version (manifest $manifest_version)"
+          count=$(printf '%s\n%s\n%s\n' "$app_versions" "$ta_version" "$manifest_version" | sort -u | grep -c .)
+          [ "$count" -eq 1 ] || { echo "::error::app versions differ -- run make version-sync"; exit 1; }
+
+      - name: Lint
+        # What `make lint` runs; the image has no make.
+        run: |
+          set -euo pipefail
+          find . -name '*.sh' -not -path './output/*' -not -path './.venv*' \
+              -not -path './.git/*' -print0 | xargs -0 -n1 bash -n
+          find nifi_TA_monitoring tests -name '*.py' -not -path '*/output/*' \
+              -print0 | PYTHONPYCACHEPREFIX=/tmp/pyc xargs -0 -n1 python3 -m py_compile
+
+      - name: Build nifi_TA_monitoring with ucc-gen
+        run: ./tests/build-ta.sh
+
+      - name: Unit tests
+        working-directory: tests/unit
+        # The checks that read the generated add-on skip without a build;
+        # this turns those skips into failures.
+        env:
+          REQUIRE_BUILT_TA: "1"
+        run: python3 -m unittest discover -v
+
+  docs:
+    name: Docs build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r doc/requirements.txt
+      - name: mkdocs build --strict
+        # Broken links, a page missing from the nav or from llms.txt, a
+        # Spanish page without its English one: all warnings, all fatal here.
+        env:
+          NO_MKDOCS_2_WARNING: "1"
+        run: mkdocs build --strict
+
+  appinspect:
+    name: AppInspect (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    container:
+      image: kudaw/appinspect:latest
+      options: --user root  # see the unit job
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [nifi_monitoring, nifi_TA_monitoring]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build nifi_TA_monitoring with ucc-gen
+        # The add-on is generated: packaging it from the tree would inspect a
+        # directory with no app.conf, no inputs.conf and no UI -- and pass.
+        if: matrix.app == 'nifi_TA_monitoring'
+        run: ./tests/build-ta.sh
+
+      - name: Package
+        id: package
+        # The version comes from the pull request's own app.conf, so it only
+        # reaches later steps through env, never interpolated into a script.
+        run: |
+          set -euo pipefail
+          dir=${{ matrix.app }}
+          [ "$dir" = nifi_TA_monitoring ] && dir=output/nifi_TA_monitoring
+          version=$(awk -F= '/^version[[:space:]]*=/{gsub(/[[:space:]]/,"");print $2; exit}' "$dir/default/app.conf")
+          slim package "$dir"
+          echo "tarball=${{ matrix.app }}-$version.tar.gz" >> "$GITHUB_OUTPUT"
+
+      - name: Slim validate
+        env:
+          TARBALL: ${{ steps.package.outputs.tarball }}
+        run: slim validate "$TARBALL"
+
+      - name: AppInspect precert
+        env:
+          TARBALL: ${{ steps.package.outputs.tarball }}
+        run: |
+          set -euo pipefail
+          splunk-appinspect inspect "$TARBALL" \
+              --output-file appinspect_result.json --mode precert >/dev/null
+          jq '.summary' appinspect_result.json
+          jq -e ".summary | .error == 0 and .failure == 0 and .warning <= ${MAX_WARNING}" \
+              appinspect_result.json >/dev/null \
+            || { echo "::error::AppInspect gate failed (errors, failures, or more than ${MAX_WARNING} warnings)"; exit 1; }
+
+      - name: Upload the AppInspect report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appinspect-${{ matrix.app }}
+          path: appinspect_result.json
+          retention-days: 7
+          if-no-files-found: ignore

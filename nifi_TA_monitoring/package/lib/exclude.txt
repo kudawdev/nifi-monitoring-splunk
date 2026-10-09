@@ -1,0 +1,13 @@
+# Packages Splunk's own Python already provides. Vendoring them here is not a
+# neutral belt-and-braces choice: measured on 2026-09-17, requests 2.32.5 is
+# present on Splunk 9.4 (Python 3.9.20) and on 10.4 (Python 3.13.11), and
+# shipping our own would drag in charset_normalizer's compiled extension,
+# which is built for one platform and one Python version. The add-on would
+# then stop working on Windows, on ARM, and on any Splunk whose interpreter is
+# not the one the wheel was built against. Defect B-15, withdrawn after the
+# measurement showed vendoring was the harmful option.
+requests
+urllib3
+certifi
+charset-normalizer
+idna

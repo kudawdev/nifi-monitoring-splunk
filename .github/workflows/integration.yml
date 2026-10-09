@@ -1,0 +1,73 @@
+name: Integration scenarios
+
+# NiFi and Splunk in containers, one runner per scenario: the only tests that
+# prove data reaches Splunk. Too slow for every pull request -- pr.yml runs
+# the cheap gates there -- so this one is dispatched by hand, and main.yml
+# calls it with `release` before a release.
+#
+# The profile lists live in tests/matrix.yml alone and are read from it at run
+# time, so there is no copy here to drift.
+
+on:
+  workflow_dispatch:
+    inputs:
+      profiles:
+        description: "pull_request (4 scenarios), release (all 10), or profile names separated by spaces"
+        type: string
+        default: pull_request
+  workflow_call:
+    inputs:
+      profiles:
+        type: string
+        default: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Resolve the scenarios
+    runs-on: ubuntu-latest
+    outputs:
+      profiles: ${{ steps.plan.outputs.profiles }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read them from tests/matrix.yml
+        id: plan
+        env:
+          SELECTION: ${{ inputs.profiles }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, sys
+          sys.path.insert(0, "tests")
+          import matrix
+
+          data = matrix.load()
+          wanted = os.environ["SELECTION"].split() or ["pull_request"]
+          if len(wanted) == 1 and wanted[0] in data["ci"]:
+              wanted = list(data["ci"][wanted[0]])
+          unknown = [name for name in wanted if name not in data["profiles"]]
+          if unknown:
+              print("::error::unknown profile(s): %s. Known: %s"
+                    % (" ".join(unknown), " ".join(data["profiles"])))
+              sys.exit(1)
+          print("Scenarios:", " ".join(wanted))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write("profiles=%s\n" % json.dumps(wanted))
+          EOF
+
+  integration:
+    name: Integration (${{ matrix.profile }})
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: ${{ fromJSON(needs.plan.outputs.profiles) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the ${{ matrix.profile }} profile
+        working-directory: tests
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: ./run.sh "$PROFILE"

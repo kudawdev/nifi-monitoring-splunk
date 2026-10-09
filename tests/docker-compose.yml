@@ -1,0 +1,316 @@
+# Integration environment for the NiFi Monitoring apps.
+#
+# One compose file for every combination in matrix.yml. Pick a combination
+# with environment variables rather than by copying this file:
+#
+#   NIFI_VERSION=2.11.0 SPLUNK_VERSION=10.4 NIFI_AUTH=singleuser ./run.sh
+#
+# See README.md. Defaults come from .env, which run.sh writes from the
+# selected profile.
+
+name: nifi-monitoring-test
+
+services:
+
+  # Pre-populate /opt/splunk/etc before splunkd starts. The Splunk image
+  # extracts its own etc/ additively on first boot, so seeding the volume
+  # first is safe and removes the manual "docker exec + copy the apps" step
+  # the old harness needed.
+  provision:
+    image: busybox:1.37
+    environment:
+      # When 1, seeds nothing: run.sh --bare, for installing by hand.
+      BARE: ${BARE:-0}
+      # Selects which inputs.conf template to install.
+      NIFI_AUTH: ${NIFI_AUTH:-none}
+      # Above one, a second input stanza is appended.
+      INSTANCES: ${INSTANCES:-1}
+      # When 1, the input verifies NiFi's certificate against the bundle the
+      # provision-cert service exports.
+      TLS_VERIFY: ${TLS_VERIFY:-0}
+      # When 1, installs the input for the cluster profile.
+      CLUSTER: ${CLUSTER:-0}
+      COLLECTION: ${COLLECTION:-pull}
+    volumes:
+      - splunk_etc:/etc-seed
+      - ..:/src:ro
+      - ./provision:/provision:ro
+    command: sh /provision/seed-splunk-etc.sh
+    restart: "no"
+
+  splunk:
+    image: splunk/splunk:${SPLUNK_VERSION:-9.4}
+    hostname: splunk
+    depends_on:
+      provision:
+        condition: service_completed_successfully
+    environment:
+      SPLUNK_START_ARGS: --accept-license
+      # Splunk 10 refuses to start without this; harmless on 9.x.
+      SPLUNK_GENERAL_TERMS: --accept-sgt-current-at-splunk-com
+      SPLUNK_PASSWORD: ${SPLUNK_PASSWORD:-Password123}
+      SPLUNK_HEC_TOKEN: ${SPLUNK_HEC_TOKEN:-00000000-0000-0000-0000-0000000000ab}
+      SPLUNK_ROLE: splunk_standalone
+    ports:
+      - "${SPLUNK_WEB_PORT:-38000}:8000"
+      - "${SPLUNK_MGMT_PORT:-38089}:8089"
+      - "${SPLUNK_HEC_PORT:-38088}:8088"
+    volumes:
+      - splunk_etc:/opt/splunk/etc
+      - splunk_var:/opt/splunk/var
+      # Where the exported NiFi certificate lands for the tlsverify profile.
+      - nifi_certs:/opt/nifi-certs:ro
+      - ..:/src:ro
+    healthcheck:
+      # No --fail: splunkd answers 401 until credentials are presented, and
+      # `curl -f` turns that into exit 22, so the check could never pass.
+      # Without -f, curl exits 0 on any HTTP response and non-zero when
+      # nothing is listening, which is what "healthy" should mean here.
+      test: ["CMD", "curl", "-sk", "--max-time", "5", "https://localhost:8089/services/server/info"]
+      interval: 15s
+      timeout: 10s
+      retries: 60
+      # Splunk 10 cold-starts slowly; 180s is not enough and `up --wait`
+      # gives up before splunkd is listening.
+      start_period: 900s
+
+  nifi:
+    image: apache/nifi:${NIFI_VERSION:-2.11.0}
+    hostname: nifi
+    # NIFI_ENTRYPOINT is the image's own start.sh except for the unsecured
+    # 2.x profile, which needs a replacement: start.sh cannot be told to skip
+    # HTTPS. See provision/nifi/start-unsecured.sh.
+    entrypoint: ${NIFI_ENTRYPOINT:-../scripts/start.sh}
+    env_file:
+      - ${NIFI_ENV_FILE:-./env/nifi-singleuser.env}
+    environment:
+      # Inert unless the profile is a cluster: the entrypoint only applies
+      # these when NIFI_CLUSTER_IS_NODE is true, and so does the image's own
+      # start.sh. No depends_on for ZooKeeper -- NiFi retries the connection,
+      # and a depends_on to a service gated behind a compose profile is not
+      # something to rely on.
+      NIFI_CLUSTER_IS_NODE: ${NIFI_CLUSTER_IS_NODE:-false}
+      NIFI_CLUSTER_NODE_PROTOCOL_PORT: "8082"
+      NIFI_ZK_CONNECT_STRING: "zookeeper:2181"
+      NIFI_ELECTION_MAX_WAIT: "20 secs"
+      NIFI_ELECTION_MAX_CANDIDATES: "2"
+      NIFI_SENSITIVE_PROPS_KEY: "harness-shared-sensitive-key"
+    ports:
+      - "${NIFI_HTTP_PORT:-38080}:8080"
+      - "${NIFI_HTTPS_PORT:-38443}:8443"
+    volumes:
+      - nifi_logs:/opt/nifi/nifi-current/logs
+      - nifi_conf:/opt/nifi/nifi-current/conf
+      - nifi_state:/opt/nifi/nifi-current/state
+      - ./provision/nifi:/opt/nifi/harness:ro
+    healthcheck:
+      # /access/config answers before authentication is configured, so it
+      # works for both the unsecured and the single-user profile.
+      # Same reason as Splunk: a secured NiFi answers 401 here, and that
+      # still proves the API is up.
+      # $(hostname), not localhost: a clustered node binds to its own name so
+      # other nodes can reach it, and then nothing answers on the loopback.
+      test: ["CMD-SHELL", "curl -sk --max-time 5 http://$(hostname):8080/nifi-api/access/config || curl -sk --max-time 5 http://localhost:8080/nifi-api/access/config || curl -sk --max-time 5 https://localhost:8443/nifi-api/access/config"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 180s
+
+  # Exports NiFi's self-signed certificate so the add-on can verify the
+  # connection rather than be told to skip it (defect R-8). Runs while Splunk
+  # is still cold-starting, so the file is in place long before the first
+  # poll.
+  provision-cert:
+    profiles: ["tlsverify"]
+    image: alpine/openssl:3.3.2
+    entrypoint: ["/bin/sh"]
+    command: ["/provision/nifi/export-cert.sh"]
+    depends_on:
+      nifi:
+        condition: service_healthy
+    volumes:
+      - nifi_certs:/certs
+      - ./provision:/provision:ro
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /certs/nifi.pem"]
+      interval: 5s
+      timeout: 3s
+      retries: 120
+      start_period: 30s
+    restart: "no"
+
+  # ZooKeeper for the cluster profile. NiFi can embed one, but a separate
+  # container is what a real cluster uses and keeps the nodes symmetric.
+  zookeeper:
+    profiles: ["cluster"]
+    image: zookeeper:3.9
+    environment:
+      ZOO_4LW_COMMANDS_WHITELIST: "*"
+
+  # Second node of the cluster. Not the same as nifi-b: that one is a separate
+  # instance, this one is a member of the same NiFi.
+  nifi-node2:
+    profiles: ["cluster"]
+    image: apache/nifi:${NIFI_VERSION:-2.11.0}
+    hostname: nifi-node2
+    entrypoint: /opt/nifi/harness/start-unsecured.sh
+    depends_on: [zookeeper]
+    environment: &cluster_node_env
+      NIFI_WEB_HTTP_PORT: "8080"
+      NIFI_CLUSTER_IS_NODE: "true"
+      NIFI_CLUSTER_NODE_PROTOCOL_PORT: "8082"
+      NIFI_ZK_CONNECT_STRING: "zookeeper:2181"
+      NIFI_ELECTION_MAX_WAIT: "20 secs"
+      NIFI_ELECTION_MAX_CANDIDATES: "2"
+      # Every node needs the same key or a clustered NiFi refuses to start.
+      NIFI_SENSITIVE_PROPS_KEY: "harness-shared-sensitive-key"
+    volumes:
+      - ./provision/nifi:/opt/nifi/harness:ro
+      - nifi_node2_logs:/opt/nifi/nifi-current/logs
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s --max-time 5 http://$(hostname):8080/nifi-api/access/config"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 180s
+
+  # The forwarder for the second NiFi. Which log volume it reads is the only
+  # difference between the multi-instance case (another instance) and the
+  # cluster case (another node of the same one); the host and node it stamps
+  # come from the profile.
+  forwarder2:
+    profiles: ["forwarder2"]
+    image: splunk/universalforwarder:${SPLUNK_VERSION:-9.4}
+    hostname: forwarder2
+    depends_on:
+      provision-uf2:
+        condition: service_completed_successfully
+      splunk:
+        condition: service_healthy
+    environment:
+      SPLUNK_START_ARGS: --accept-license
+      SPLUNK_GENERAL_TERMS: --accept-sgt-current-at-splunk-com
+      SPLUNK_PASSWORD: ${SPLUNK_PASSWORD:-Password123}
+    volumes:
+      - uf2_etc:/opt/splunkforwarder/etc
+      - ${UF2_LOG_VOLUME:-nifi_b_logs}:/opt/nifi/nifi-current/logs:ro
+      - ..:/src:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'splunkd.*start' > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 300s
+
+  # A second, independent NiFi. Not a cluster node: the multi-instance profile
+  # exists to cover what the app already claims -- centralising several
+  # separate NiFi instances -- which no profile exercised. Deliberately a
+  # different version from `nifi`, so version autodetection (TA-3) is proven
+  # to work per input rather than per installation.
+  nifi-b:
+    profiles: ["multi"]
+    image: apache/nifi:${NIFI_B_VERSION:-1.28.1}
+    hostname: nifi-b
+    entrypoint: ${NIFI_ENTRYPOINT:-../scripts/start.sh}
+    env_file:
+      - ${NIFI_B_ENV_FILE:-./env/nifi-singleuser-b.env}
+    ports:
+      - "${NIFI_B_HTTPS_PORT:-38444}:8443"
+      - "${NIFI_B_HTTP_PORT:-38081}:8080"
+    volumes:
+      - nifi_b_logs:/opt/nifi/nifi-current/logs
+      - nifi_b_conf:/opt/nifi/nifi-current/conf
+      - nifi_b_state:/opt/nifi/nifi-current/state
+      - ./provision/nifi:/opt/nifi/harness:ro
+    healthcheck:
+      # Both schemes: this NiFi is HTTPS with single-user auth in the pull
+      # profile and plain HTTP in the push one, because a flow calling its own
+      # API has no credentials to present.
+      test: ["CMD-SHELL", "curl -sk --max-time 5 https://localhost:8443/nifi-api/access/config || curl -s --max-time 5 http://localhost:8080/nifi-api/access/config"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 180s
+
+  # Same seeding trick as `provision`, for the forwarder's etc/. Installs the
+  # TA so the profile exercises the monitor stanzas as shipped rather than a
+  # bespoke inputs.conf.
+  provision-uf:
+    profiles: ["forwarder"]
+    image: busybox:1.37
+    environment:
+      BARE: ${BARE:-0}
+      UF_HOST: ${UF_HOST:-nifi}
+    volumes:
+      - uf_etc:/etc-seed
+      - ..:/src:ro
+      - ./provision:/provision:ro
+    command: sh /provision/seed-uf-etc.sh
+    restart: "no"
+
+  # A forwarder per NiFi, which is what a real deployment has: the agent runs
+  # on the machine whose files it reads. The second one exists for the
+  # profiles with a second NiFi -- another instance (multi) or another cluster
+  # node (cluster) -- and reads that node's log volume.
+  provision-uf2:
+    profiles: ["forwarder2"]
+    image: busybox:1.37
+    environment:
+      BARE: ${BARE:-0}
+      UF_HOST: ${UF2_HOST:-nifi}
+      UF_NODE: ${UF2_NODE:-}
+    volumes:
+      - uf2_etc:/etc-seed
+      - ..:/src:ro
+      - ./provision:/provision:ro
+    command: sh /provision/seed-uf-etc.sh
+    restart: "no"
+
+  # Ships NiFi's log files to Splunk. This is the recommended path for logs,
+  # and the half of the pull strategy the harness used to leave untested.
+  # Activated by the `forwarder: true` flag on a matrix profile, which makes
+  # matrix.py write COMPOSE_PROFILES=forwarder into .env.
+  forwarder:
+    profiles: ["forwarder"]
+    image: splunk/universalforwarder:${SPLUNK_VERSION:-9.4}
+    hostname: forwarder
+    depends_on:
+      provision-uf:
+        condition: service_completed_successfully
+      splunk:
+        condition: service_healthy
+      nifi:
+        condition: service_healthy
+    environment:
+      SPLUNK_START_ARGS: --accept-license
+      SPLUNK_GENERAL_TERMS: --accept-sgt-current-at-splunk-com
+      SPLUNK_PASSWORD: ${SPLUNK_PASSWORD:-Password123}
+    volumes:
+      - uf_etc:/opt/splunkforwarder/etc
+      - nifi_logs:/opt/nifi/nifi-current/logs:ro
+      - ..:/src:ro
+    healthcheck:
+      # Not an HTTP check: the forwarder image sets the management mode to
+      # "auto (Allows UDS)", so splunkd listens on a Unix socket and nothing
+      # answers on TCP 8089. Curling it returns 000 and the container would
+      # never be healthy. That splunkd is up is enough of a gate here -- the
+      # assertions are what prove events actually arrive.
+      test: ["CMD-SHELL", "pgrep -f 'splunkd.*start' > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 300s
+
+volumes:
+  splunk_etc:
+  splunk_var:
+  uf_etc:
+  uf2_etc:
+  nifi_node2_logs:
+  nifi_logs:
+  nifi_conf:
+  nifi_state:
+  nifi_certs:
+  nifi_b_logs:
+  nifi_b_conf:
+  nifi_b_state:

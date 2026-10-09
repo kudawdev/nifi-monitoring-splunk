@@ -1,0 +1,515 @@
+<dashboard version="2" theme="light" hideEdit="false">
+  <label>Bulletins</label>
+  <description>What errors is NiFi reporting?</description>
+  <definition><![CDATA[
+{
+    "dataSources": {
+        "ds_base": {
+            "name": "Bulletins",
+            "options": {
+                "query": "| tstats count from datamodel=NIFI.Bulletins\n  where host=\"$host$\" Bulletins.bulletinLevel=\"$level$\" Bulletins.bulletinCategory=\"$category$\" Bulletins.bulletinSourceName=\"$source$\"\n  by _time host Bulletins.bulletinLevel Bulletins.bulletinSourceName Bulletins.bulletinSourceId span=1h\n| rename Bulletins.* as *",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_detail": {
+            "name": "ds_detail",
+            "options": {
+                "query": "`index_nifi` sourcetype IN (\"nifi:api:bulletin_board\", \"nifi:reporting:bulletin\") host=\"$host$\" bulletinLevel=\"$level$\" bulletinCategory=\"$category$\" bulletinSourceName=\"$source$\"\n| eval Group = coalesce(bulletinGroupPath, bulletinGroupName, bulletinGroupId), Time = strftime(_time, \"%Y-%m-%d %H:%M:%S\")\n| table Time host bulletinLevel bulletinCategory bulletinSourceName Group bulletinMessage\n| rename host as Instance, bulletinLevel as Level, bulletinCategory as Category, bulletinSourceName as Component, bulletinMessage as Message",
+                "queryParameters": {
+                    "earliest": "$time.earliest$",
+                    "latest": "$time.latest$"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_input_category": {
+            "name": "Choices for Category",
+            "options": {
+                "query": "| tstats count from datamodel=NIFI.Bulletins by Bulletins.bulletinCategory | rename Bulletins.bulletinCategory as category | fields category",
+                "queryParameters": {
+                    "earliest": "-24h@h",
+                    "latest": "now"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_input_host": {
+            "name": "Choices for Instance",
+            "options": {
+                "query": "| tstats count from datamodel=NIFI.Bulletins by host | fields host",
+                "queryParameters": {
+                    "earliest": "-24h@h",
+                    "latest": "now"
+                }
+            },
+            "type": "ds.search"
+        },
+        "ds_k_affected": {
+            "name": "ds_k_affected",
+            "options": {
+                "extend": "ds_base",
+                "query": "| stats dc(bulletinSourceId) as value | fillnull value=0 value"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_errors": {
+            "name": "ds_k_errors",
+            "options": {
+                "extend": "ds_base",
+                "query": "| stats sum(eval(if(bulletinLevel==\"ERROR\", count, 0))) as value | fillnull value=0 value"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_total": {
+            "name": "ds_k_total",
+            "options": {
+                "extend": "ds_base",
+                "query": "| stats sum(count) as value | fillnull value=0 value"
+            },
+            "type": "ds.chain"
+        },
+        "ds_k_warnings": {
+            "name": "ds_k_warnings",
+            "options": {
+                "extend": "ds_base",
+                "query": "| stats sum(eval(if(bulletinLevel==\"WARNING\", count, 0))) as value | fillnull value=0 value"
+            },
+            "type": "ds.chain"
+        },
+        "ds_time": {
+            "name": "ds_time",
+            "options": {
+                "extend": "ds_base",
+                "query": "| timechart span=1h sum(count) by bulletinLevel"
+            },
+            "type": "ds.chain"
+        },
+        "ds_top": {
+            "name": "ds_top",
+            "options": {
+                "extend": "ds_base",
+                "query": "| eval e = if(bulletinLevel == \"ERROR\", count, 0), w = if(bulletinLevel == \"WARNING\", count, 0)\n| stats sum(e) as ERROR, sum(w) as WARNING by bulletinSourceName\n| sort - ERROR - WARNING | head 8 | rename bulletinSourceName as Component"
+            },
+            "type": "ds.chain"
+        }
+    },
+    "defaults": {
+        "dataSources": {
+            "ds.search": {
+                "options": {
+                    "queryParameters": {
+                        "earliest": "$time.earliest$",
+                        "latest": "$time.latest$"
+                    }
+                }
+            }
+        }
+    },
+    "description": "What errors is NiFi reporting?",
+    "inputs": {
+        "input_category": {
+            "context": {
+                "formattedConfig": {
+                    "number": {
+                        "prefix": ""
+                    }
+                },
+                "formattedStatics": ">statics | formatByType(formattedConfig)",
+                "label": ">primary | seriesByName(\"category\") | renameSeries(\"label\") | formatByType(formattedConfig)",
+                "statics": [
+                    [
+                        "All"
+                    ],
+                    [
+                        "*"
+                    ]
+                ],
+                "value": ">primary | seriesByName(\"category\") | renameSeries(\"value\") | formatByType(formattedConfig)"
+            },
+            "dataSources": {
+                "primary": "ds_input_category"
+            },
+            "options": {
+                "defaultValue": "*",
+                "items": ">frame(label, value) | prepend(formattedStatics) | objects()",
+                "token": "category"
+            },
+            "title": "Category",
+            "type": "input.dropdown"
+        },
+        "input_host": {
+            "context": {
+                "formattedConfig": {
+                    "number": {
+                        "prefix": ""
+                    }
+                },
+                "formattedStatics": ">statics | formatByType(formattedConfig)",
+                "label": ">primary | seriesByName(\"host\") | renameSeries(\"label\") | formatByType(formattedConfig)",
+                "statics": [
+                    [
+                        "All"
+                    ],
+                    [
+                        "*"
+                    ]
+                ],
+                "value": ">primary | seriesByName(\"host\") | renameSeries(\"value\") | formatByType(formattedConfig)"
+            },
+            "dataSources": {
+                "primary": "ds_input_host"
+            },
+            "options": {
+                "defaultValue": "*",
+                "items": ">frame(label, value) | prepend(formattedStatics) | objects()",
+                "token": "host"
+            },
+            "title": "Instance",
+            "type": "input.dropdown"
+        },
+        "input_level": {
+            "options": {
+                "defaultValue": "*",
+                "items": [
+                    {
+                        "label": "All",
+                        "value": "*"
+                    },
+                    {
+                        "label": "ERROR",
+                        "value": "ERROR"
+                    },
+                    {
+                        "label": "WARNING",
+                        "value": "WARNING"
+                    },
+                    {
+                        "label": "INFO",
+                        "value": "INFO"
+                    }
+                ],
+                "token": "level"
+            },
+            "title": "Level",
+            "type": "input.dropdown"
+        },
+        "input_source": {
+            "options": {
+                "defaultValue": "*",
+                "token": "source"
+            },
+            "title": "Component",
+            "type": "input.text"
+        },
+        "input_time": {
+            "options": {
+                "defaultValue": "-24h@h,now",
+                "token": "time"
+            },
+            "title": "Time range",
+            "type": "input.timerange"
+        }
+    },
+    "layout": {
+        "globalInputs": [
+            "input_time",
+            "input_host",
+            "input_level",
+            "input_category",
+            "input_source"
+        ],
+        "options": {
+            "height": 950,
+            "width": 1440
+        },
+        "structure": [
+            {
+                "item": "viz_total",
+                "position": {
+                    "h": 130,
+                    "w": 360,
+                    "x": 0,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_errors",
+                "position": {
+                    "h": 130,
+                    "w": 360,
+                    "x": 360,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_warnings",
+                "position": {
+                    "h": 130,
+                    "w": 360,
+                    "x": 720,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_affected",
+                "position": {
+                    "h": 130,
+                    "w": 360,
+                    "x": 1080,
+                    "y": 0
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_time",
+                "position": {
+                    "h": 300,
+                    "w": 960,
+                    "x": 0,
+                    "y": 130
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_top",
+                "position": {
+                    "h": 300,
+                    "w": 480,
+                    "x": 960,
+                    "y": 130
+                },
+                "type": "block"
+            },
+            {
+                "item": "viz_detail",
+                "position": {
+                    "h": 520,
+                    "w": 1440,
+                    "x": 0,
+                    "y": 430
+                },
+                "type": "block"
+            }
+        ],
+        "type": "grid"
+    },
+    "title": "Bulletins",
+    "visualizations": {
+        "viz_affected": {
+            "dataSources": {
+                "primary": "ds_k_affected"
+            },
+            "options": {
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Components affected",
+            "type": "splunk.singlevalue"
+        },
+        "viz_detail": {
+            "context": {
+                "LevelRowColorsEditorConfig": [
+                    {
+                        "match": "ERROR",
+                        "value": "#D03B3B"
+                    },
+                    {
+                        "match": "WARNING",
+                        "value": "#FAB219"
+                    },
+                    {
+                        "match": "WARN",
+                        "value": "#FAB219"
+                    },
+                    {
+                        "match": "INFO",
+                        "value": "#9A9890"
+                    }
+                ],
+                "tableHeaderBackgroundColorConfig": {
+                    "channel": "rgb",
+                    "value": "#E1E0D9"
+                },
+                "tableRowColorMaxContrast": {
+                    "maximum": "#0B0B0B",
+                    "minimum": "#FFFFFF"
+                }
+            },
+            "dataSources": {
+                "primary": "ds_detail"
+            },
+            "description": "Whole message · the group name only comes with the push path; pull shows its id",
+            "options": {
+                "backgroundColor": "transparent",
+                "columnFormat": {
+                    "Level": {
+                        "rowColors": "> table | seriesByName(\"Level\") | matchValue(LevelRowColorsEditorConfig)"
+                    },
+                    "Message": {
+                        "width": 700
+                    }
+                },
+                "count": 15,
+                "headerVisibility": "fixed",
+                "showInternalFields": false,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | noRecolor()",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Bulletin details",
+            "type": "splunk.table"
+        },
+        "viz_errors": {
+            "context": {
+                "majorColorEditorConfig": [
+                    {
+                        "to": 1,
+                        "value": "#0CA30C"
+                    },
+                    {
+                        "from": 1,
+                        "value": "#D03B3B"
+                    }
+                ]
+            },
+            "dataSources": {
+                "primary": "ds_k_errors"
+            },
+            "options": {
+                "majorColor": "> majorValue | rangeValue(majorColorEditorConfig)",
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "ERROR",
+            "type": "splunk.singlevalue"
+        },
+        "viz_time": {
+            "dataSources": {
+                "primary": "ds_time"
+            },
+            "description": "Hourly, by level",
+            "options": {
+                "legendDisplay": "bottom",
+                "seriesColors": [
+                    "#2A78D6",
+                    "#EB6834",
+                    "#1BAF7A",
+                    "#EDA100"
+                ],
+                "seriesColorsByField": {
+                    "ERROR": "#D03B3B",
+                    "INFO": "#9A9890",
+                    "WARN": "#FAB219",
+                    "WARNING": "#FAB219"
+                },
+                "showRoundedY2AxisLabels": false,
+                "showSplitSeries": false,
+                "stackMode": "stacked",
+                "xAxisTitleVisibility": "hide",
+                "yAxisTitleVisibility": "hide"
+            },
+            "title": "Bulletins over time",
+            "type": "splunk.column"
+        },
+        "viz_top": {
+            "context": {
+                "tableHeaderBackgroundColorConfig": {
+                    "channel": "rgb",
+                    "value": "#E1E0D9"
+                },
+                "tableRowColorMaxContrast": {
+                    "maximum": "#0B0B0B",
+                    "minimum": "#FFFFFF"
+                }
+            },
+            "dataSources": {
+                "primary": "ds_top"
+            },
+            "eventHandlers": [
+                {
+                    "options": {
+                        "tokens": [
+                            {
+                                "key": "row.Component.value",
+                                "token": "source"
+                            }
+                        ]
+                    },
+                    "type": "drilldown.setToken"
+                }
+            ],
+            "options": {
+                "backgroundColor": "transparent",
+                "count": 8,
+                "headerVisibility": "fixed",
+                "showInternalFields": false,
+                "tableFormat": {
+                    "headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+                    "headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+                    "rowBackgroundColors": "> table | seriesByIndex(0) | noRecolor()",
+                    "rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+                }
+            },
+            "title": "Components with most bulletins",
+            "type": "splunk.table"
+        },
+        "viz_total": {
+            "dataSources": {
+                "primary": "ds_k_total"
+            },
+            "options": {
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "Bulletins",
+            "type": "splunk.singlevalue"
+        },
+        "viz_warnings": {
+            "context": {
+                "majorColorEditorConfig": [
+                    {
+                        "to": 1,
+                        "value": "#0CA30C"
+                    },
+                    {
+                        "from": 1,
+                        "value": "#FAB219"
+                    }
+                ]
+            },
+            "dataSources": {
+                "primary": "ds_k_warnings"
+            },
+            "options": {
+                "majorColor": "> majorValue | rangeValue(majorColorEditorConfig)",
+                "majorFontSize": 34,
+                "majorValue": "> primary | seriesByName(\"value\") | lastPoint()",
+                "sparklineDisplay": "off",
+                "trendDisplay": "off"
+            },
+            "title": "WARNING",
+            "type": "splunk.singlevalue"
+        }
+    }
+}
+]]></definition>
+  <meta type="hiddenElements"><![CDATA[
+{"hideEdit": false, "hideOpenInSearch": false, "hideExport": false}
+]]></meta>
+</dashboard>
