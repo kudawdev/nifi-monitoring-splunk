@@ -37,7 +37,12 @@ jobs:
   unit:
     name: Lint and unit tests
     runs-on: ubuntu-latest
-    container: kudaw/appinspect:latest
+    container:
+      image: kudaw/appinspect:latest
+      # The image runs as `appinspect`, which cannot write the runner's
+      # /__w/_temp: actions/checkout dies with EACCES before any step runs.
+      # scripts/package.sh runs the same image as root for the same reason.
+      options: --user root
     steps:
       - uses: actions/checkout@v4
 
@@ -94,7 +99,9 @@ jobs:
   appinspect:
     name: AppInspect (${{ matrix.app }})
     runs-on: ubuntu-latest
-    container: kudaw/appinspect:latest
+    container:
+      image: kudaw/appinspect:latest
+      options: --user root  # see the unit job
     strategy:
       fail-fast: false
       matrix:
