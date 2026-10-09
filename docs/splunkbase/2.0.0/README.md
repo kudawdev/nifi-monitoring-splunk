@@ -223,6 +223,39 @@ More detail: https://kudawdev.github.io/nifi-monitoring-splunk/
 Report an issue: https://github.com/kudawdev/nifi-monitoring-splunk/issues
 ```
 
+### Release notes
+
+```text
+2.0.0 — NiFi 2.x support and rebuilt dashboards
+
+Read the upgrade guide before installing over 1.x: https://kudawdev.github.io/nifi-monitoring-splunk/upgrading/
+
+BREAKING CHANGES
+
+* Splunk 9.4 is the minimum (Dashboard Studio features verified on 9.4 and 10.4).
+* The dashboards were rebuilt in Dashboard Studio, and several views were renamed or merged: bookmarks to home, nifi_instances_detail, nifi_status_history, nifi_bulletin and nifi_internal_monitoring stop working.
+* The index_nifi macro is now index=nifi instead of index=*, and the app ships that index. If your NiFi data lives elsewhere, override the macro in local/macros.conf; Configuration > Collection Health shows where the data is.
+* NIFI datamodel: Reporting_Bulletin and Reporting_Task are now children of Bulletins and Throughput, and Status_History became Component_Status. Your own tstats searches on those datasets may need a change.
+* Datamodel acceleration ships off. Turn it on for faster panels.
+* Status Indicator is no longer a dependency.
+
+NEW
+
+* Eight views: Overview, Instance, Components, Bulletins, Logs, Cluster, Alerts and Collection Health.
+* Eight alerts, shipped disabled: instance without data, repository filling up, sustained high heap, ERROR bulletin spike, backpressure, cluster node disconnected, versioned flow sync failure and add-on HTTP errors.
+* Per-instance thresholds in the instance inventory (Configuration > NiFi Instances), shared by panels and alerts.
+* One definition of health that respects each input's polling interval.
+* NiFi 2.x support, clusters shown as one instance with named nodes, and several independent instances.
+* Components view: the bottleneck processor, group or connection, with NiFi's own backpressure prediction.
+* Logs view: application, deprecation and API request logs.
+
+FIXES
+
+* On a cluster, events from the push flow carry the instance's name instead of whichever node sent them, so the Overview no longer reports the cluster down and Bulletins is no longer empty. Set instance_name in the flow.
+
+Requires Nifi Monitoring TA 2.0.0. Full notes: https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/CHANGELOG.md
+```
+
 ---
 
 ## Nifi Monitoring TA — app 6124
@@ -305,6 +338,42 @@ Then create one input per NiFi instance, with Index set to "nifi". Step-by-step 
 https://kudawdev.github.io/nifi-monitoring-splunk/config-nifi-monitoring-2-0/
 
 Upgrading from 1.x: existing inputs keep working; TLS certificates are now verified by default. See https://kudawdev.github.io/nifi-monitoring-splunk/upgrading/
+```
+
+### Release notes
+
+```text
+2.0.0 — NiFi 2.x support and a new configuration screen
+
+Read the upgrade guide before installing over 1.x: https://kudawdev.github.io/nifi-monitoring-splunk/upgrading/
+
+BREAKING CHANGES
+
+* Splunk 9.4 is the minimum.
+* TLS certificates are verified by default. Over HTTPS, set a CA bundle path, or turn verification off deliberately.
+* Status history has new sourcetypes: nifi:api:processors_status and nifi:api:process_groups_status, one event per snapshot. nifi:api:*_history remains for the push path only.
+* nifi:api:site_to_site and nifi:api:controller_cluster are no longer collected.
+* Passwords are stored per input. A 1.x input keeps working, with a warning, until it is opened and saved again.
+* The add-on now appears in the app menu, with its own configuration screen.
+
+NEW
+
+* NiFi 2.x support from the same input: the add-on detects the NiFi version per input and adapts.
+* A configuration screen built with UCC: grouped form with validation, a Test connection button, and a Logging tab.
+* Clusters detected automatically, with per-node diagnostics and bulletins that name their node.
+* Custom endpoints: any NiFi REST path, indexed as nifi:api:custom:<name>.
+* Flow metrics from /flow/metrics/json (NiFi 1.16 or later), off by default.
+* Bulletins polled from the bulletin board with a cursor, without a reporting task.
+* nifi:log:deprecation and nifi:log:request monitors for the Universal Forwarder.
+
+FIXES
+
+* The add-on logs in before its first request instead of a 401 per endpoint on every cold start.
+* A failing custom endpoint writes no event; error bodies used to be indexed as data.
+* The token and the bulletin cursor no longer live in a file inside the app, which was lost on reinstall and could be overwritten between two inputs.
+* An input with no Host sends its events under the input's name instead of $decideOnStartup.
+
+Full notes: https://github.com/kudawdev/nifi-monitoring-splunk/blob/main/CHANGELOG.md
 ```
 
 ### Troubleshooting
