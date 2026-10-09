@@ -50,6 +50,12 @@ jobs:
       # scripts/package.sh runs the same image as root for the same reason.
       options: --user root
     steps:
+      - name: Install git
+        # The image has none, and without it checkout downloads the tree with
+        # no .git: the tests that read each script's recorded mode had nothing
+        # to read, and skipped (#50).
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends git >/dev/null
+
       - uses: actions/checkout@v4
 
       - name: App versions agree
@@ -80,10 +86,12 @@ jobs:
 
       - name: Unit tests
         working-directory: tests/unit
-        # The checks that read the generated add-on skip without a build;
-        # this turns those skips into failures.
+        # The checks that read the generated add-on skip without a build, and
+        # those that read git's recorded modes without a checkout; these turn
+        # both skips into failures.
         env:
           REQUIRE_BUILT_TA: "1"
+          REQUIRE_GIT_CHECKOUT: "1"
         run: python3 -m unittest discover -v
 
   docs:

@@ -171,6 +171,10 @@ class ExecutableBitTest(unittest.TestCase):
                 ["git", "ls-files", "-s", relative],
                 cwd=TESTS_DIR, stderr=subprocess.DEVNULL).decode()
         except (OSError, subprocess.CalledProcessError):
+            # CI sets REQUIRE_GIT_CHECKOUT=1: there a skip would pass a pull
+            # request that drops a script's executable bit, unseen (#50).
+            if os.environ.get("REQUIRE_GIT_CHECKOUT") == "1":
+                self.fail("not a git checkout, and REQUIRE_GIT_CHECKOUT=1")
             self.skipTest("not a git checkout")
         if not out.strip():
             self.fail("%s is not tracked" % relative)
@@ -569,6 +573,14 @@ class WorkflowMatrixTest(unittest.TestCase):
         steps = workflow["jobs"]["unit"]["steps"]
         unit = next(step for step in steps if "unittest discover" in str(step.get("run", "")))
         self.assertEqual(unit.get("env", {}).get("REQUIRE_BUILT_TA"), "1")
+        self.assertEqual(unit.get("env", {}).get("REQUIRE_GIT_CHECKOUT"), "1")
+        # Without git in the image, checkout downloads the tree with no .git
+        # and every executable-bit check above has nothing to read.
+        before_checkout = steps[:next(i for i, step in enumerate(steps)
+                                      if "actions/checkout" in str(step.get("uses", "")))]
+        self.assertTrue(any("install" in str(step.get("run", "")) and "git" in str(step.get("run", ""))
+                            for step in before_checkout),
+                        "the unit job installs no git before checkout")
         package = " ".join(str(step.get("run", ""))
                            for step in workflow["jobs"]["appinspect"]["steps"])
         self.assertIn("output/nifi_TA_monitoring", package)
